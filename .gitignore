@@ -1,1 +1,7 @@
 .env
+
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+nginx/ssl/*.csr
+nginx/ssl/*.srl

@@ -1,0 +1,25 @@
+[project]
+name = "ft_transcendence-backend"
+version = "1.0.0"
+description = "ft_transcendence — Django backend with real-time game servers"
+requires-python = ">=3.12"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+known_django = "django"
+known_drf = "rest_framework"
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "DRF", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = "tests.py test_*.py *_tests.py"
+addopts = "--tb=short -q"
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [".git", "__pycache__", "migrations", "staticfiles"]
