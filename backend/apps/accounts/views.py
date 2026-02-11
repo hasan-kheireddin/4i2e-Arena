@@ -5,7 +5,6 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-
 from .serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
@@ -56,10 +55,9 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
-        # Update last activity and online status
-        user.is_online = True
+        # Update last activity
         user.last_activity = timezone.now()
-        user.save(update_fields=["is_online", "last_activity"])
+        user.save(update_fields=["last_activity"])
 
         # If 2FA is enabled, signal the client to complete verification
         if user.is_2fa_enabled:
@@ -110,10 +108,6 @@ class LogoutView(APIView):
                 {"detail": "Token is invalid or already blacklisted."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Set user offline
-        request.user.is_online = False
-        request.user.save(update_fields=["is_online"])
 
         return Response(
             {"detail": "Successfully logged out."},
