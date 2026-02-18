@@ -1,0 +1,25 @@
+{
+  "login": {
+    "title": "Se connecter",
+    "email": "Email",
+    "password": "Mot de passe",
+    "submit": "Connexion",
+    "no_account": "Pas de compte ?",
+    "register": "S'inscrire",
+    "or": "ou",
+    "continue_42": "Continuer avec 42"
+  },
+  "register": {
+    "title": "Créer un compte",
+    "username": "Nom d'utilisateur",
+    "email": "Email",
+    "password": "Mot de passe",
+    "submit": "S'inscrire",
+    "have_account": "Déjà un compte ?",
+    "login": "Se connecter"
+  },
+  "navbar": {
+    "home": "Accueil",
+    "logout": "Déconnexion"
+  }
+}

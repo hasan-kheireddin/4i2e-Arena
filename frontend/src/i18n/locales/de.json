@@ -1,0 +1,25 @@
+{
+  "login": {
+    "title": "Anmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "no_account": "Noch kein Konto?",
+    "register": "Registrieren",
+    "or": "oder",
+    "continue_42": "Weiter mit 42"
+  },
+  "register": {
+    "title": "Konto erstellen",
+    "username": "Benutzername",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "submit": "Registrieren",
+    "have_account": "Bereits ein Konto?",
+    "login": "Anmelden"
+  },
+  "navbar": {
+    "home": "Startseite",
+    "logout": "Abmelden"
+  }
+}

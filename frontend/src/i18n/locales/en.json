@@ -1,0 +1,70 @@
+{
+  "login": {
+    "title": "Sign In",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Login",
+    "no_account": "Don't have an account?",
+    "register": "Register",
+    "or": "or",
+    "continue_42": "Continue with 42"
+  },
+  "register": {
+  "title": "Create an account",
+  "full_name": "Full Name",
+  "email": "Email",
+  "password": "Password",
+  "forgot": "Forgot password?",
+  "confirm_password": "Confirm Password",
+  "password_length": "Must be at least 8 characters long.",
+  "submit": "Get started",
+  "have_account": "Already have an account?",
+  "log_in": "Log in"
+},
+  "navbar": {
+    "home": "Home",
+    "logout": "Logout"
+  },
+  "2fa": {
+  "verify_title": "Two-Factor Authentication",
+  "verify_subtitle": "Enter the 6-digit code from your authenticator app",
+  "verify_submit": "Verify",
+  "resend": "Didn't receive a code? Resend",
+  "back_to_login": "Back to login",
+  "setup_title": "Enable Two-Factor Authentication",
+  "setup_subtitle": "Scan the QR code with your authenticator app",
+  "cant_scan": "Can't scan the code?",
+  "copy": "Copy",
+  "backup_codes_title": "Backup Codes",
+  "backup_codes_subtitle": "Save these codes in a safe place. You can use them to access your account if you lose your device.",
+  "copy_all": "Copy all codes",
+  "continue": "Continue",
+  "verify_setup_title": "Verify Setup",
+  "verify_setup_subtitle": "Enter the 6-digit code from your authenticator app to complete setup",
+  "verification_code": "Verification Code",
+  "enable": "Enable 2FA",
+  "back": "Back"
+},
+"forgot": {
+  "title": "Forgot Password?",
+  "subtitle": "No worries, we'll send you reset instructions",
+  "email": "Email",
+  "submit": "Reset password",
+  "back_to_login": "Back to login",
+  "success_title": "Check your email",
+  "success_message": "We sent a password reset link to",
+  "didnt_receive": "Didn't receive the email?",
+  "resend": "Click to resend"
+},
+"reset": {
+  "title": "Set New Password",
+  "subtitle": "Your new password must be different from previously used passwords",
+  "password": "New Password",
+  "confirm_password": "Confirm New Password",
+  "password_length": "Must be at least 8 characters long",
+  "submit": "Reset password",
+  "invalid_title": "Invalid Link",
+  "invalid_message": "This password reset link is invalid or has expired. Please request a new one.",
+  "request_new": "Request new link"
+}
+}

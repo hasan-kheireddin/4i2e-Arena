@@ -7,10 +7,9 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
-    // Allow connections from the Docker network
     strictPort: true,
     watch: {
-      usePolling: true, // Required for Docker volume mounts
+      usePolling: true,
     },
   },
   build: {
