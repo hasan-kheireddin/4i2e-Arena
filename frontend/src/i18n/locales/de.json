@@ -1,25 +1,72 @@
 {
   "login": {
-    "title": "Anmelden",
+    "title": "Willkommen zurück",
+    "subtitle": "Geben Sie unten Ihre E-Mail ein, um sich bei Ihrem Konto anzumelden",
     "email": "E-Mail",
     "password": "Passwort",
     "submit": "Anmelden",
     "no_account": "Noch kein Konto?",
-    "register": "Registrieren",
+    "sign_up": "Registrieren",
     "or": "oder",
-    "continue_42": "Weiter mit 42"
+    "google": "Mit Google anmelden",
+    "forgot": "Passwort vergessen?"
   },
   "register": {
     "title": "Konto erstellen",
-    "username": "Benutzername",
+    "full_name": "Vollständiger Name",
     "email": "E-Mail",
     "password": "Passwort",
-    "submit": "Registrieren",
+    "forgot": "Passwort vergessen?",
+    "confirm_password": "Passwort bestätigen",
+    "password_length": "Muss mindestens 8 Zeichen lang sein.",
+    "submit": "Loslegen",
     "have_account": "Bereits ein Konto?",
-    "login": "Anmelden"
+    "log_in": "Anmelden"
   },
   "navbar": {
     "home": "Startseite",
     "logout": "Abmelden"
+  },
+  "2fa": {
+    "verify_title": "Zwei-Faktor-Authentifizierung",
+    "verify_subtitle": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App ein",
+    "verify_submit": "Überprüfen",
+    "resend": "Keinen Code erhalten? Erneut senden",
+    "back_to_login": "Zurück zur Anmeldung",
+    "setup_title": "Zwei-Faktor-Authentifizierung aktivieren",
+    "setup_subtitle": "Scannen Sie den QR-Code mit Ihrer Authentifizierungs-App",
+    "cant_scan": "Code kann nicht gescannt werden?",
+    "copy": "Kopieren",
+    "backup_codes_title": "Backup-Codes",
+    "backup_codes_subtitle": "Bewahren Sie diese Codes an einem sicheren Ort auf. Sie können damit auf Ihr Konto zugreifen, wenn Sie Ihr Gerät verlieren.",
+    "copy_all": "Alle Codes kopieren",
+    "continue": "Weiter",
+    "verify_setup_title": "Einrichtung überprüfen",
+    "verify_setup_subtitle": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App ein, um die Einrichtung abzuschließen",
+    "verification_code": "Verifizierungscode",
+    "enable": "2FA aktivieren",
+    "back": "Zurück"
+  },
+  "forgot": {
+    "title": "Passwort vergessen?",
+    "subtitle": "Keine Sorge, wir senden Ihnen Anweisungen zum Zurücksetzen",
+    "email": "E-Mail",
+    "submit": "Passwort zurücksetzen",
+    "back_to_login": "Zurück zur Anmeldung",
+    "success_title": "Überprüfen Sie Ihre E-Mails",
+    "success_message": "Wir haben einen Link zum Zurücksetzen des Passworts gesendet an",
+    "didnt_receive": "E-Mail nicht erhalten?",
+    "resend": "Klicken Sie hier, um erneut zu senden"
+  },
+  "reset": {
+    "title": "Neues Passwort festlegen",
+    "subtitle": "Ihr neues Passwort muss sich von zuvor verwendeten Passwörtern unterscheiden",
+    "password": "Neues Passwort",
+    "confirm_password": "Neues Passwort bestätigen",
+    "password_length": "Muss mindestens 8 Zeichen lang sein",
+    "submit": "Passwort zurücksetzen",
+    "invalid_title": "Ungültiger Link",
+    "invalid_message": "Dieser Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.",
+    "request_new": "Neuen Link anfordern"
   }
 }

@@ -8,11 +8,13 @@ import Verify2FAPage from "./pages/Verify2fapage";
 import Setup2FAPage from "./pages/Setup2fapage";
 import ForgotPasswordPage from "./pages/Forgotpasswordpage";
 import ResetPasswordPage from "./pages/Resetpasswordpage";
+import DarkModeToggle from "./components/Darkmodetoggle";
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <DarkModeToggle />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />

@@ -98,7 +98,7 @@ export default function Verify2FAPage() {
       ───────────────────────────────────────── */}
       <div className="hidden lg:flex w-full h-full">
         {/* Image side - full height */}
-        <div className="w-[45%] flex-shrink-0 h-full">
+        <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
             src={loginImg}
             alt="Sport"
@@ -108,7 +108,7 @@ export default function Verify2FAPage() {
 
         {/* Form side - full height */}
         <div
-          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto"
+          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto animate-slideInRight"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
           <div className="max-w-md mx-auto w-full py-12">
@@ -155,15 +155,6 @@ export default function Verify2FAPage() {
             />
           </div>
         </div>
-
-        {/* Image below */}
-        <div className="h-64 w-full flex-shrink-0">
-          <img
-            src={loginImg}
-            alt="Sport"
-            className="w-full h-full object-cover"
-          />
-        </div>
       </div>
     </div>
   );
@@ -202,7 +193,7 @@ function FormContent({
   return (
     <>
       {/* Title */}
-      <div className="mb-8">
+      <div className="mb-8 text-center">
         <h1
           className="text-4xl font-bold mb-3"
           style={{ color: "var(--color-text-primary)" }}

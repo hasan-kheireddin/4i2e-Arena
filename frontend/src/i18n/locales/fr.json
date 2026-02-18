@@ -1,25 +1,72 @@
 {
   "login": {
-    "title": "Se connecter",
+    "title": "Bienvenue",
+    "subtitle": "Entrez votre email ci-dessous pour vous connecter à votre compte",
     "email": "Email",
     "password": "Mot de passe",
-    "submit": "Connexion",
-    "no_account": "Pas de compte ?",
-    "register": "S'inscrire",
+    "submit": "Se connecter",
+    "no_account": "Vous n'avez pas de compte ?",
+    "sign_up": "S'inscrire",
     "or": "ou",
-    "continue_42": "Continuer avec 42"
+    "google": "Se connecter avec Google",
+    "forgot": "Mot de passe oublié ?"
   },
   "register": {
     "title": "Créer un compte",
-    "username": "Nom d'utilisateur",
+    "full_name": "Nom complet",
     "email": "Email",
     "password": "Mot de passe",
-    "submit": "S'inscrire",
-    "have_account": "Déjà un compte ?",
-    "login": "Se connecter"
+    "forgot": "Mot de passe oublié ?",
+    "confirm_password": "Confirmer le mot de passe",
+    "password_length": "Doit contenir au moins 8 caractères.",
+    "submit": "Commencer",
+    "have_account": "Vous avez déjà un compte ?",
+    "log_in": "Se connecter"
   },
   "navbar": {
     "home": "Accueil",
     "logout": "Déconnexion"
+  },
+  "2fa": {
+    "verify_title": "Authentification à deux facteurs",
+    "verify_subtitle": "Entrez le code à 6 chiffres de votre application d'authentification",
+    "verify_submit": "Vérifier",
+    "resend": "Vous n'avez pas reçu de code ? Renvoyer",
+    "back_to_login": "Retour à la connexion",
+    "setup_title": "Activer l'authentification à deux facteurs",
+    "setup_subtitle": "Scannez le code QR avec votre application d'authentification",
+    "cant_scan": "Vous ne pouvez pas scanner le code ?",
+    "copy": "Copier",
+    "backup_codes_title": "Codes de secours",
+    "backup_codes_subtitle": "Conservez ces codes dans un endroit sûr. Vous pouvez les utiliser pour accéder à votre compte si vous perdez votre appareil.",
+    "copy_all": "Copier tous les codes",
+    "continue": "Continuer",
+    "verify_setup_title": "Vérifier la configuration",
+    "verify_setup_subtitle": "Entrez le code à 6 chiffres de votre application d'authentification pour terminer la configuration",
+    "verification_code": "Code de vérification",
+    "enable": "Activer 2FA",
+    "back": "Retour"
+  },
+  "forgot": {
+    "title": "Mot de passe oublié ?",
+    "subtitle": "Pas de soucis, nous vous enverrons les instructions de réinitialisation",
+    "email": "Email",
+    "submit": "Réinitialiser le mot de passe",
+    "back_to_login": "Retour à la connexion",
+    "success_title": "Vérifiez votre email",
+    "success_message": "Nous avons envoyé un lien de réinitialisation à",
+    "didnt_receive": "Vous n'avez pas reçu l'email ?",
+    "resend": "Cliquez pour renvoyer"
+  },
+  "reset": {
+    "title": "Définir un nouveau mot de passe",
+    "subtitle": "Votre nouveau mot de passe doit être différent des mots de passe précédemment utilisés",
+    "password": "Nouveau mot de passe",
+    "confirm_password": "Confirmer le nouveau mot de passe",
+    "password_length": "Doit contenir au moins 8 caractères",
+    "submit": "Réinitialiser le mot de passe",
+    "invalid_title": "Lien invalide",
+    "invalid_message": "Ce lien de réinitialisation de mot de passe est invalide ou a expiré. Veuillez en demander un nouveau.",
+    "request_new": "Demander un nouveau lien"
   }
 }

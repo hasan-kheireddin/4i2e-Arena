@@ -68,7 +68,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex w-full h-full">
         {/* Form side - full height */}
         <div
-          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto"
+          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto animate-slideInLeft"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
           <div className="max-w-md mx-auto w-full py-12">
@@ -87,7 +87,7 @@ export default function LoginPage() {
         </div>
 
         {/* Image side - full height */}
-        <div className="w-[45%] flex-shrink-0 h-full">
+        <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
             src={loginImg}
             alt="Sport"

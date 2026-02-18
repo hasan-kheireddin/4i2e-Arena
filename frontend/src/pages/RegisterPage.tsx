@@ -91,7 +91,7 @@ export default function RegisterPage() {
       ───────────────────────────────────────── */}
       <div className="hidden lg:flex w-full h-full">
         {/* Image side - full height */}
-        <div className="w-[45%] flex-shrink-0 h-full">
+        <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
             src={registerImg}
             alt="Sport"
@@ -101,7 +101,7 @@ export default function RegisterPage() {
 
         {/* Form side - full height */}
         <div
-          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto"
+          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto animate-slideInRight"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
           <div className="max-w-md mx-auto w-full py-12">
