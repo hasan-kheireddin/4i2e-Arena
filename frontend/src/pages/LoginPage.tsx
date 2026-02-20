@@ -2,15 +2,18 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
+import { login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
+import type { ApiError } from "../services/api";
 import loginImg from "../images/loginimg.png";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [errors, setErrors] = useState({ username: "", password: "" });
+  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -50,22 +53,61 @@ export default function LoginPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
+    setServerError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 800));
-    login({ id: 1, username: formData.username, email: "" });
-    navigate("/");
-    setLoading(false);
+    setServerError("");
+
+    try {
+      const res = await apiLogin({
+        username: formData.username,
+        password: formData.password,
+      });
+
+      if (isTwoFARequired(res)) {
+        // Redirect to 2FA verification with temp token
+        navigate(`/verify-2fa?temp=${encodeURIComponent(res.temp_token)}`);
+      } else {
+        setUser(res.user);
+        navigate("/");
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr.detail) {
+        setServerError(apiErr.detail);
+      } else if (apiErr.fieldErrors) {
+        const newErrors = { ...errors };
+        if (apiErr.fieldErrors.username) newErrors.username = apiErr.fieldErrors.username[0];
+        if (apiErr.fieldErrors.password) newErrors.password = apiErr.fieldErrors.password[0];
+        setErrors(newErrors);
+      } else {
+        setServerError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: replace with real backend OAuth URL
-    window.location.href = "/api/auth/google";
+  const handleGoogleLogin = async () => {
+    try {
+      const { authorize_url } = await oauthInitiate("google");
+      window.location.href = authorize_url;
+    } catch {
+      setServerError("Failed to initiate Google login. Please try again.");
+    }
+  };
+
+  const handle42Login = async () => {
+    try {
+      const { authorize_url } = await oauthInitiate("42");
+      window.location.href = authorize_url;
+    } catch {
+      setServerError("Failed to initiate 42 login. Please try again.");
+    }
   };
 
   return (
@@ -84,12 +126,14 @@ export default function LoginPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
               handleChange={handleChange}
               handleSubmit={handleSubmit}
               handleGoogleLogin={handleGoogleLogin}
+              handle42Login={handle42Login}
               t={t}
             />
           </div>
@@ -119,12 +163,14 @@ export default function LoginPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
               handleChange={handleChange}
               handleSubmit={handleSubmit}
               handleGoogleLogin={handleGoogleLogin}
+              handle42Login={handle42Login}
               t={t}
             />
           </div>
@@ -140,24 +186,28 @@ export default function LoginPage() {
 interface FormProps {
   formData: { username: string; password: string };
   errors: { username: string; password: string };
+  serverError: string;
   loading: boolean;
   showPassword: boolean;
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
   handleGoogleLogin: () => void;
+  handle42Login: () => void;
   t: (key: string, fallback?: string) => string;
 }
 
 function FormContent({
   formData,
   errors,
+  serverError,
   loading,
   showPassword,
   setShowPassword,
   handleChange,
   handleSubmit,
   handleGoogleLogin,
+  handle42Login,
   t,
 }: FormProps) {
   return (
@@ -174,6 +224,20 @@ function FormContent({
           {t("login.subtitle", "Enter your username or email below to login to your account")}
         </p>
       </div>
+
+      {/* Server error banner */}
+      {serverError && (
+        <div
+          className="mb-4 p-3 rounded-lg text-sm text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "var(--color-error)",
+            border: "1px solid var(--color-border-error)",
+          }}
+        >
+          {serverError}
+        </div>
+      )}
 
       {/* Google OAuth button */}
       <button
@@ -193,6 +257,26 @@ function FormContent({
       >
         <GoogleIcon />
         {t("login.google", "Login with Google")}
+      </button>
+
+      {/* 42 OAuth button */}
+      <button
+        onClick={handle42Login}
+        className="w-full flex items-center justify-center gap-3 rounded-lg py-3 px-4 font-medium transition-colors duration-200 mb-6"
+        style={{
+          border: "1px solid var(--color-border)",
+          color: "var(--color-text-secondary)",
+          backgroundColor: "var(--color-bg-input)",
+        }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.backgroundColor = "var(--color-bg-hover)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.backgroundColor = "var(--color-bg-input)")
+        }
+      >
+        <span className="text-lg font-bold">42</span>
+        {t("login.42", "Login with 42")}
       </button>
 
       {/* Divider */}

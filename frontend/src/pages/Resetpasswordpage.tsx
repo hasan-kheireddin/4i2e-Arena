@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { apiFetch } from "../services/api";
+import type { ApiError } from "../services/api";
 import loginImg from "../images/loginimg.png";
 
 export default function ResetPasswordPage() {
@@ -18,6 +20,7 @@ export default function ResetPasswordPage() {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -28,8 +31,20 @@ export default function ResetPasswordPage() {
     if (!formData.password) {
       newErrors.password = "Password is required";
       valid = false;
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    } else if (formData.password.length < 10) {
+      newErrors.password = "Password must be at least 10 characters";
+      valid = false;
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one uppercase letter";
+      valid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one lowercase letter";
+      valid = false;
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one digit";
+      valid = false;
+    } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one special character";
       valid = false;
     }
 
@@ -48,6 +63,7 @@ export default function ResetPasswordPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
+    setServerError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,10 +71,31 @@ export default function ResetPasswordPage() {
     if (!validate()) return;
 
     setLoading(true);
-    // TODO: replace with real API call using token
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    navigate("/login");
+    setServerError("");
+
+    try {
+      // Backend endpoint for password reset confirmation
+      // POST /api/accounts/password-reset/confirm/ — validates token + sets new password
+      await apiFetch("/password-reset/confirm/", {
+        method: "POST",
+        body: {
+          token,
+          password: formData.password,
+          password2: formData.confirmPassword,
+        },
+        auth: false,
+      });
+      navigate("/login");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr.fieldErrors?.password) {
+        setErrors({ ...errors, password: apiErr.fieldErrors.password[0] });
+      } else {
+        setServerError(apiErr.detail ?? "Failed to reset password. The link may have expired.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Invalid or expired token
@@ -126,6 +163,7 @@ export default function ResetPasswordPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
@@ -162,6 +200,7 @@ export default function ResetPasswordPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
@@ -190,6 +229,7 @@ interface FormContentProps {
     password: string;
     confirmPassword: string;
   };
+  serverError: string;
   loading: boolean;
   showPassword: boolean;
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
@@ -203,6 +243,7 @@ interface FormContentProps {
 function FormContent({
   formData,
   errors,
+  serverError,
   loading,
   showPassword,
   setShowPassword,
@@ -226,6 +267,20 @@ function FormContent({
           {t("reset.subtitle", "Your new password must be different from previously used passwords")}
         </p>
       </div>
+
+      {/* Server error banner */}
+      {serverError && (
+        <div
+          className="mb-4 p-3 rounded-lg text-sm text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "var(--color-error)",
+            border: "1px solid var(--color-border-error)",
+          }}
+        >
+          {serverError}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -313,7 +368,7 @@ function FormContent({
           )}
           {!errors.confirmPassword && formData.password && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-              {t("reset.password_length", "Must be at least 8 characters long")}
+              {t("reset.password_length", "Min 10 chars with uppercase, lowercase, digit, and special character.")}
             </p>
           )}
         </div>

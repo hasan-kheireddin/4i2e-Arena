@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
+import { register as apiRegister } from "../services/auth";
+import type { ApiError } from "../services/api";
 import registerImg from "../images/registerimg.png";
 
 export default function RegisterPage() {
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -23,6 +25,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
 
+  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -88,19 +91,41 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
+    setServerError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 800));
-    // When integrating with backend, send:
-    // { username: formData.username, email: formData.email, password: formData.password, password2: formData.confirmPassword }
-    login({ id: 1, username: formData.username, email: formData.email });
-    navigate("/");
-    setLoading(false);
+    setServerError("");
+
+    try {
+      const res = await apiRegister({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password2: formData.confirmPassword,
+      });
+      setUser(res.user);
+      navigate("/");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr.detail) {
+        setServerError(apiErr.detail);
+      } else if (apiErr.fieldErrors) {
+        const newErrors = { ...errors };
+        if (apiErr.fieldErrors.username) newErrors.username = apiErr.fieldErrors.username[0];
+        if (apiErr.fieldErrors.email) newErrors.email = apiErr.fieldErrors.email[0];
+        if (apiErr.fieldErrors.password) newErrors.password = apiErr.fieldErrors.password[0];
+        if (apiErr.fieldErrors.password2) newErrors.confirmPassword = apiErr.fieldErrors.password2[0];
+        setErrors(newErrors);
+      } else {
+        setServerError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -128,6 +153,7 @@ export default function RegisterPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
@@ -155,6 +181,7 @@ export default function RegisterPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
@@ -187,6 +214,7 @@ interface FormProps {
     password: string;
     confirmPassword: string;
   };
+  serverError: string;
   loading: boolean;
   showPassword: boolean;
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
@@ -200,6 +228,7 @@ interface FormProps {
 function FormContent({
   formData,
   errors,
+  serverError,
   loading,
   showPassword,
   setShowPassword,
@@ -220,6 +249,20 @@ function FormContent({
           {t("register.title", "Create an account")}
         </h1>
       </div>
+
+      {/* Server error banner */}
+      {serverError && (
+        <div
+          className="mb-4 p-3 rounded-lg text-sm text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "var(--color-error)",
+            border: "1px solid var(--color-border-error)",
+          }}
+        >
+          {serverError}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
