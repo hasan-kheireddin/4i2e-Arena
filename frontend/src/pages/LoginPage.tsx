@@ -9,28 +9,37 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const validate = () => {
-    const newErrors = { email: "", password: "" };
+    const newErrors = { username: "", password: "" };
     let valid = true;
 
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-      valid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+    if (!formData.username) {
+      newErrors.username = "Username or email is required";
       valid = false;
     }
 
     if (!formData.password) {
       newErrors.password = "Password is required";
       valid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (formData.password.length < 10) {
+      newErrors.password = "Password must be at least 10 characters";
+      valid = false;
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one uppercase letter";
+      valid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one lowercase letter";
+      valid = false;
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one digit";
+      valid = false;
+    } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one special character";
       valid = false;
     }
 
@@ -49,7 +58,7 @@ export default function LoginPage() {
     setLoading(true);
     // TODO: replace with real API call
     await new Promise((r) => setTimeout(r, 800));
-    login({ id: 1, username: "nathan", email: formData.email });
+    login({ id: 1, username: formData.username, email: "" });
     navigate("/");
     setLoading(false);
   };
@@ -129,8 +138,8 @@ export default function LoginPage() {
    Shared form content — used in both layouts
 ───────────────────────────────────────────────── */
 interface FormProps {
-  formData: { email: string; password: string };
-  errors: { email: string; password: string };
+  formData: { username: string; password: string };
+  errors: { username: string; password: string };
   loading: boolean;
   showPassword: boolean;
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
@@ -162,7 +171,7 @@ function FormContent({
           {t("login.title", "Welcome Back")}
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {t("login.subtitle", "Enter your email below to login to your account")}
+          {t("login.subtitle", "Enter your username or email below to login to your account")}
         </p>
       </div>
 
@@ -197,23 +206,23 @@ function FormContent({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
+        {/* Username or Email */}
         <div>
           <label
             className="block text-sm font-medium mb-2"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            {t("login.email", "Email")}
+            {t("login.username", "Username or Email")}
           </label>
           <input
             type="text"
-            name="email"
-            value={formData.email}
+            name="username"
+            value={formData.username}
             onChange={handleChange}
-            placeholder="m@example.com"
+            placeholder="username or m@example.com"
             className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
             style={{
-              border: `1px solid ${errors.email ? "var(--color-border-error)" : "var(--color-border)"}`,
+              border: `1px solid ${errors.username ? "var(--color-border-error)" : "var(--color-border)"}`,
               backgroundColor: "var(--color-bg-input)",
               color: "var(--color-text-primary)",
             }}
@@ -223,9 +232,9 @@ function FormContent({
             }
             onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
           />
-          {errors.email && (
+          {errors.username && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.email}
+              {errors.username}
             </p>
           )}
         </div>

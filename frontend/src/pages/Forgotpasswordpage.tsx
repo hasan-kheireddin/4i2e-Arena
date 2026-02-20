@@ -118,7 +118,7 @@ function FormContent({ email, setEmail, error, setError, loading, handleSubmit, 
             {t("forgot.email", "Email")}
           </label>
           <input
-            type="text"
+            type="email"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);

@@ -10,32 +10,38 @@ export default function RegisterPage() {
   const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
   const [errors, setErrors] = useState({
-    fullName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(true);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validate = () => {
-    const newErrors = { fullName: "", email: "", password: "", confirmPassword: "" };
+    const newErrors = { username: "", email: "", password: "", confirmPassword: "" };
     let valid = true;
 
-    if (!formData.fullName) {
-      newErrors.fullName = "Full name is required";
+    if (!formData.username) {
+      newErrors.username = "Username is required";
       valid = false;
-    } else if (formData.fullName.length < 3) {
-      newErrors.fullName = "Full name must be at least 3 characters";
+    } else if (formData.username.length < 3) {
+      newErrors.username = "Username must be at least 3 characters";
+      valid = false;
+    } else if (formData.username.length > 30) {
+      newErrors.username = "Username must be at most 30 characters";
+      valid = false;
+    } else if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(formData.username)) {
+      newErrors.username = "Username must start with a letter and contain only letters, numbers, underscores, and hyphens";
       valid = false;
     }
 
@@ -50,8 +56,20 @@ export default function RegisterPage() {
     if (!formData.password) {
       newErrors.password = "Password is required";
       valid = false;
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    } else if (formData.password.length < 10) {
+      newErrors.password = "Password must be at least 10 characters";
+      valid = false;
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one uppercase letter";
+      valid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one lowercase letter";
+      valid = false;
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one digit";
+      valid = false;
+    } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one special character";
       valid = false;
     }
 
@@ -78,7 +96,9 @@ export default function RegisterPage() {
     setLoading(true);
     // TODO: replace with real API call
     await new Promise((r) => setTimeout(r, 800));
-    login({ id: 1, username: formData.fullName.split(" ")[0], email: formData.email });
+    // When integrating with backend, send:
+    // { username: formData.username, email: formData.email, password: formData.password, password2: formData.confirmPassword }
+    login({ id: 1, username: formData.username, email: formData.email });
     navigate("/");
     setLoading(false);
   };
@@ -156,13 +176,13 @@ export default function RegisterPage() {
 ───────────────────────────────────────────────── */
 interface FormProps {
   formData: {
-    fullName: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;
   };
   errors: {
-    fullName: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;
@@ -203,22 +223,23 @@ function FormContent({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Full Name */}
+        {/* Username */}
         <div>
           <label
             className="block text-sm font-medium mb-2"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            {t("register.full_name", "Full Name")}
+            {t("register.username", "Username")}
           </label>
           <input
             type="text"
-            name="fullName"
-            value={formData.fullName}
+            name="username"
+            value={formData.username}
             onChange={handleChange}
+            placeholder="myusername"
             className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
             style={{
-              border: `1px solid ${errors.fullName ? "var(--color-border-error)" : "var(--color-border)"}`,
+              border: `1px solid ${errors.username ? "var(--color-border-error)" : "var(--color-border)"}`,
               backgroundColor: "var(--color-bg-input)",
               color: "var(--color-text-primary)",
             }}
@@ -228,9 +249,14 @@ function FormContent({
             }
             onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
           />
-          {errors.fullName && (
+          {errors.username && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.fullName}
+              {errors.username}
+            </p>
+          )}
+          {!errors.username && formData.username && (
+            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
+              {t("register.username_hint", "8-30 characters. Letters, numbers, underscores, and hyphens only.")}
             </p>
           )}
         </div>
@@ -244,7 +270,7 @@ function FormContent({
             {t("register.email", "Email")}
           </label>
           <input
-            type="text"
+            type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
@@ -310,6 +336,11 @@ function FormContent({
               {errors.password}
             </p>
           )}
+          {!errors.password && (
+            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
+              {t("register.password_length", "Min 10 chars with uppercase, lowercase, digit, and special character.")}
+            </p>
+          )}
         </div>
 
         {/* Confirm Password */}
@@ -350,11 +381,6 @@ function FormContent({
           {errors.confirmPassword && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
               {errors.confirmPassword}
-            </p>
-          )}
-          {!errors.confirmPassword && formData.password && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-              {t("register.password_length", "Must be at least 8 characters long.")}
             </p>
           )}
         </div>
