@@ -22,8 +22,8 @@ export default function ResetPasswordPage() {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(true);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validate = () => {
     const newErrors = { password: "", confirmPassword: "" };
@@ -295,7 +295,7 @@ function FormContent({
           </label>
           <div className="relative">
             <input
-              type={showPassword ? "password" : "text"}
+              type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
@@ -317,7 +317,7 @@ function FormContent({
               className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
               style={{ color: "var(--color-text-muted)" }}
             >
-              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              {showPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </div>
           {errors.password && (
@@ -337,7 +337,7 @@ function FormContent({
           </label>
           <div className="relative">
             <input
-              type={showConfirmPassword ? "password" : "text"}
+              type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
@@ -359,7 +359,7 @@ function FormContent({
               className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
               style={{ color: "var(--color-text-muted)" }}
             >
-              {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+              {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </div>
           {errors.confirmPassword && (
@@ -369,7 +369,7 @@ function FormContent({
           )}
           {!errors.confirmPassword && formData.password && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-              {t("reset.password_length", "Must be at least 8 characters long")}
+              {t("reset.password_length", "Must be at least 10 characters long")}
             </p>
           )}
         </div>

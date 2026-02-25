@@ -69,7 +69,7 @@ export default function Setup2FAPage() {
       setCode("");
     } finally {
       setLoading(false);
-    };
+    }
   };
 
   return (

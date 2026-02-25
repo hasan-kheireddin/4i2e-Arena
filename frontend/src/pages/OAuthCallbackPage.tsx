@@ -1,50 +1,46 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { oauthCallback, isTwoFARequired } from "../services/auth";
+import type { ApiError } from "../services/api";
 
 export default function OAuthCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
       const code = searchParams.get("code");
       const state = searchParams.get("state");
-      const provider = searchParams.get("provider"); // e.g., 'google' or '42'
+
+      // Retrieve the provider stored before the OAuth redirect
+      const provider = sessionStorage.getItem("oauth_provider");
+      sessionStorage.removeItem("oauth_provider");
 
       if (!code || !state) {
-        setError("Invalid callback parameters");
+        setError("Invalid callback parameters. Missing authorization code or state.");
+        return;
+      }
+
+      if (!provider) {
+        setError("Could not determine OAuth provider. Please try logging in again.");
         return;
       }
 
       try {
-        // TODO: Call your backend OAuth callback endpoint
-        // const response = await fetch(`/api/auth/oauth/${provider}/callback?code=${code}&state=${state}`);
-        // const data = await response.json();
-        
-        // For now, simulate success
-        // Replace this with actual API call when backend is ready
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        // Mock successful login
-        // In production, use the actual user data from the backend response
-        login({
-          id: 1,
-          username: "oauth_user",
-          email: "oauth@example.com",
-        });
-
+        const res = await oauthCallback(provider, { code, state });
+        setUser(res.user);
         navigate("/");
-      } catch (err) {
-        console.error("OAuth callback error:", err);
-        setError("Authentication failed. Please try again.");
+      } catch (err: unknown) {
+        const apiErr = err as ApiError;
+        setError(apiErr.detail ?? "Authentication failed. Please try again.");
       }
     };
 
     handleCallback();
-  }, [searchParams, navigate, login]);
+  }, [searchParams, navigate, setUser]);
 
   if (error) {
     return (

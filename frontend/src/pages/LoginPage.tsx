@@ -81,6 +81,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       const { authorize_url } = await oauthInitiate("google");
+      sessionStorage.setItem("oauth_provider", "google");
       window.location.href = authorize_url;
     } catch {
       setServerError("Failed to initiate Google login. Please try again.");
@@ -90,6 +91,7 @@ export default function LoginPage() {
     const handle42Login = async () => {
     try {
       const { authorize_url } = await oauthInitiate("42");
+      sessionStorage.setItem("oauth_provider", "42");
       window.location.href = authorize_url;
     } catch {
       setServerError("Failed to initiate 42 login. Please try again.");
