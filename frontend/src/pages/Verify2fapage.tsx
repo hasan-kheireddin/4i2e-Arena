@@ -1,11 +1,13 @@
 import { useState, useRef, KeyboardEvent, ClipboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import loginImg from "../images/loginimg.png";
+import { twoFAVerify, twoFARecovery } from "../services/auth";
+import type { ApiError } from "../services/api";
 
 export default function Verify2FAPage() {
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -13,6 +15,10 @@ export default function Verify2FAPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [searchParams] = useSearchParams();
+  const tempToken = searchParams.get("temp") || "";
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
 
   const handleChange = (index: number, value: string) => {
     // Only allow digits
@@ -65,29 +71,52 @@ export default function Verify2FAPage() {
       setError("Please enter all 6 digits");
       return;
     }
+    if (!tempToken) {
+      setError("Missing temporary token. Please log in again.");
+      return;
+    }
 
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 800));
-    
-    // Simulate validation
-    if (codeString === "123456") {
-      login({ id: 1, username: "nathan", email: "nathan@test.com" });
+    setError("");
+
+    try {
+      const res = await twoFAVerify({ temp_token: tempToken, code: codeString });
+      setUser(res.user);
       navigate("/");
-    } else {
-      setError("Invalid code. Please try again.");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Invalid code. Please try again.");
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
+      } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleResend = async () => {
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryCode.trim()) {
+      setError("Please enter a recovery code");
+      return;
+    }
+
+    if (!tempToken) {
+      setError("Missing temporary token. Please log in again.");
+      return;
+    }
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 500));
-    setLoading(false);
-    alert("New code sent!");
+    setError("");
+
+    try {
+      const res = await twoFARecovery({ temp_token: tempToken, code: recoveryCode.trim() });
+      setUser(res.user);
+      navigate("/");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Invalid recovery code. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -121,7 +150,11 @@ export default function Verify2FAPage() {
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
               handleSubmit={handleSubmit}
-              handleResend={handleResend}
+              useRecovery={useRecovery}
+              setUseRecovery={setUseRecovery}
+              recoveryCode={recoveryCode}
+              setRecoveryCode={setRecoveryCode}
+              handleRecoverySubmit={handleRecoverySubmit}
               navigate={navigate}
               t={t}
             />
@@ -149,7 +182,11 @@ export default function Verify2FAPage() {
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
               handleSubmit={handleSubmit}
-              handleResend={handleResend}
+              useRecovery={useRecovery}
+              setUseRecovery={setUseRecovery}
+              recoveryCode={recoveryCode}
+              setRecoveryCode={setRecoveryCode}
+              handleRecoverySubmit={handleRecoverySubmit}
               navigate={navigate}
               t={t}
             />
@@ -172,7 +209,11 @@ interface FormContentProps {
   handleKeyDown: (index: number, e: KeyboardEvent<HTMLInputElement>) => void;
   handlePaste: (e: ClipboardEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
-  handleResend: () => void;
+  useRecovery: boolean;
+  setUseRecovery: (val: boolean) => void;
+  recoveryCode: string;
+  setRecoveryCode: (val: string) => void;
+  handleRecoverySubmit: (e: React.FormEvent) => void;
   navigate: (path: string) => void;
   t: (key: string, fallback?: string) => string;
 }
@@ -186,7 +227,11 @@ function FormContent({
   handleKeyDown,
   handlePaste,
   handleSubmit,
-  handleResend,
+  useRecovery,
+  setUseRecovery,
+  recoveryCode,
+  setRecoveryCode,
+  handleRecoverySubmit,
   navigate,
   t,
 }: FormContentProps) {
@@ -201,12 +246,75 @@ function FormContent({
           {t("2fa.verify_title", "Two-Factor Authentication")}
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {t("2fa.verify_subtitle", "Enter the 6-digit code from your authenticator app")}
+          {useRecovery
+            ? t("2fa.recovery_subtitle", "Enter one of your recovery codes")
+            : t("2fa.verify_subtitle", "Enter the 6-digit code from your authenticator app")}
         </p>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {useRecovery ? (
+        /* Recovery code form */
+        <form onSubmit={handleRecoverySubmit} className="space-y-6">
+          <div>
+            <label
+              className="block text-sm font-medium mb-2"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              {t("2fa.recovery_code", "Recovery Code")}
+            </label>
+            <input
+              type="text"
+              value={recoveryCode}
+              onChange={(e) => setRecoveryCode(e.target.value)}
+              placeholder="XXXX-XXXX-XXXX-XXXX"
+              className="w-full rounded-lg px-4 py-3 text-sm font-mono tracking-wide transition-colors focus:outline-none"
+              style={{
+                border: `1px solid ${error ? "var(--color-border-error)" : "var(--color-border)"}`,
+                backgroundColor: "var(--color-bg-input)",
+                color: "var(--color-text-primary)",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.boxShadow =
+                  "0 0 0 2px var(--color-border-focus)")
+              }
+              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+            />
+            {error && (
+              <p className="text-sm mt-2 text-center" style={{ color: "var(--color-error)" }}>
+                {error}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full font-medium py-3.5 rounded-lg transition-colors duration-200"
+            style={{
+              backgroundColor: loading
+                ? "var(--color-primary-disabled)"
+                : "var(--color-primary)",
+              color: "#ffffff",
+            }}
+          >
+            {loading ? "Verifying..." : t("2fa.verify_recovery", "Verify Recovery Code")}
+          </button>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setUseRecovery(false)}
+              className="text-sm transition-colors hover:underline"
+              style={{ color: "var(--color-text-link)" }}
+            >
+              {t("2fa.use_totp", "Use authenticator app instead")}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          {/* TOTP Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
         {/* 6-digit code input */}
         <div>
           <div className="flex gap-3 justify-center">
@@ -266,17 +374,19 @@ function FormContent({
         </button>
       </form>
 
-      {/* Resend code */}
+      {/* Use recovery code */}
       <div className="mt-6 text-center">
         <button
-          onClick={handleResend}
+          onClick={() => setUseRecovery(true)}
           disabled={loading}
           className="text-sm transition-colors hover:underline"
           style={{ color: "var(--color-text-link)" }}
         >
-          {t("2fa.resend", "Didn't receive a code? Resend")}
+          {t("2fa.use_recovery", "Lost your device? Use a recovery code")}
         </button>
       </div>
+      </>
+      )}
 
       {/* Back to login */}
       <div className="mt-8 text-center">

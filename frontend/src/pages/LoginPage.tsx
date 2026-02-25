@@ -3,34 +3,32 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import loginImg from "../images/loginimg.png";
+import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
+import { login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
+import type { ApiError } from "../services/api";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({ username: "", password: "" });
+  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const validate = () => {
-    const newErrors = { email: "", password: "" };
+    const newErrors = { username: "", password: "" };
     let valid = true;
 
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-      valid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+    if (!formData.username) {
+      newErrors.username = t("errors.username_required", "Username or email is required");
       valid = false;
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
-      valid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = t("errors.password_required", "Password is required");
       valid = false;
     }
 
@@ -41,22 +39,61 @@ export default function LoginPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
+    setServerError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 800));
-    login({ id: 1, username: "nathan", email: formData.email });
-    navigate("/");
-    setLoading(false);
+    setServerError("");
+
+    try {
+      const res = await apiLogin({
+        username: formData.username,
+        password: formData.password,
+      });
+
+      if (isTwoFARequired(res)) {
+        // Redirect to 2FA verification with temp token
+        navigate(`/verify-2fa?temp=${encodeURIComponent(res.temp_token)}`);
+      } else {
+        setUser(res.user);
+        navigate("/");
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr.detail) {
+        setServerError(apiErr.detail);
+      } else if (apiErr.fieldErrors) {
+        const newErrors = { ...errors };
+        if (apiErr.fieldErrors.username) newErrors.username = apiErr.fieldErrors.username[0];
+        if (apiErr.fieldErrors.password) newErrors.password = apiErr.fieldErrors.password[0];
+        setErrors(newErrors);
+      } else {
+        setServerError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: replace with real backend OAuth URL
-    window.location.href = "/api/auth/google";
+  const handleGoogleLogin = async () => {
+    try {
+      const { authorize_url } = await oauthInitiate("google");
+      window.location.href = authorize_url;
+    } catch {
+      setServerError("Failed to initiate Google login. Please try again.");
+    }
+  };
+
+    const handle42Login = async () => {
+    try {
+      const { authorize_url } = await oauthInitiate("42");
+      window.location.href = authorize_url;
+    } catch {
+      setServerError("Failed to initiate 42 login. Please try again.");
+    }
   };
 
   return (
@@ -75,12 +112,14 @@ export default function LoginPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
               handleChange={handleChange}
               handleSubmit={handleSubmit}
               handleGoogleLogin={handleGoogleLogin}
+              handle42Login={handle42Login}
               t={t}
             />
           </div>
@@ -110,12 +149,14 @@ export default function LoginPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
               handleChange={handleChange}
               handleSubmit={handleSubmit}
               handleGoogleLogin={handleGoogleLogin}
+              handle42Login={handle42Login}
               t={t}
             />
           </div>
@@ -129,26 +170,30 @@ export default function LoginPage() {
    Shared form content — used in both layouts
 ───────────────────────────────────────────────── */
 interface FormProps {
-  formData: { email: string; password: string };
-  errors: { email: string; password: string };
+  formData: { username: string; password: string };
+  errors: { username: string; password: string };
+  serverError: string;
   loading: boolean;
   showPassword: boolean;
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
   handleGoogleLogin: () => void;
+  handle42Login: () => void;
   t: (key: string, fallback?: string) => string;
 }
 
 function FormContent({
   formData,
   errors,
+  serverError,
   loading,
   showPassword,
   setShowPassword,
   handleChange,
   handleSubmit,
   handleGoogleLogin,
+  handle42Login,
   t,
 }: FormProps) {
   return (
@@ -162,9 +207,22 @@ function FormContent({
           {t("login.title", "Welcome Back")}
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {t("login.subtitle", "Enter your email below to login to your account")}
+          {t("login.subtitle", "Enter your username or email below to login to your account")}
         </p>
       </div>
+       {/* Server error banner */}
+      {serverError && (
+        <div
+          className="mb-4 p-3 rounded-lg text-sm text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "var(--color-error)",
+            border: "1px solid var(--color-border-error)",
+          }}
+        >
+          {serverError}
+        </div>
+      )}
 
       {/* Google OAuth button */}
       <button
@@ -185,6 +243,25 @@ function FormContent({
         <GoogleIcon />
         {t("login.google", "Login with Google")}
       </button>
+      {/* 42 OAuth button */}
+      <button
+        onClick={handle42Login}
+        className="w-full flex items-center justify-center gap-3 rounded-lg py-3 px-4 font-medium transition-colors duration-200 mb-6"
+        style={{
+          border: "1px solid var(--color-border)",
+          color: "var(--color-text-secondary)",
+          backgroundColor: "var(--color-bg-input)",
+        }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.backgroundColor = "var(--color-bg-hover)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.backgroundColor = "var(--color-bg-input)")
+        }
+      >
+        <span className="text-lg font-bold">42</span>
+        {t("login.42", "Login with 42")}
+      </button>
 
       {/* Divider */}
       <div className="flex items-center gap-3 mb-6">
@@ -197,23 +274,23 @@ function FormContent({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
+        {/* Username or Email */}
         <div>
           <label
             className="block text-sm font-medium mb-2"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            {t("login.email", "Email")}
+            {t("login.username", "Username or Email")}
           </label>
           <input
             type="text"
-            name="email"
-            value={formData.email}
+            name="username"
+            value={formData.username}
             onChange={handleChange}
-            placeholder="m@example.com"
+            placeholder="username or m@example.com"
             className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
             style={{
-              border: `1px solid ${errors.email ? "var(--color-border-error)" : "var(--color-border)"}`,
+              border: `1px solid ${errors.username ? "var(--color-border-error)" : "var(--color-border)"}`,
               backgroundColor: "var(--color-bg-input)",
               color: "var(--color-text-primary)",
             }}
@@ -223,9 +300,9 @@ function FormContent({
             }
             onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
           />
-          {errors.email && (
+          {errors.username && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.email}
+              {errors.username}
             </p>
           )}
         </div>
@@ -301,7 +378,7 @@ function FormContent({
               e.currentTarget.style.backgroundColor = "var(--color-primary)";
           }}
         >
-          {loading ? "Logging in..." : t("login.submit", "Log in")}
+          {loading ? t("loading.logging_in", "Logging in...") : t("login.submit", "Log in")}
         </button>
       </form>
 
@@ -340,25 +417,6 @@ function GoogleIcon() {
         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         fill="#EA4335"
       />
-    </svg>
-  );
-}
-
-/* Eye icon — password visible */
-function EyeIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-  );
-}
-
-/* Eye-off icon — password hidden */
-function EyeOffIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
     </svg>
   );
 }

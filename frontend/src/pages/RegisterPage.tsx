@@ -3,63 +3,85 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import registerImg from "../images/registerimg.png";
+import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
+import { register as apiRegister } from "../services/auth";
+import type { ApiError } from "../services/api";
 
 export default function RegisterPage() {
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
   const [errors, setErrors] = useState({
-    fullName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
+  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(true);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validate = () => {
-    const newErrors = { fullName: "", email: "", password: "", confirmPassword: "" };
+    const newErrors = { username: "", email: "", password: "", confirmPassword: "" };
     let valid = true;
 
-    if (!formData.fullName) {
-      newErrors.fullName = "Full name is required";
+    if (!formData.username) {
+      newErrors.username = t("errors.username_required", "Username is required");
       valid = false;
-    } else if (formData.fullName.length < 3) {
-      newErrors.fullName = "Full name must be at least 3 characters";
+    } else if (formData.username.length < 8) {
+      newErrors.username = t("errors.username_min_length", "Username must be at least 8 characters");
+      valid = false;
+    } else if (formData.username.length > 30) {
+      newErrors.username = "Username must be at most 30 characters";
+      valid = false;
+    } else if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(formData.username)) {
+      newErrors.username = "Username must start with a letter and contain only letters, numbers, underscores, and hyphens";
       valid = false;
     }
 
     if (!formData.email) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("errors.email_required", "Email is required");
       valid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = t("errors.email_invalid", "Email is invalid");
       valid = false;
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("errors.password_required", "Password is required");
       valid = false;
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    } else if (formData.password.length < 10) {
+      newErrors.password = t("errors.password_min_length", "Password must be at least 10 characters");
+      valid = false;
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one uppercase letter";
+      valid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one lowercase letter";
+      valid = false;
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one digit";
+      valid = false;
+    } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one special character";
       valid = false;
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = t("errors.confirm_password_required", "Please confirm your password");
       valid = false;
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t("errors.passwords_not_match", "Passwords do not match");
       valid = false;
     }
 
@@ -70,17 +92,41 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
+    setServerError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 800));
-    login({ id: 1, username: formData.fullName.split(" ")[0], email: formData.email });
-    navigate("/");
-    setLoading(false);
+    setServerError("");
+
+    try {
+      const res = await apiRegister({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password2: formData.confirmPassword,
+      });
+      setUser(res.user);
+      navigate("/");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr.detail) {
+        setServerError(apiErr.detail);
+      } else if (apiErr.fieldErrors) {
+        const newErrors = { ...errors };
+        if (apiErr.fieldErrors.username) newErrors.username = apiErr.fieldErrors.username[0];
+        if (apiErr.fieldErrors.email) newErrors.email = apiErr.fieldErrors.email[0];
+        if (apiErr.fieldErrors.password) newErrors.password = apiErr.fieldErrors.password[0];
+        if (apiErr.fieldErrors.password2) newErrors.confirmPassword = apiErr.fieldErrors.password2[0];
+        setErrors(newErrors);
+      } else {
+        setServerError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -108,6 +154,7 @@ export default function RegisterPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
@@ -135,6 +182,7 @@ export default function RegisterPage() {
             <FormContent
               formData={formData}
               errors={errors}
+              serverError={serverError}
               loading={loading}
               showPassword={showPassword}
               setShowPassword={setShowPassword}
@@ -156,18 +204,19 @@ export default function RegisterPage() {
 ───────────────────────────────────────────────── */
 interface FormProps {
   formData: {
-    fullName: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;
   };
   errors: {
-    fullName: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;
   };
   loading: boolean;
+  serverError: string;
   showPassword: boolean;
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   showConfirmPassword: boolean;
@@ -182,6 +231,7 @@ function FormContent({
   errors,
   loading,
   showPassword,
+  serverError,
   setShowPassword,
   showConfirmPassword,
   setShowConfirmPassword,
@@ -200,25 +250,39 @@ function FormContent({
           {t("register.title", "Create an account")}
         </h1>
       </div>
+      {/* Server error banner */}
+      {serverError && (
+        <div
+          className="mb-4 p-3 rounded-lg text-sm text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "var(--color-error)",
+            border: "1px solid var(--color-border-error)",
+          }}
+        >
+          {serverError}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Full Name */}
+        {/* Username */}
         <div>
           <label
             className="block text-sm font-medium mb-2"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            {t("register.full_name", "Full Name")}
+            {t("register.username", "Username")}
           </label>
           <input
             type="text"
-            name="fullName"
-            value={formData.fullName}
+            name="username"
+            value={formData.username}
             onChange={handleChange}
+            placeholder="myusername"
             className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
             style={{
-              border: `1px solid ${errors.fullName ? "var(--color-border-error)" : "var(--color-border)"}`,
+              border: `1px solid ${errors.username ? "var(--color-border-error)" : "var(--color-border)"}`,
               backgroundColor: "var(--color-bg-input)",
               color: "var(--color-text-primary)",
             }}
@@ -228,9 +292,14 @@ function FormContent({
             }
             onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
           />
-          {errors.fullName && (
+          {errors.username && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.fullName}
+              {errors.username}
+            </p>
+          )}
+          {!errors.username && formData.username && (
+            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
+              {t("register.username_hint", "8-30 characters, letters and numbers only")}
             </p>
           )}
         </div>
@@ -244,7 +313,7 @@ function FormContent({
             {t("register.email", "Email")}
           </label>
           <input
-            type="text"
+            type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
@@ -302,12 +371,17 @@ function FormContent({
               className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
               style={{ color: "var(--color-text-muted)" }}
             >
-              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              {showPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </div>
           {errors.password && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
               {errors.password}
+            </p>
+          )}
+          {!errors.password && (
+            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
+              {t("register.password_length", "Must be at least 10 characters long.")}
             </p>
           )}
         </div>
@@ -344,17 +418,12 @@ function FormContent({
               className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
               style={{ color: "var(--color-text-muted)" }}
             >
-              {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+              {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </div>
           {errors.confirmPassword && (
             <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
               {errors.confirmPassword}
-            </p>
-          )}
-          {!errors.confirmPassword && formData.password && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-              {t("register.password_length", "Must be at least 8 characters long.")}
             </p>
           )}
         </div>
@@ -379,7 +448,7 @@ function FormContent({
               e.currentTarget.style.backgroundColor = "var(--color-primary)";
           }}
         >
-          {loading ? "Creating account..." : t("register.submit", "Get started")}
+          {loading ? t("loading.creating_account", "Creating account...") : t("register.submit", "Get started")}
         </button>
       </form>
 
@@ -395,24 +464,5 @@ function FormContent({
         </Link>
       </p>
     </>
-  );
-}
-
-/* Eye icon — password visible */
-function EyeIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-  );
-}
-
-/* Eye-off icon — password hidden */
-function EyeOffIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-    </svg>
   );
 }

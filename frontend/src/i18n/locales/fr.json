@@ -2,6 +2,7 @@
   "login": {
     "title": "Bienvenue",
     "subtitle": "Entrez votre email ci-dessous pour vous connecter à votre compte",
+    "username": "Nom d'utilisateur ou Email",
     "email": "Email",
     "password": "Mot de passe",
     "submit": "Se connecter",
@@ -9,16 +10,18 @@
     "sign_up": "S'inscrire",
     "or": "ou",
     "google": "Se connecter avec Google",
+    "42": "Se connecter avec 42",
     "forgot": "Mot de passe oublié ?"
   },
   "register": {
     "title": "Créer un compte",
-    "full_name": "Nom complet",
+    "username": "Nom d'utilisateur",
+    "username_hint": "8-30 caractères, lettres et chiffres uniquement",
     "email": "Email",
     "password": "Mot de passe",
     "forgot": "Mot de passe oublié ?",
     "confirm_password": "Confirmer le mot de passe",
-    "password_length": "Doit contenir au moins 8 caractères.",
+    "password_length": "Doit contenir au moins 10 caractères.",
     "submit": "Commencer",
     "have_account": "Vous avez déjà un compte ?",
     "log_in": "Se connecter"
@@ -31,12 +34,12 @@
     "verify_title": "Authentification à deux facteurs",
     "verify_subtitle": "Entrez le code à 6 chiffres de votre application d'authentification",
     "verify_submit": "Vérifier",
-    "resend": "Vous n'avez pas reçu de code ? Renvoyer",
     "back_to_login": "Retour à la connexion",
     "setup_title": "Activer l'authentification à deux facteurs",
     "setup_subtitle": "Scannez le code QR avec votre application d'authentification",
     "cant_scan": "Vous ne pouvez pas scanner le code ?",
     "copy": "Copier",
+    "copied": "Copié dans le presse-papiers !",
     "backup_codes_title": "Codes de secours",
     "backup_codes_subtitle": "Conservez ces codes dans un endroit sûr. Vous pouvez les utiliser pour accéder à votre compte si vous perdez votre appareil.",
     "copy_all": "Copier tous les codes",
@@ -45,7 +48,13 @@
     "verify_setup_subtitle": "Entrez le code à 6 chiffres de votre application d'authentification pour terminer la configuration",
     "verification_code": "Code de vérification",
     "enable": "Activer 2FA",
-    "back": "Retour"
+    "back": "Retour",
+    "loading": "Chargement...",
+    "recovery_subtitle": "Entrez l'un de vos codes de récupération",
+    "recovery_code": "Code de récupération",
+    "verify_recovery": "Vérifier le code de récupération",
+    "use_totp": "Utiliser l'application d'authentification",
+    "use_recovery": "Utiliser un code de récupération"
   },
   "forgot": {
     "title": "Mot de passe oublié ?",
@@ -63,10 +72,29 @@
     "subtitle": "Votre nouveau mot de passe doit être différent des mots de passe précédemment utilisés",
     "password": "Nouveau mot de passe",
     "confirm_password": "Confirmer le nouveau mot de passe",
-    "password_length": "Doit contenir au moins 8 caractères",
+    "password_length": "Doit contenir au moins 10 caractères",
     "submit": "Réinitialiser le mot de passe",
     "invalid_title": "Lien invalide",
     "invalid_message": "Ce lien de réinitialisation de mot de passe est invalide ou a expiré. Veuillez en demander un nouveau.",
     "request_new": "Demander un nouveau lien"
+  },
+  "loading": {
+    "logging_in": "Connexion en cours...",
+    "creating_account": "Création du compte...",
+    "verifying": "Vérification...",
+    "sending": "Envoi...",
+    "resetting": "Réinitialisation..."
+  },
+  "errors": {
+    "email_required": "L'email est requis",
+    "email_invalid": "L'email est invalide",
+    "password_required": "Le mot de passe est requis",
+    "password_min_length": "Le mot de passe doit contenir au moins 10 caractères",
+    "username_required": "Le nom d'utilisateur est requis",
+    "username_min_length": "Le nom d'utilisateur doit contenir au moins 8 caractères",
+    "confirm_password_required": "Veuillez confirmer votre mot de passe",
+    "passwords_not_match": "Les mots de passe ne correspondent pas",
+    "code_length": "Veuillez entrer un code à 6 chiffres",
+    "invalid_code": "Code invalide. Veuillez réessayer."
   }
 }

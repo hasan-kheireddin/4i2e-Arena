@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import Toast from "../components/Toast";
+import { twoFASetup, twoFAConfirm } from "../services/auth";
+import type { ApiError } from "../services/api";
 
 export default function Setup2FAPage() {
   const navigate = useNavigate();
@@ -10,43 +13,63 @@ export default function Setup2FAPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [backupCodes] = useState([
-    "ABCD-1234-EFGH-5678",
-    "IJKL-9012-MNOP-3456",
-    "QRST-7890-UVWX-1234",
-    "YZAB-5678-CDEF-9012",
-    "GHIJ-3456-KLMN-7890",
-    "OPQR-1234-STUV-5678",
-  ]);
+  const [showToast, setShowToast] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(true);
 
-  // Fake QR code data (in real app, this comes from backend)
-  const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/ft_transcendence:nathan@example.com?secret=JBSWY3DPEHPK3PXP&issuer=ft_transcendence";
-  const secretKey = "JBSWY3DPEHPK3PXP";
+  // Data from backend
+  const [qrCodeData, setQrCodeData] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+
+  // Fetch 2FA setup data from backend on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSetup() {
+      try {
+        const data = await twoFASetup();
+        if (cancelled) return;
+        setQrCodeData(data.qr_code);
+        setSecretKey(data.secret);
+        setBackupCodes(data.recovery_codes);
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const apiErr = err as ApiError;
+        setError(apiErr.detail ?? "Failed to initialize 2FA setup. Please try again.");
+      } finally {
+        if (!cancelled) setSetupLoading(false);
+      }
+    }
+
+    fetchSetup();
+    return () => { cancelled = true; };
+  }, []);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+    setShowToast(true);
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length !== 6) {
-      setError("Please enter a 6-digit code");
+      setError(t("errors.code_length", "Please enter a 6-digit code"));
       return;
     }
 
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 800));
-    
-    // Simulate validation
-    if (code === "123456") {
+    setError("");
+
+    try {
+      await twoFAConfirm(code);
       navigate("/");
-    } else {
-      setError("Invalid code. Please try again.");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Invalid code. Please try again.");
       setCode("");
-    }
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    };
   };
 
   return (
@@ -54,8 +77,23 @@ export default function Setup2FAPage() {
       className="h-screen w-screen flex items-center justify-center overflow-y-auto p-6"
       style={{ backgroundColor: "var(--color-bg)" }}
     >
+      {/* Toast notification */}
+      {showToast && (
+        <Toast
+          message={t("2fa.copied", "Copied to clipboard!")}
+          onClose={() => setShowToast(false)}
+        />
+      )}
+
       <div className="max-w-lg w-full">
-        {step === "qr" ? (
+        {setupLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 mb-4" style={{ borderColor: "var(--color-primary)" }} />
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+              {t("2fa.loading", "Setting up two-factor authentication...")}
+            </p>
+          </div>
+        ) : step === "qr" ? (
           <>
             {/* QR Code Step */}
             <div className="mb-8 text-center">
@@ -77,7 +115,7 @@ export default function Setup2FAPage() {
             >
               <div className="flex flex-col items-center">
                 <div className="bg-white p-4 rounded-lg mb-4">
-                  <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                  <img src={qrCodeData} alt="QR Code" className="w-48 h-48" />
                 </div>
                 <p className="text-sm mb-3" style={{ color: "var(--color-text-secondary)" }}>
                   {t("2fa.cant_scan", "Can't scan the code?")}
@@ -240,7 +278,7 @@ export default function Setup2FAPage() {
                     e.currentTarget.style.backgroundColor = "var(--color-primary)";
                 }}
               >
-                {loading ? "Verifying..." : t("2fa.enable", "Enable 2FA")}
+                {loading ? t("loading.verifying", "Verifying...") : t("2fa.enable", "Enable 2FA")}
               </button>
 
               <button

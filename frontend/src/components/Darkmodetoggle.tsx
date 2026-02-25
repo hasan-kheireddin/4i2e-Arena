@@ -4,9 +4,15 @@ export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // Check if dark mode is enabled on mount
-    const dark = document.documentElement.classList.contains("dark");
-    setIsDark(dark);
+    // Restore dark mode preference from localStorage on mount
+    const savedMode = localStorage.getItem("darkMode");
+    const isDarkMode = savedMode === "true";
+    
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    }
+    
+    setIsDark(isDarkMode);
   }, []);
 
   const toggleDarkMode = () => {

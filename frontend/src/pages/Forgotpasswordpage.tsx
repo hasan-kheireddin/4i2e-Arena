@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import loginImg from "../images/loginimg.png";
+import { apiFetch } from "../services/api";
+import type { ApiError } from "../services/api";
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -13,10 +15,10 @@ export default function ForgotPasswordPage() {
 
   const validate = () => {
     if (!email) {
-      setError("Email is required");
+      setError(t("errors.email_required", "Email is required"));
       return false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Email is invalid");
+      setError(t("errors.email_invalid", "Email is invalid"));
       return false;
     }
     return true;
@@ -27,10 +29,29 @@ export default function ForgotPasswordPage() {
     if (!validate()) return;
 
     setLoading(true);
-    // TODO: replace with real API call
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitted(true);
-    setLoading(false);
+    setError("");
+
+    try {
+      // Backend endpoint for password reset request
+      // POST /api/accounts/password-reset/ — sends email with reset link
+      await apiFetch("/password-reset/", {
+        method: "POST",
+        body: { email },
+        auth: false,
+      });
+      setSubmitted(true);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      // Even if user not found, some backends still return 200 for security
+      if (apiErr.status === 404) {
+        // Show success anyway to prevent email enumeration
+        setSubmitted(true);
+      } else {
+        setError(apiErr.detail ?? "Failed to send reset email. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -118,7 +139,7 @@ function FormContent({ email, setEmail, error, setError, loading, handleSubmit, 
             {t("forgot.email", "Email")}
           </label>
           <input
-            type="text"
+            type="email"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
