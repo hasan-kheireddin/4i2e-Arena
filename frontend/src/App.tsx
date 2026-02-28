@@ -13,6 +13,7 @@ import DarkModeToggle from "./components/Darkmodetoggle";
 import TicTacToePage from "./pages/Tictactoepage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import NotFoundPage from "./pages/Notfoundpage";
+import LandingPage from "./pages/Landingpage";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <DarkModeToggle />
         <Routes>
           {/* ========== PUBLIC ROUTES (No Layout) ========== */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-2fa" element={<Verify2FAPage />} />
@@ -30,7 +32,7 @@ function App() {
 
           {/* ========== PROTECTED ROUTES (With Layout) ========== */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Layout>

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import registerImg from "../images/registerimg.png";
+import registerImgDark from "../images/registerimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { register as apiRegister } from "../services/auth";
 import type { ApiError } from "../services/api";
@@ -30,7 +31,22 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved !== null ? saved === "true" : true;
+  });
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
   const validate = () => {
     const newErrors = { username: "", email: "", password: "", confirmPassword: "" };
     let valid = true;
@@ -139,7 +155,7 @@ export default function RegisterPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
-            src={registerImg}
+            src={isDark ? registerImgDark : registerImg}
             alt="Sport"
             className="w-full h-full object-cover"
           />

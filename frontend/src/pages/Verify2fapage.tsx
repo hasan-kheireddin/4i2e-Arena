@@ -1,8 +1,9 @@
-import { useState, useRef, KeyboardEvent, ClipboardEvent } from "react";
+import { useState, useRef, KeyboardEvent, ClipboardEvent, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
-import loginImg from "../images/loginimg.png";
+import verify from "../images/loginimg.png";
+import verifyDark from "../images/loginimgDark.png";
 import { twoFAVerify, twoFARecovery } from "../services/auth";
 import type { ApiError } from "../services/api";
 
@@ -34,6 +35,24 @@ export default function Verify2FAPage() {
       inputRefs.current[index + 1]?.focus();
     }
   };
+
+  const [isDark, setIsDark] = useState(() => {
+      const saved = localStorage.getItem("darkMode");
+      return saved !== null ? saved === "true" : true;
+    });
+  
+    useEffect(() => {
+      const observer = new MutationObserver(() => {
+        setIsDark(document.documentElement.classList.contains('dark'));
+      });
+      
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+      
+      return () => observer.disconnect();
+    }, []);
 
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
     // Backspace - move to previous input
@@ -129,7 +148,7 @@ export default function Verify2FAPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
-            src={loginImg}
+            src={isDark ? verifyDark : verify}
             alt="Sport"
             className="w-full h-full object-cover"
           />

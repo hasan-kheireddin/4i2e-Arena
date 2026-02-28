@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import loginImg from "../images/loginimg.png";
+import reset from "../images/loginimg.png";
+import resetDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { apiFetch } from "../services/api";
 import type { ApiError } from "../services/api";
@@ -24,6 +25,23 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+      const saved = localStorage.getItem("darkMode");
+      return saved !== null ? saved === "true" : true;
+    });
+  
+    useEffect(() => {
+      const observer = new MutationObserver(() => {
+        setIsDark(document.documentElement.classList.contains('dark'));
+      });
+      
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+      
+      return () => observer.disconnect();
+    }, []);
 
   const validate = () => {
     const newErrors = { password: "", confirmPassword: "" };
@@ -118,7 +136,7 @@ export default function ResetPasswordPage() {
           {/* Image side - full height */}
           <div className="w-[45%] flex-shrink-0 h-full ">
             <img
-              src={loginImg}
+              src={isDark ? resetDark : reset}
               alt="Sport"
               className="w-full h-full object-cover"
             />
@@ -138,7 +156,7 @@ export default function ResetPasswordPage() {
 
           <div className="h-64 w-full flex-shrink-0">
             <img
-              src={loginImg}
+              src={isDark ? resetDark : reset}
               alt="Sport"
               className="w-full h-full object-cover"
             />
@@ -180,7 +198,7 @@ export default function ResetPasswordPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
-            src={loginImg}
+            src={isDark ? resetDark : reset}
             alt="Sport"
             className="w-full h-full object-cover"
           />

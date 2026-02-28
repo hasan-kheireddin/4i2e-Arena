@@ -36,28 +36,48 @@
 
   /* Dark mode — just flip the variables, nothing else changes */
   .dark {
-    --color-primary: #38bdf8;
-    --color-primary-hover: #7dd3fc;
-    --color-primary-disabled: #0369a1;
+    /* Primary - Purple/Pink gaming gradient */
+    --color-primary: #a855f7;        /* Purple-500 */
+    --color-primary-hover: #c084fc;  /* Purple-400 */
+    --color-primary-disabled: #7c3aed; /* Purple-600 */
 
-    --color-bg: #0f172a;             /* slate-900 */
-    --color-bg-card: #1e293b;        /* slate-800 */
-    --color-bg-input: #1e293b;
-    --color-bg-hover: #334155;       /* slate-700 */
+    /* Backgrounds - Very dark with subtle purple tint */
+    --color-bg: #09090b;             /* Almost black (zinc-950) */
+    --color-bg-card: #18181b;        /* Dark card (zinc-900) */
+    --color-bg-input: #27272a;       /* Input background (zinc-800) */
+    --color-bg-hover: #3f3f46;       /* Hover state (zinc-700) */
+    --color-bg-elevated: #18181b;    /* Elevated surfaces */
+    --color-bg-surface: #0f0f10;     /* Deeper surface */
 
-    --color-text-primary: #f1f5f9;   /* slate-100 */
-    --color-text-secondary: #cbd5e1; /* slate-300 */
-    --color-text-muted: #64748b;     /* slate-500 */
-    --color-text-link: #38bdf8;
+    /* Text - High contrast gaming style */
+    --color-text-primary: #fafafa;   /* Almost white (zinc-50) */
+    --color-text-secondary: #d4d4d8; /* Light gray (zinc-300) */
+    --color-text-muted: #71717a;     /* Muted gray (zinc-500) */
+    --color-text-link: #a855f7;      /* Purple link */
 
-    --color-border: #334155;         /* slate-700 */
-    --color-border-error: #f87171;
-    --color-border-focus: #38bdf8;
+    /* Borders - Subtle with purple accent */
+    --color-border: #27272a;         /* Dark border (zinc-800) */
+    --color-border-error: #f43f5e;   /* Rose-500 */
+    --color-border-focus: #a855f7;   /* Purple glow */
 
-    --color-error: #f87171;
-    --color-success: #4ade80;
+    /* Status colors - Gaming vibrant */
+    --color-error: #f43f5e;          /* Rose-500 */
+    --color-success: #22c55e;        /* Green-500 */
+    --color-warning: #f59e0b;        /* Amber-500 */
 
-    --color-shadow: rgba(0, 0, 0, 0.4);
+    /* Gaming accents - Purple/Pink theme */
+    --color-brand: #a855f7;          /* Purple-500 */
+    --color-brand-light: #c084fc;    /* Purple-400 */
+    --color-accent: #ec4899;         /* Pink-500 */
+
+    /* Shadows & Glows */
+    --color-shadow: rgba(0, 0, 0, 0.5);
+    --color-glow-primary: rgba(168, 85, 247, 0.4);
+    --color-glow-accent: rgba(236, 72, 153, 0.3);
+
+    /* Gradients */
+    --gradient-gaming: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+    --gradient-card: linear-gradient(180deg, rgba(168, 85, 247, 0.05) 0%, transparent 100%);
   }
 }
 
@@ -119,4 +139,16 @@
   .animate-slideUp {
     animation: slideUp 0.5s ease-out;
   }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animation-delay-200 {
+  animation-delay: 0.2s;
 }
