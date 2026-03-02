@@ -9,6 +9,7 @@ from apps.games.pong_ai import AIDifficulty, PongAI
 from apps.games.pong_engine import PongEngine
 from apps.games.pong_engine import GameStatus as PongStatus
 from apps.games.session import (
+    FinishReason,
     GameSession,
     GameType,
     PlayerSlot,
@@ -17,6 +18,7 @@ from apps.games.session import (
     get_session,
     remove_session,
 )
+from apps.tournaments.tournament_service import is_tournament_game, on_game_finished
 
 logger = logging.getLogger("games.pong")
 
@@ -61,17 +63,31 @@ class PongConsumer(BaseConsumer):
             # Forfeit + game over
             if slot is not None:
                 session.engine.forfeit(slot)
-            session.mark_finished()
+            # Determine the winner (the opponent of the disconnecting player)
+            winner_id: int | None = None
+            if slot is not None:
+                opp_slot = session.get_opponent_slot(slot)
+                opp = session.players.get(opp_slot)
+                if opp is not None:
+                    winner_id = opp.user_id
+            session.mark_finished(
+                reason=FinishReason.DISCONNECT_FORFEIT,
+                winner_id=winner_id,
+            )
             await self._stop_tick_loop(session, force=True)
             await self.broadcast(
                 session.group_name,
                 {"slot": slot},
                 handler="player.left",
             )
-            await self._broadcast_game_over(session, reason="disconnect")
+            await self._broadcast_game_over(
+                session, reason="disconnect_forfeit",
+            )
+            # Notify tournament system (bracket advancement)
+            await on_game_finished(session)
         elif session.status == SessionStatus.WAITING:
             # Nobody started yet — abandon
-            session.mark_abandoned()
+            session.mark_abandoned(reason=FinishReason.CANCELED)
             if slot is not None:
                 await self.broadcast(
                     session.group_name,
@@ -132,8 +148,8 @@ class PongConsumer(BaseConsumer):
 
         if existing_slot is not None:
             await self.send_error(
-                "already_in_session",
-                "You already have a slot in this game",
+                "rejoin_denied",
+                "Cannot rejoin — disconnection forfeits the match",
             )
             return
         elif session.is_full:
@@ -265,10 +281,19 @@ class PongConsumer(BaseConsumer):
             return
 
         session.engine.forfeit(self._slot)
-        session.mark_finished()
+        # Determine the winner (the opponent)
+        opp_slot = session.get_opponent_slot(self._slot)
+        opp = session.players.get(opp_slot)
+        winner_id = opp.user_id if opp else None
+        session.mark_finished(
+            reason=FinishReason.FORFEIT,
+            winner_id=winner_id,
+        )
 
         await self._stop_tick_loop(session)
         await self._broadcast_game_over(session, reason="forfeit")
+        # Notify tournament system (bracket advancement)
+        await on_game_finished(session)
 
     async def _tick_loop(self, session: GameSession) -> None:
         """Run the game engine at TICK_RATE Hz, broadcasting state."""
@@ -291,8 +316,12 @@ class PongConsumer(BaseConsumer):
 
                 # Check for game over
                 if state.get("status") == PongStatus.FINISHED.value:
-                    session.mark_finished()
+                    session.mark_finished(
+                        reason=FinishReason.SCORE,
+                    )
                     await self._broadcast_game_over(session, reason="score")
+                    # Notify tournament system (bracket advancement)
+                    await on_game_finished(session)
                     break
 
                 # Sleep until next tick
@@ -305,7 +334,7 @@ class PongConsumer(BaseConsumer):
             pass
         except Exception:
             logger.exception("Tick loop crashed for game_id=%s", session.game_id)
-            session.mark_finished()
+            session.mark_finished(reason=FinishReason.SERVER_ERROR)
             await self.broadcast(session.group_name, {
                 "winner": None,
                 "reason": "server_error",

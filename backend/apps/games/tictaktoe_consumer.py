@@ -12,6 +12,7 @@ from apps.games.tictactoe_engine import (
 )
 from apps.games.tictactoe_engine import GameStatus as TTTStatus
 from apps.games.session import (
+    FinishReason,
     GameSession,
     GameType,
     PlayerSlot,
@@ -20,6 +21,7 @@ from apps.games.session import (
     get_session,
     remove_session,
 )
+from apps.tournaments.tournament_service import is_tournament_game, on_game_finished
 
 logger = logging.getLogger("games.tictactoe")
 
@@ -42,10 +44,6 @@ class TicTacToeConsumer(BaseConsumer):
         # Per-connection rate limiter — deque is O(1) popleft.
         self._move_timestamps: collections.deque[float] = collections.deque()
 
-    # ------------------------------------------------------------------
-    # Lifecycle hooks
-    # ------------------------------------------------------------------
-
     async def on_connect(self) -> None:
         """Connection accepted — wait for a 'join' message."""
 
@@ -64,16 +62,30 @@ class TicTacToeConsumer(BaseConsumer):
             # Forfeit + game over
             if slot is not None:
                 session.engine.forfeit(slot)
-            session.mark_finished()
+            # Determine the winner (the opponent of the disconnecting player)
+            winner_id: int | None = None
+            if slot is not None:
+                opp_slot = session.get_opponent_slot(slot)
+                opp = session.players.get(opp_slot)
+                if opp is not None:
+                    winner_id = opp.user_id
+            session.mark_finished(
+                reason=FinishReason.DISCONNECT_FORFEIT,
+                winner_id=winner_id,
+            )
             await self.broadcast(
                 session.group_name,
                 {"slot": slot},
                 handler="player.left",
             )
-            await self._broadcast_game_over(session, reason="disconnect")
+            await self._broadcast_game_over(
+                session, reason="disconnect_forfeit",
+            )
+            # Notify tournament system (bracket advancement)
+            await on_game_finished(session)
         elif session.status == SessionStatus.WAITING:
             # Nobody started yet — abandon
-            session.mark_abandoned()
+            session.mark_abandoned(reason=FinishReason.CANCELED)
             if slot is not None:
                 await self.broadcast(
                     session.group_name,
@@ -85,10 +97,6 @@ class TicTacToeConsumer(BaseConsumer):
 
         remove_session(session.game_id)
         await self.leave_group(session.group_name)
-
-    # ------------------------------------------------------------------
-    # Message dispatch
-    # ------------------------------------------------------------------
 
     async def on_message(self, content: dict[str, Any]) -> None:
         msg_type = content.get("type", "")
@@ -136,8 +144,8 @@ class TicTacToeConsumer(BaseConsumer):
 
         if existing_slot is not None:
             await self.send_error(
-                "already_in_session",
-                "You already have a slot in this game",
+                "rejoin_denied",
+                "Cannot rejoin — disconnection forfeits the match",
             )
             return
         elif session.is_full:
@@ -211,9 +219,6 @@ class TicTacToeConsumer(BaseConsumer):
         # Send initial board state
         await self._broadcast_state(session)
 
-    # ------------------------------------------------------------------
-    # Move handling (with rate limiting)
-    # ------------------------------------------------------------------
 
     async def _handle_move(self, content: dict[str, Any]) -> None:
         session = self._session
@@ -249,9 +254,12 @@ class TicTacToeConsumer(BaseConsumer):
 
         # Check if the game ended
         if session.engine.status == TTTStatus.FINISHED:
-            session.mark_finished()
-            reason = "draw" if session.engine.is_draw else "win"
-            await self._broadcast_game_over(session, reason=reason)
+            reason = FinishReason.DRAW if session.engine.is_draw else FinishReason.SCORE
+            session.mark_finished(reason=reason)
+            reason_str = "draw" if session.engine.is_draw else "win"
+            await self._broadcast_game_over(session, reason=reason_str)
+            # Notify tournament system (bracket advancement)
+            await on_game_finished(session)
             return
 
         # AI move (if it's the AI's turn)
@@ -281,9 +289,12 @@ class TicTacToeConsumer(BaseConsumer):
         await self._broadcast_state(session)
 
         if session.engine.status == TTTStatus.FINISHED:
-            session.mark_finished()
-            reason = "draw" if session.engine.is_draw else "win"
-            await self._broadcast_game_over(session, reason=reason)
+            reason = FinishReason.DRAW if session.engine.is_draw else FinishReason.SCORE
+            session.mark_finished(reason=reason)
+            reason_str = "draw" if session.engine.is_draw else "win"
+            await self._broadcast_game_over(session, reason=reason_str)
+            # Notify tournament system (bracket advancement)
+            await on_game_finished(session)
 
     def _is_rate_limited(self) -> bool:
         """Sliding-window rate limiter using a deque (no list copy)."""
@@ -309,8 +320,17 @@ class TicTacToeConsumer(BaseConsumer):
             return
 
         session.engine.forfeit(self._slot)
-        session.mark_finished()
+        # Determine the winner (the opponent)
+        opp_slot = session.get_opponent_slot(self._slot)
+        opp = session.players.get(opp_slot)
+        winner_id = opp.user_id if opp else None
+        session.mark_finished(
+            reason=FinishReason.FORFEIT,
+            winner_id=winner_id,
+        )
         await self._broadcast_game_over(session, reason="forfeit")
+        # Notify tournament system (bracket advancement)
+        await on_game_finished(session)
 
 
     async def _broadcast_state(self, session: GameSession) -> None:
