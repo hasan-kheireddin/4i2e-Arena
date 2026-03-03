@@ -3,6 +3,7 @@ from apps.games.matchmaking_consumer import MatchmakingConsumer
 from apps.games.pong_consumer import PongConsumer
 from apps.games.tictactoe_consumer import TicTacToeConsumer
 from apps.tournaments.tournament_consumer import TournamentConsumer
+from apps.analytics.notification_consumer import NotificationConsumer
 
 websocket_urlpatterns: list = [
     re_path(
@@ -20,5 +21,9 @@ websocket_urlpatterns: list = [
     re_path(
         r"ws/tournament/(?P<tournament_id>[^/]+)/$",
         TournamentConsumer.as_asgi(),
+    ),
+        re_path(
+        r"ws/notifications/$",
+        NotificationConsumer.as_asgi(),
     ),
 ]
