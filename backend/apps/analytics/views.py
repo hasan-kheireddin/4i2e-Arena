@@ -1,12 +1,20 @@
-# REST API endpoints for the achievement system:
+# =============================================================================
+# Analytics — Achievement & Leaderboard Views
+# =============================================================================
+# REST API endpoints for the achievement and XP/leaderboard system:
 #
 #   GET  /api/analytics/achievements/            → Full catalogue with user status
 #   GET  /api/analytics/achievements/unlocked/   → User's unlocked achievements
 #   GET  /api/analytics/achievements/progress/   → User's progress toward all
 #   GET  /api/analytics/achievements/stats/      → Summary statistics
 #   GET  /api/analytics/achievements/<id>/       → Single achievement detail
+#   GET  /api/analytics/leaderboard/             → Global leaderboard
+#   GET  /api/analytics/xp/me/                   → My XP & level details
+#   GET  /api/analytics/xp/levels/               → Level progression table
+# =============================================================================
 
 from __future__ import annotations
+from django.contrib.auth import get_user_model
 from django.db.models import (
     BooleanField,
     Case,
@@ -19,10 +27,14 @@ from django.db.models import (
     Sum,
     Value,
     When,
+    Window,
 )
+from django.db.models.functions import DenseRank
 from rest_framework import generics, permissions, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from .models import (
     Achievement,
     AchievementCategory,
@@ -35,7 +47,12 @@ from .serializers import (
     AchievementStatsSerializer,
     AchievementUnlockSerializer,
     AchievementWithUserStatusSerializer,
+    LeaderboardEntrySerializer,
+    UserXPDetailSerializer,
 )
+from .xp_service import get_xp_for_level, get_xp_to_next_level, MAX_LEVEL
+
+User = get_user_model()
 
 class AchievementListView(generics.ListAPIView):
     """
@@ -269,4 +286,111 @@ class AchievementDetailView(generics.RetrieveAPIView):
                 ),
             )
             .distinct()
+        )
+class LeaderboardPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+class LeaderboardView(generics.ListAPIView):
+    """
+    Global leaderboard ranked by XP (descending).
+
+    Supports query parameters:
+      - ``page`` / ``page_size`` for pagination
+      - ``order_by`` = ``xp`` (default) | ``level`` | ``username``
+    """
+
+    serializer_class = LeaderboardEntrySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = LeaderboardPagination
+
+    def get_queryset(self):
+        order_by = self.request.query_params.get("order_by", "xp")
+        order_map = {
+            "xp": "-xp",
+            "level": "-level",
+            "username": "username",
+        }
+        ordering = order_map.get(order_by, "-xp")
+
+        qs = (
+            User.objects
+            .filter(is_active=True, is_staff=False)
+            .annotate(
+                rank=Window(
+                    expression=DenseRank(),
+                    order_by=F("xp").desc(),
+                ),
+            )
+            .order_by(ordering)
+        )
+        return qs
+
+
+class UserXPDetailView(APIView):
+    """
+    Return detailed XP and level information for the requesting user,
+    including their rank on the leaderboard.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Calculate rank (number of active non-staff users with more XP + 1)
+        rank = (
+            User.objects
+            .filter(is_active=True, is_staff=False, xp__gt=user.xp)
+            .count()
+        ) + 1
+
+        total_players = User.objects.filter(
+            is_active=True, is_staff=False,
+        ).count()
+
+        level_info = get_xp_to_next_level(user.xp)
+
+        data = {
+            "user_id": str(user.id),
+            "username": user.username,
+            "display_name": user.display_name,
+            "xp": user.xp,
+            "level": user.level,
+            "level_info": level_info,
+            "rank": rank,
+            "total_players": total_players,
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class LevelTableView(APIView):
+    """
+    Return the level progression table showing XP thresholds for
+    each level.  Useful for the frontend to render level progress bars.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        max_display = min(
+            int(request.query_params.get("max_level", 50)),
+            MAX_LEVEL,
+        )
+        levels = []
+        for lvl in range(1, max_display + 1):
+            xp_required = get_xp_for_level(lvl)
+            xp_next = get_xp_for_level(min(lvl + 1, MAX_LEVEL))
+            levels.append({
+                "level": lvl,
+                "xp_required": xp_required,
+                "xp_to_next": xp_next - xp_required,
+            })
+
+        return Response(
+            {"levels": levels, "max_level": MAX_LEVEL},
+            status=status.HTTP_200_OK,
         )

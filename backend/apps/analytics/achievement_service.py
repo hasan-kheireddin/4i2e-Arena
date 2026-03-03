@@ -10,6 +10,10 @@ from apps.analytics.models import (
     AchievementProgress,
     AchievementUnlock,
 )
+from apps.analytics.xp_service import (
+    apply_streak_bonus,
+    award_xp_for_achievement,
+)
 from apps.games.session import FinishReason, GameSession, GameType
 
 logger = logging.getLogger("analytics.achievements")
@@ -38,6 +42,12 @@ async def check_achievements_after_game(session: GameSession) -> None:
         # Send WebSocket notifications for each new unlock
         if newly_unlocked:
             await _send_unlock_notifications(user_id, newly_unlocked)
+            # Award XP for each unlocked achievement
+            for ach_data in newly_unlocked:
+                xp_reward = ach_data.get("xp_reward", 0)
+                if xp_reward > 0:
+                    await award_xp_for_achievement(user_id, xp_reward)
+
 
 
 async def check_tournament_achievements(user_id: int, is_winner: bool) -> None:
@@ -136,6 +146,9 @@ async def _evaluate_all_checkers(
             )
             if unlocked:
                 newly_unlocked.append(unlocked)
+
+        # Award XP streak bonus for milestone streaks
+        await apply_streak_bonus(user_id, streak)
 
     if is_winner:
         # Pong perfect game (11-0)

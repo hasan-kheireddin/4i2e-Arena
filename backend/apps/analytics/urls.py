@@ -5,6 +5,9 @@ from .views import (
     AchievementProgressListView,
     AchievementStatsView,
     AchievementUnlockedListView,
+    LeaderboardView,
+    LevelTableView,
+    UserXPDetailView,
 )
 
 urlpatterns = [
@@ -33,4 +36,20 @@ urlpatterns = [
         AchievementDetailView.as_view(),
         name="achievement-detail",
     ),
+    path(
+        "leaderboard/",
+        LeaderboardView.as_view(),
+        name="leaderboard",
+    ),
+    path(
+        "xp/me/",
+        UserXPDetailView.as_view(),
+        name="user-xp-detail",
+    ),
+    path(
+        "xp/levels/",
+        LevelTableView.as_view(),
+        name="level-table",
+    ),
+
 ]

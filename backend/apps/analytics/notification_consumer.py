@@ -74,3 +74,41 @@ class NotificationConsumer(BaseConsumer):
             "type": "achievement_unlocked",
             "achievement": event.get("achievement", {}),
         })
+
+    async def xp_gained(self, event: dict[str, Any]) -> None:
+        """
+        Forward XP gain events to the connected client.
+
+        Payload structure:
+        {
+            "type": "xp_gained",
+            "xp_gained": 35,
+            "total_xp": 1250,
+            "level": 5,
+            "breakdown": {"base": 10, "win_bonus": 25}
+        }
+        """
+        await self.send_json({
+            "type": "xp_gained",
+            "xp_gained": event.get("xp_gained", 0),
+            "total_xp": event.get("total_xp", 0),
+            "level": event.get("level", 1),
+            "breakdown": event.get("breakdown", {}),
+        })
+
+    async def level_up(self, event: dict[str, Any]) -> None:
+        """
+        Forward level-up events to the connected client.
+
+        Payload structure:
+        {
+            "type": "level_up",
+            "new_level": 6,
+            "total_xp": 1250
+        }
+        """
+        await self.send_json({
+            "type": "level_up",
+            "new_level": event.get("new_level", 1),
+            "total_xp": event.get("total_xp", 0),
+        })

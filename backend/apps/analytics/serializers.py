@@ -101,3 +101,38 @@ class AchievementStatsSerializer(serializers.Serializer):
     by_category = serializers.DictField(child=serializers.DictField())
     by_tier = serializers.DictField(child=serializers.DictField())
     recent_unlocks = AchievementUnlockSerializer(many=True)
+
+class LeaderboardEntrySerializer(serializers.ModelSerializer):
+    """A single row in the leaderboard."""
+    rank = serializers.IntegerField(read_only=True)
+    xp_to_next_level = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "display_name",
+            "avatar_url",
+            "xp",
+            "level",
+            "rank",
+            "xp_to_next_level",
+        ]
+        read_only_fields = fields
+
+    def get_xp_to_next_level(self, obj) -> dict:
+        from apps.analytics.xp_service import get_xp_to_next_level
+        return get_xp_to_next_level(obj.xp)
+
+
+class UserXPDetailSerializer(serializers.Serializer):
+    """Detailed XP and level info for the requesting user."""
+    user_id = serializers.UUIDField()
+    username = serializers.CharField()
+    display_name = serializers.CharField()
+    xp = serializers.IntegerField()
+    level = serializers.IntegerField()
+    level_info = serializers.DictField()
+    rank = serializers.IntegerField()
+    total_players = serializers.IntegerField()

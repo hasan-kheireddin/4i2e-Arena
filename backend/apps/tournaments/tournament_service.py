@@ -13,6 +13,7 @@ from apps.games.session import (
     generate_game_id,
     get_session,
 )
+from apps.analytics.xp_service import award_xp_for_tournament
 
 logger = logging.getLogger("tournaments.service")
 
@@ -100,6 +101,74 @@ async def on_game_finished(session: GameSession) -> None:
                 "game_session_id": next_round_data.get("game_session_id"),
             },
         )
+
+    # --- Award XP for tournament match win ---
+    if winner_user_id:
+        await award_xp_for_tournament(
+            user_id=winner_user_id,
+            is_champion=False,
+            is_finalist=False,
+            is_match_win=True,
+        )
+
+    # --- Award XP when tournament completes (champion + finalist) ---
+    from apps.tournaments.models import TournamentStatus
+    if tournament_status == TournamentStatus.COMPLETED:
+        # Champion XP
+        if winner_data:
+            champion_id = winner_data["id"]
+            await award_xp_for_tournament(
+                user_id=champion_id,
+                is_champion=True,
+                is_finalist=False,
+                is_match_win=False,
+            )
+
+            # Finalist is the loser of the final round
+            finalist_id = _get_finalist_id(session, champion_id)
+            if finalist_id:
+                await award_xp_for_tournament(
+                    user_id=finalist_id,
+                    is_champion=False,
+                    is_finalist=True,
+                    is_match_win=False,
+                )
+
+        # Participation XP for all tournament participants
+        participant_ids = await _get_tournament_participant_ids(tournament_id)
+        for pid in participant_ids:
+            await award_xp_for_tournament(
+                user_id=pid,
+                is_champion=False,
+                is_finalist=False,
+                is_match_win=False,
+                is_participation=True,
+            )
+
+
+def _get_finalist_id(
+    session: GameSession, champion_id: int,
+) -> Optional[int]:
+    """
+    Return the user ID of the finalist (the player who lost the final
+    round).  This is simply the other human player in the session.
+    """
+    for _slot, ps in session.players.items():
+        if ps.user_id != champion_id:
+            return ps.user_id
+    return None
+
+
+@sync_to_async
+def _get_tournament_participant_ids(tournament_id: str) -> list[int]:
+    """Return all participant user IDs for a tournament."""
+    from apps.tournaments.models import TournamentEntry
+    return list(
+        TournamentEntry.objects
+        .filter(tournament_id=tournament_id)
+        .values_list("player_id", flat=True)
+    )
+
 
 async def link_session_to_round(
     game_id: str,
