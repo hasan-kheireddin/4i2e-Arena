@@ -21,6 +21,7 @@ from apps.games.session import (
     get_session,
     remove_session,
 )
+from apps.analytics.achievement_service import check_achievements_after_game
 from apps.tournaments.tournament_service import is_tournament_game, on_game_finished
 
 logger = logging.getLogger("games.tictactoe")
@@ -83,6 +84,8 @@ class TicTacToeConsumer(BaseConsumer):
             )
             # Notify tournament system (bracket advancement)
             await on_game_finished(session)
+            # Check achievements for all players
+            await check_achievements_after_game(session)
         elif session.status == SessionStatus.WAITING:
             # Nobody started yet — abandon
             session.mark_abandoned(reason=FinishReason.CANCELED)
@@ -260,6 +263,8 @@ class TicTacToeConsumer(BaseConsumer):
             await self._broadcast_game_over(session, reason=reason_str)
             # Notify tournament system (bracket advancement)
             await on_game_finished(session)
+            # Check achievements for all players
+            await check_achievements_after_game(session)
             return
 
         # AI move (if it's the AI's turn)
@@ -295,6 +300,8 @@ class TicTacToeConsumer(BaseConsumer):
             await self._broadcast_game_over(session, reason=reason_str)
             # Notify tournament system (bracket advancement)
             await on_game_finished(session)
+            # Check achievements for all players
+            await check_achievements_after_game(session)
 
     def _is_rate_limited(self) -> bool:
         """Sliding-window rate limiter using a deque (no list copy)."""
@@ -331,7 +338,8 @@ class TicTacToeConsumer(BaseConsumer):
         await self._broadcast_game_over(session, reason="forfeit")
         # Notify tournament system (bracket advancement)
         await on_game_finished(session)
-
+        # Check achievements for all players
+        await check_achievements_after_game(session)
 
     async def _broadcast_state(self, session: GameSession) -> None:
         state = session.engine.get_state()
