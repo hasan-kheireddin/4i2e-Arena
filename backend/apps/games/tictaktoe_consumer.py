@@ -23,6 +23,7 @@ from apps.games.session import (
 )
 from apps.analytics.achievement_service import check_achievements_after_game
 from apps.analytics.xp_service import award_xp_after_game
+from apps.games.match_recording import record_match
 from apps.tournaments.tournament_service import is_tournament_game, on_game_finished
 
 logger = logging.getLogger("games.tictactoe")
@@ -89,6 +90,8 @@ class TicTacToeConsumer(BaseConsumer):
             await check_achievements_after_game(session)
             # Award XP to participants
             await award_xp_after_game(session)
+            # Record match to database
+            await record_match(session)
         elif session.status == SessionStatus.WAITING:
             # Nobody started yet — abandon
             session.mark_abandoned(reason=FinishReason.CANCELED)
@@ -270,6 +273,8 @@ class TicTacToeConsumer(BaseConsumer):
             await check_achievements_after_game(session)
             # Award XP to participants
             await award_xp_after_game(session)
+            # Record match to database
+            await record_match(session)
             return
 
         # AI move (if it's the AI's turn)
@@ -309,6 +314,8 @@ class TicTacToeConsumer(BaseConsumer):
             await check_achievements_after_game(session)
             # Award XP to participants
             await award_xp_after_game(session)
+            # Record match to database
+            await record_match(session)
 
     def _is_rate_limited(self) -> bool:
         """Sliding-window rate limiter using a deque (no list copy)."""
@@ -349,6 +356,8 @@ class TicTacToeConsumer(BaseConsumer):
         await check_achievements_after_game(session)
         # Award XP to participants
         await award_xp_after_game(session)
+        # Record match to database
+        await record_match(session)
 
     async def _broadcast_state(self, session: GameSession) -> None:
         state = session.engine.get_state()

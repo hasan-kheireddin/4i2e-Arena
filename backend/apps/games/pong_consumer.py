@@ -20,6 +20,7 @@ from apps.games.session import (
 )
 from apps.analytics.achievement_service import check_achievements_after_game
 from apps.analytics.xp_service import award_xp_after_game
+from apps.games.match_recording_service import record_match
 from apps.tournaments.tournament_service import is_tournament_game, on_game_finished
 
 logger = logging.getLogger("games.pong")
@@ -91,6 +92,8 @@ class PongConsumer(BaseConsumer):
             await check_achievements_after_game(session)
             # Award XP to participants
             await award_xp_after_game(session)
+            # Record match to database
+            await record_match(session)
         elif session.status == SessionStatus.WAITING:
             # Nobody started yet — abandon
             session.mark_abandoned(reason=FinishReason.CANCELED)
@@ -304,6 +307,9 @@ class PongConsumer(BaseConsumer):
         await check_achievements_after_game(session)
         # Award XP to participants
         await award_xp_after_game(session)
+        # Record match to database
+        await record_match(session)
+
 
 
     async def _tick_loop(self, session: GameSession) -> None:
@@ -337,6 +343,8 @@ class PongConsumer(BaseConsumer):
                     await check_achievements_after_game(session)
                     # Award XP to participants
                     await award_xp_after_game(session)
+                    # Record match to database
+                    await record_match(session)
                     break
 
                 # Sleep until next tick
