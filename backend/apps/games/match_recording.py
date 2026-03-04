@@ -17,6 +17,7 @@ from apps.games.session import (
     GameSession,
     GameType,
 )
+from apps.games.stats_service import invalidate_user_stats
 
 logger = logging.getLogger("games.match_recording")
 
@@ -135,6 +136,10 @@ def _create_match_record(session: GameSession) -> Optional[str]:
         duration,
         session.winner_id,
     )
+    
+    # Invalidate cached stats for all human participants
+    for _slot, player_slot in session.players.items():
+        invalidate_user_stats(player_slot.user_id)
 
     return str(match.id)
 

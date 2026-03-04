@@ -1,15 +1,19 @@
 from django.urls import path
 
 from apps.games.views import (
+    HeadToHeadView,
+    LeaderboardView,
     MatchDetailView,
     MatchListView,
     MatchSummaryView,
+    PublicUserStatsView,
     UserMatchHistoryView,
     UserMatchListView,
+    UserStatsView,
 )
 
 urlpatterns = [
-    # Match history endpoints
+    
     path(
         "matches/",
         MatchListView.as_view(),
@@ -34,5 +38,25 @@ urlpatterns = [
         "matches/<uuid:pk>/",
         MatchDetailView.as_view(),
         name="match-detail",
+    ),
+        path(
+        "stats/me/",
+        UserStatsView.as_view(),
+        name="stats-me",
+    ),
+    path(
+        "stats/user/<uuid:user_id>/",
+        PublicUserStatsView.as_view(),
+        name="stats-user",
+    ),
+    path(
+        "stats/head-to-head/<uuid:opponent_id>/",
+        HeadToHeadView.as_view(),
+        name="stats-head-to-head",
+    ),
+    path(
+        "stats/leaderboard/",
+        LeaderboardView.as_view(),
+        name="stats-leaderboard",
     ),
 ]

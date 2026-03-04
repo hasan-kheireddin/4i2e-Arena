@@ -3,6 +3,36 @@ from rest_framework import serializers
 from apps.games.models import Match, MatchPlayer
 
 
+class StatsQuerySerializer(serializers.Serializer):
+    """Validate query parameters for the user-stats endpoint."""
+
+    game_type = serializers.ChoiceField(
+        choices=["pong", "tictactoe"],
+        required=False,
+        allow_null=True,
+    )
+
+
+class LeaderboardQuerySerializer(serializers.Serializer):
+    """Validate query parameters for the leaderboard endpoint."""
+
+    game_type = serializers.ChoiceField(
+        choices=["pong", "tictactoe"],
+        required=False,
+        allow_null=True,
+    )
+    metric = serializers.ChoiceField(
+        choices=["wins", "win_rate", "xp"],
+        required=False,
+        default="wins",
+    )
+    limit = serializers.IntegerField(
+        required=False,
+        default=50,
+        min_value=1,
+        max_value=100,
+    )
+
 class MatchPlayerSerializer(serializers.ModelSerializer):
     """Serializes a single player's participation in a match."""
 

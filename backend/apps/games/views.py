@@ -1,3 +1,23 @@
+# =============================================================================
+# Games — REST API Views
+# =============================================================================
+# Match history list/detail and statistics endpoints with filtering,
+# pagination, and caching.
+#
+# Match History:
+#   GET /api/games/matches/               — all matches (paginated)
+#   GET /api/games/matches/me/            — current user's matches
+#   GET /api/games/matches/<uuid:pk>/     — single match detail
+#   GET /api/games/matches/user/<uuid>/   — another user's matches
+#   GET /api/games/matches/summary/       — quick stats (legacy)
+#
+# Statistics (Task 9.2):
+#   GET /api/games/stats/me/              — current user's full stats
+#   GET /api/games/stats/user/<uuid>/     — another user's stats
+#   GET /api/games/stats/head-to-head/<uuid>/ — H2H vs another user
+#   GET /api/games/stats/leaderboard/     — global leaderboard
+# =============================================================================
+
 from __future__ import annotations
 from django.db.models import Q
 from rest_framework import generics, permissions, status
@@ -6,9 +26,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.games.models import Match, MatchPlayer
 from apps.games.serializers import (
+    LeaderboardQuerySerializer,
     MatchDetailSerializer,
     MatchListSerializer,
+    StatsQuerySerializer,
 )
+from apps.games.stats_service import (
+    get_head_to_head,
+    get_leaderboard,
+    get_user_stats,
+)
+
 
 class MatchPagination(PageNumberPagination):
     page_size = 20
@@ -305,3 +333,92 @@ def _longest_win_streak(outcomes: list[str]) -> int:
         else:
             current = 0
     return max_streak
+
+class UserStatsView(APIView):
+    """
+    Return comprehensive statistics for the authenticated user.
+
+    Query parameters:
+      - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
+
+    Results are cached for 5 minutes and invalidated automatically
+    when a new match is recorded.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        query = StatsQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        game_type = query.validated_data.get("game_type")
+        stats = get_user_stats(request.user.pk, game_type=game_type)
+        return Response(stats, status=status.HTTP_200_OK)
+
+class PublicUserStatsView(APIView):
+    """
+    Return statistics for any user (public view).
+
+    Only includes PvP and tournament data in the response.
+
+    Query parameters:
+      - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        query = StatsQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        game_type = query.validated_data.get("game_type")
+        stats = get_user_stats(user_id, game_type=game_type)
+
+        # Remove PvE data from public view
+        stats.get("by_game_mode", {}).pop("pve", None)
+
+        return Response(stats, status=status.HTTP_200_OK)
+
+
+class HeadToHeadView(APIView):
+    """
+    Return head-to-head statistics between the authenticated user
+    and the specified opponent.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, opponent_id):
+        stats = get_head_to_head(request.user.pk, opponent_id)
+        return Response(stats, status=status.HTTP_200_OK)
+
+class LeaderboardView(APIView):
+    """
+    Return a ranked leaderboard with filtering options.
+
+    Query parameters:
+      - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
+      - ``metric``    — ``"wins"`` (default), ``"win_rate"``, ``"xp"``
+      - ``limit``     — max entries (1–100, default 50)
+
+    Only PvP and tournament matches are considered.
+    Players must have at least 5 qualifying matches to appear.
+    Results are cached for 10 minutes.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        query = LeaderboardQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        game_type = query.validated_data.get("game_type")
+        metric = query.validated_data.get("metric", "wins")
+        limit = query.validated_data.get("limit", 50)
+
+        data = get_leaderboard(
+            game_type=game_type,
+            metric=metric,
+            limit=limit,
+        )
+        return Response(data, status=status.HTTP_200_OK)
