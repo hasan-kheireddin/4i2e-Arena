@@ -11,6 +11,11 @@ from .models import OAuthAccount
 from .oauth_serializers import OAuthCallbackSerializer
 from .oauth_providers import get_provider
 from .serializers import UserProfileSerializer, get_tokens_for_user
+from apps.analytics.tracking_service import (
+    get_client_ip,
+    get_user_agent,
+    track_oauth_login,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -127,6 +132,14 @@ class OAuthCallbackView(APIView):
         tokens = get_tokens_for_user(user)
         user_data = UserProfileSerializer(user).data
 
+        # Track OAuth login event
+        track_oauth_login(
+            user.pk,
+            provider=provider,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
+        
         return Response(
             {"user": user_data, "tokens": tokens},
             status=status.HTTP_200_OK,

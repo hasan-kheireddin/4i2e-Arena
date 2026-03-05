@@ -13,6 +13,14 @@ from .serializers import (
     UserUpdateSerializer,
     get_tokens_for_user,
 )
+from apps.analytics.tracking_service import (
+    get_client_ip,
+    get_user_agent,
+    track_login,
+    track_logout,
+    track_profile_updated,
+    track_registration,
+)
 
 class RegisterView(APIView):
     """
@@ -30,6 +38,12 @@ class RegisterView(APIView):
         user = serializer.save()
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
+        # Track registration event
+        track_registration(
+            user.pk,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
         return Response(
             {
                 "user": profile,
@@ -75,6 +89,13 @@ class LoginView(APIView):
 
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
+        # Track login event
+        track_login(
+            user.pk,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+            method="password",
+        )
         return Response(
             {
                 "user": profile,
@@ -113,6 +134,12 @@ class LogoutView(APIView):
             {"detail": "Successfully logged out."},
             status=status.HTTP_200_OK,
         )
+        # Track logout event
+        track_logout(
+            request.user.pk,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
 
 class CustomTokenRefreshView(TokenRefreshView):
     """
@@ -147,6 +174,16 @@ class ProfileUpdateView(generics.UpdateAPIView):
 
     def get_object(self):
         return self.request.user
+    
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        changed = list(serializer.validated_data.keys())
+        track_profile_updated(
+            instance.pk,
+            fields_changed=changed,
+            ip_address=get_client_ip(self.request),
+            user_agent=get_user_agent(self.request),
+        )
 
 
 class ChangePasswordView(APIView):

@@ -14,7 +14,6 @@
 import io
 import logging
 import base64
-
 import pyotp
 import qrcode
 from django.contrib.auth import get_user_model
@@ -23,7 +22,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
-
 from .models import TOTPDevice
 from .serializers import UserProfileSerializer, get_tokens_for_user
 from .twofa_serializers import (
@@ -31,6 +29,11 @@ from .twofa_serializers import (
     TwoFactorDisableSerializer,
     TwoFactorVerifySerializer,
     RecoveryCodeSerializer,
+)
+from apps.analytics.tracking_service import (
+    get_client_ip,
+    get_user_agent,
+    track_2fa_verified,
 )
 
 logger = logging.getLogger(__name__)
@@ -219,7 +222,14 @@ class TwoFactorVerifyView(APIView):
         # Issue full JWT tokens
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
-
+        
+        # Track 2FA verification event
+        track_2fa_verified(
+            user.pk,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
+        
         return Response(
             {"user": profile, "tokens": tokens},
             status=status.HTTP_200_OK,
