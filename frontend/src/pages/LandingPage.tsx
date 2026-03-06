@@ -14,18 +14,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="space-y-8 animate-fadeIn">
-              <div className="inline-block">
-                <span
-                  className="px-4 py-2 rounded-full text-sm font-semibold"
-                  style={{
-                    backgroundColor: "rgba(168, 85, 247, 0.1)",
-                    color: "var(--color-primary)",
-                    border: "1px solid var(--color-primary)",
-                  }}
-                >
-                  ✨ Welcome to the Arena
-                </span>
-              </div>
+              
 
               <h1
                 className="text-5xl lg:text-7xl font-extrabold leading-tight"
@@ -84,52 +73,6 @@ export default function LandingPage() {
                 >
                   Sign In
                 </Link>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 pt-8">
-                <div>
-                  <div
-                    className="text-3xl font-bold"
-                    style={{ color: "var(--color-primary)" }}
-                  >
-                    10K+
-                  </div>
-                  <div
-                    className="text-sm"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    Active Players
-                  </div>
-                </div>
-                <div>
-                  <div
-                    className="text-3xl font-bold"
-                    style={{ color: "var(--color-primary)" }}
-                  >
-                    50+
-                  </div>
-                  <div
-                    className="text-sm"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    Game Modes
-                  </div>
-                </div>
-                <div>
-                  <div
-                    className="text-3xl font-bold"
-                    style={{ color: "var(--color-primary)" }}
-                  >
-                    24/7
-                  </div>
-                  <div
-                    className="text-sm"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
-                    Support
-                  </div>
-                </div>
               </div>
             </div>
 

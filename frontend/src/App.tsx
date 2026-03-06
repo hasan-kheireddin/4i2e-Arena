@@ -34,11 +34,9 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
                 <Layout>
                   <HomePage />
                 </Layout>
-              </ProtectedRoute>
             }
           />
 
@@ -57,9 +55,8 @@ function App() {
           <Route
             path="/games/tictactoe"
             element={
-              <ProtectedRoute>
+              
                 <TicTacToePage />
-              </ProtectedRoute>
             }
           />
 
