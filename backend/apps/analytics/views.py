@@ -22,6 +22,15 @@
 #   GET  /api/analytics/activity/export/         → Export user data
 #   POST /api/analytics/activity/anonymise/      → Anonymise user data
 #   GET  /api/analytics/activity/global/         → Platform-wide summary (admin)
+#
+#   (Task 10.2 — Analytics Calculation Engine)
+#   GET  /api/analytics/insights/win-rate-trend/      → Rolling win-rate curve
+#   GET  /api/analytics/insights/performance-trend/   → Composite score trend
+#   GET  /api/analytics/insights/peak-hours/          → Peak activity hours
+#   GET  /api/analytics/insights/sessions/            → Session analysis
+#   GET  /api/analytics/insights/opponents/           → Most-played opponents
+#   GET  /api/analytics/insights/rivalries/           → Rivalry detection
+#   GET  /api/analytics/insights/recommendations/     → Performance insights
 # =============================================================================
 
 from __future__ import annotations
@@ -61,15 +70,6 @@ from .serializers import (
     UserXPDetailSerializer,
 )
 from .xp_service import get_xp_for_level, get_xp_to_next_level, MAX_LEVEL
-from .aggregation_service import (
-    get_activity_heatmap,
-    get_activity_timeline,
-    get_global_activity_summary,
-    get_recent_activity,
-    get_user_activity_summary,
-)
-from .privacy_service import anonymise_user_events, export_user_events
-from .tracking_service import get_client_ip, get_user_agent, track_page_view
 
 User = get_user_model()
 
@@ -306,6 +306,7 @@ class AchievementDetailView(generics.RetrieveAPIView):
             )
             .distinct()
         )
+    
 class LeaderboardPagination(PageNumberPagination):
     page_size = 25
     page_size_query_param = "page_size"
@@ -413,8 +414,21 @@ class LevelTableView(APIView):
             {"levels": levels, "max_level": MAX_LEVEL},
             status=status.HTTP_200_OK,
         )
-    
-    
+from .aggregation_service import (
+    get_activity_heatmap,
+    get_activity_timeline,
+    get_global_activity_summary,
+    get_recent_activity,
+    get_user_activity_summary,
+)
+from .privacy_service import anonymise_user_events, export_user_events
+from .tracking_service import get_client_ip, get_user_agent, track_page_view
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/activity/summary/ — User activity summary
+# ---------------------------------------------------------------------------
+
 class ActivitySummaryView(APIView):
     """
     Return an aggregated activity summary for the authenticated user.
@@ -430,6 +444,10 @@ class ActivitySummaryView(APIView):
         data = get_user_activity_summary(request.user.pk)
         return Response(data, status=status.HTTP_200_OK)
 
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/activity/timeline/ — Daily activity timeline
+# ---------------------------------------------------------------------------
 
 class ActivityTimelineView(APIView):
     """
@@ -454,6 +472,10 @@ class ActivityTimelineView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 
+# ---------------------------------------------------------------------------
+# GET /api/analytics/activity/heatmap/ — Activity heatmap
+# ---------------------------------------------------------------------------
+
 class ActivityHeatmapView(APIView):
     """
     Return hourly × day-of-week event counts for building a heatmap.
@@ -467,6 +489,10 @@ class ActivityHeatmapView(APIView):
         data = get_activity_heatmap(request.user.pk)
         return Response(data, status=status.HTTP_200_OK)
 
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/activity/recent/ — Recent activity feed
+# ---------------------------------------------------------------------------
 
 class RecentActivityView(APIView):
     """
@@ -490,6 +516,10 @@ class RecentActivityView(APIView):
         )
         return Response(data, status=status.HTTP_200_OK)
 
+
+# ---------------------------------------------------------------------------
+# POST /api/analytics/activity/track/ — Frontend event tracking
+# ---------------------------------------------------------------------------
 
 class TrackEventView(APIView):
     """
@@ -521,6 +551,10 @@ class TrackEventView(APIView):
         )
 
 
+# ---------------------------------------------------------------------------
+# GET /api/analytics/activity/export/ — Data portability
+# ---------------------------------------------------------------------------
+
 class ExportActivityView(APIView):
     """
     Export all activity events for the authenticated user in JSON format.
@@ -537,6 +571,10 @@ class ExportActivityView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+# ---------------------------------------------------------------------------
+# POST /api/analytics/activity/anonymise/ — Privacy: anonymise data
+# ---------------------------------------------------------------------------
 
 class AnonymiseActivityView(APIView):
     """
@@ -556,6 +594,10 @@ class AnonymiseActivityView(APIView):
         )
 
 
+# ---------------------------------------------------------------------------
+# GET /api/analytics/activity/global/ — Platform-wide summary (admin)
+# ---------------------------------------------------------------------------
+
 class GlobalActivitySummaryView(APIView):
     """
     Return platform-wide activity statistics.
@@ -567,4 +609,155 @@ class GlobalActivitySummaryView(APIView):
 
     def get(self, request):
         data = get_global_activity_summary()
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ============================================================================
+# Analytics Calculation Engine Views (Task 10.2)
+# ============================================================================
+
+from .analytics_engine import (
+    get_opponents_summary,
+    get_peak_hours,
+    get_performance_insights,
+    get_performance_trend,
+    get_rivalries,
+    get_session_analysis,
+    get_win_rate_trend,
+)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/win-rate-trend/
+# ---------------------------------------------------------------------------
+
+class WinRateTrendView(APIView):
+    """
+    Rolling win-rate curve grouped by day.
+
+    Query parameters:
+      - ``days`` — lookback window (default 30, max 365)
+      - ``game_type`` — ``pong`` | ``tictactoe`` (optional)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        days = min(int(request.query_params.get("days", 30)), 365)
+        game_type = request.query_params.get("game_type")
+        data = get_win_rate_trend(request.user.pk, days=days, game_type=game_type)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/performance-trend/
+# ---------------------------------------------------------------------------
+
+class PerformanceTrendView(APIView):
+    """
+    Weekly composite performance score over time.
+
+    Query parameters:
+      - ``days`` — lookback window (default 30, max 365)
+      - ``game_type`` — ``pong`` | ``tictactoe`` (optional)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        days = min(int(request.query_params.get("days", 30)), 365)
+        game_type = request.query_params.get("game_type")
+        data = get_performance_trend(request.user.pk, days=days, game_type=game_type)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/peak-hours/
+# ---------------------------------------------------------------------------
+
+class PeakHoursView(APIView):
+    """
+    Hourly and day-of-week activity distributions with peak detection.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = get_peak_hours(request.user.pk)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/sessions/
+# ---------------------------------------------------------------------------
+
+class SessionAnalysisView(APIView):
+    """
+    Play-session clustering and statistics.
+
+    Query parameters:
+      - ``days`` — lookback window (default 30, max 365)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        days = min(int(request.query_params.get("days", 30)), 365)
+        data = get_session_analysis(request.user.pk, days=days)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/opponents/
+# ---------------------------------------------------------------------------
+
+class OpponentsSummaryView(APIView):
+    """
+    Most-played opponents with win/loss breakdown.
+
+    Query parameters:
+      - ``limit`` — max opponents (default 10, max 50)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        limit = min(int(request.query_params.get("limit", 10)), 50)
+        data = get_opponents_summary(request.user.pk, limit=limit)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/rivalries/
+# ---------------------------------------------------------------------------
+
+class RivalriesView(APIView):
+    """
+    Detected rival relationships ranked by rivalry score.
+
+    Query parameters:
+      - ``min_matches`` — minimum shared matches to qualify (default 3)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        min_matches = max(int(request.query_params.get("min_matches", 3)), 2)
+        data = get_rivalries(request.user.pk, min_matches=min_matches)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/analytics/insights/recommendations/
+# ---------------------------------------------------------------------------
+
+class PerformanceInsightsView(APIView):
+    """
+    Personalised performance insights and improvement suggestions.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = get_performance_insights(request.user.pk)
         return Response(data, status=status.HTTP_200_OK)

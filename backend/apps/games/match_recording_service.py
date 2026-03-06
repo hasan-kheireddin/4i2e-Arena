@@ -19,6 +19,7 @@ from apps.games.session import (
 )
 from apps.games.stats_service import invalidate_user_stats
 from apps.analytics.analytics_engine import invalidate_analytics_cache
+from apps.analytics.tracking_service import track_match_completed
 
 logger = logging.getLogger("games.match_recording")
 
@@ -137,11 +138,12 @@ def _create_match_record(session: GameSession) -> Optional[str]:
         duration,
         session.winner_id,
     )
-    
+
     # Invalidate cached stats for all human participants
     for _slot, player_slot in session.players.items():
         invalidate_user_stats(player_slot.user_id)
-    
+        invalidate_analytics_cache(player_slot.user_id)
+
     # Track match completion activity events
     for slot, player_slot in session.players.items():
         outcome = _determine_outcome(session, player_slot.user_id)
