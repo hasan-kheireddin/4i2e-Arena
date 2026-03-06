@@ -1,7 +1,8 @@
 # =============================================================================
-# Analytics — Achievement & Leaderboard Views
+# Analytics — Achievement, Leaderboard & Activity Tracking Views
 # =============================================================================
-# REST API endpoints for the achievement and XP/leaderboard system:
+# REST API endpoints for the achievement, XP/leaderboard, and activity
+# tracking systems:
 #
 #   GET  /api/analytics/achievements/            → Full catalogue with user status
 #   GET  /api/analytics/achievements/unlocked/   → User's unlocked achievements
@@ -11,6 +12,16 @@
 #   GET  /api/analytics/leaderboard/             → Global leaderboard
 #   GET  /api/analytics/xp/me/                   → My XP & level details
 #   GET  /api/analytics/xp/levels/               → Level progression table
+#
+#   (Task 10.1 — Activity Tracking)
+#   GET  /api/analytics/activity/summary/        → User activity summary
+#   GET  /api/analytics/activity/timeline/       → Daily activity timeline
+#   GET  /api/analytics/activity/heatmap/        → Hourly heatmap
+#   GET  /api/analytics/activity/recent/         → Recent activity feed
+#   POST /api/analytics/activity/track/          → Frontend page-view tracking
+#   GET  /api/analytics/activity/export/         → Export user data
+#   POST /api/analytics/activity/anonymise/      → Anonymise user data
+#   GET  /api/analytics/activity/global/         → Platform-wide summary (admin)
 # =============================================================================
 
 from __future__ import annotations
@@ -34,7 +45,6 @@ from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from .models import (
     Achievement,
     AchievementCategory,
@@ -51,6 +61,15 @@ from .serializers import (
     UserXPDetailSerializer,
 )
 from .xp_service import get_xp_for_level, get_xp_to_next_level, MAX_LEVEL
+from .aggregation_service import (
+    get_activity_heatmap,
+    get_activity_timeline,
+    get_global_activity_summary,
+    get_recent_activity,
+    get_user_activity_summary,
+)
+from .privacy_service import anonymise_user_events, export_user_events
+from .tracking_service import get_client_ip, get_user_agent, track_page_view
 
 User = get_user_model()
 
@@ -394,3 +413,158 @@ class LevelTableView(APIView):
             {"levels": levels, "max_level": MAX_LEVEL},
             status=status.HTTP_200_OK,
         )
+    
+    
+class ActivitySummaryView(APIView):
+    """
+    Return an aggregated activity summary for the authenticated user.
+
+    Includes total events, today/week counts, breakdowns by category
+    and event type, most active hour/day, and latest event.
+    Cached for 5 minutes.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = get_user_activity_summary(request.user.pk)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ActivityTimelineView(APIView):
+    """
+    Return daily activity counts for the authenticated user.
+
+    Query parameters:
+      - ``days`` — lookback window (default 30, max 365)
+      - ``category`` — optional filter
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        days = min(int(request.query_params.get("days", 30)), 365)
+        category = request.query_params.get("category")
+
+        data = get_activity_timeline(
+            request.user.pk,
+            days=days,
+            category=category,
+        )
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ActivityHeatmapView(APIView):
+    """
+    Return hourly × day-of-week event counts for building a heatmap.
+
+    Based on the last 90 days.  ``day`` 0 = Monday, ``hour`` 0–23.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = get_activity_heatmap(request.user.pk)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class RecentActivityView(APIView):
+    """
+    Return the latest activity events for the authenticated user.
+
+    Query parameters:
+      - ``limit`` — max events (default 20, max 100)
+      - ``category`` — optional filter
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        limit = min(int(request.query_params.get("limit", 20)), 100)
+        category = request.query_params.get("category")
+
+        data = get_recent_activity(
+            request.user.pk,
+            limit=limit,
+            category=category,
+        )
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class TrackEventView(APIView):
+    """
+    Accept a page-view or custom event from the frontend.
+
+    Request body:
+      ``{ "path": "/dashboard" }``
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        path = request.data.get("path", "")
+        if not path:
+            return Response(
+                {"detail": "path is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        track_page_view(
+            request.user.pk,
+            path=path,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
+        return Response(
+            {"detail": "Event tracked."},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ExportActivityView(APIView):
+    """
+    Export all activity events for the authenticated user in JSON format.
+
+    Supports GDPR data portability requirements.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = export_user_events(request.user.pk)
+        return Response(
+            {"events": data, "total": len(data)},
+            status=status.HTTP_200_OK,
+        )
+
+
+class AnonymiseActivityView(APIView):
+    """
+    Anonymise all activity events for the authenticated user.
+
+    Scrubs metadata, IP addresses, and user-agent strings while
+    preserving aggregate counts.  This action cannot be undone.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        count = anonymise_user_events(request.user.pk)
+        return Response(
+            {"detail": f"Anonymised {count} activity events."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class GlobalActivitySummaryView(APIView):
+    """
+    Return platform-wide activity statistics.
+
+    Restricted to staff / admin users.
+    """
+
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        data = get_global_activity_summary()
+        return Response(data, status=status.HTTP_200_OK)

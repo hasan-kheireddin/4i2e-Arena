@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Achievement, AchievementProgress, AchievementUnlock
+from .models import (
+    Achievement,
+    AchievementProgress,
+    AchievementUnlock,
+    ActivityEvent,
+)
 
 @admin.register(Achievement)
 class AchievementAdmin(admin.ModelAdmin):
@@ -42,3 +47,30 @@ class AchievementProgressAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["id", "updated_at"]
     raw_id_fields = ["user", "achievement"]
+
+@admin.register(ActivityEvent)
+class ActivityEventAdmin(admin.ModelAdmin):
+    list_display = [
+        "user",
+        "category",
+        "event_type",
+        "ip_address",
+        "is_anonymised",
+        "created_at",
+    ]
+    list_filter = ["category", "event_type", "is_anonymised"]
+    search_fields = ["user__username", "event_type", "ip_address"]
+    readonly_fields = [
+        "id",
+        "user",
+        "category",
+        "event_type",
+        "metadata",
+        "ip_address",
+        "user_agent",
+        "is_anonymised",
+        "created_at",
+    ]
+    raw_id_fields = ["user"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]

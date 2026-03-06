@@ -170,3 +170,125 @@ class AchievementProgress(models.Model):
         if self.achievement.threshold == 0:
             return 100.0
         return min(100.0, (self.current / self.achievement.threshold) * 100)
+
+class EventCategory(models.TextChoices):
+    """Top-level grouping for activity events."""
+    AUTH = "auth", "Authentication"
+    GAME = "game", "Game"
+    ACHIEVEMENT = "achievement", "Achievement"
+    TOURNAMENT = "tournament", "Tournament"
+    SOCIAL = "social", "Social"
+    PROFILE = "profile", "Profile"
+    NAVIGATION = "navigation", "Navigation"
+
+
+class ActivityEvent(models.Model):
+    """
+    Immutable log row for every meaningful user action.
+
+    Every event has a ``category`` (auth, game, …) and an ``event_type``
+    string that is specific to the category (e.g. ``"login"``,
+    ``"match_completed"``, ``"achievement_unlocked"``).
+
+    The ``metadata`` JSONField stores event-specific context so the
+    analytics engine can slice-and-dice without schema migrations.
+
+    Privacy controls:
+      * ``is_anonymised`` — set ``True`` when the user requests
+        data anonymisation (GDPR).  Metadata is wiped but the
+        aggregate row is preserved.
+      * The ``purge_before`` management command hard-deletes events
+        older than the configured retention window.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="activity_events",
+        db_index=True,
+    )
+
+    category = models.CharField(
+        max_length=20,
+        choices=EventCategory.choices,
+        db_index=True,
+    )
+
+    event_type = models.CharField(
+        max_length=60,
+        db_index=True,
+        help_text=(
+            "Fine-grained event name within its category, e.g. "
+            "'login', 'match_completed', 'achievement_unlocked'."
+        ),
+    )
+
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Arbitrary event-specific payload (scores, IPs, etc.).",
+    )
+
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text="Client IP at the time of the event.",
+    )
+
+    user_agent = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="Browser / client user-agent string.",
+    )
+
+    is_anonymised = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="If True, metadata has been scrubbed for privacy.",
+    )
+
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        db_index=True,
+    )
+
+    class Meta:
+        db_table = "activity_events"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["user", "-created_at"],
+                name="idx_activity_user_created",
+            ),
+            models.Index(
+                fields=["category", "-created_at"],
+                name="idx_activity_cat_created",
+            ),
+            models.Index(
+                fields=["event_type", "-created_at"],
+                name="idx_activity_type_created",
+            ),
+            models.Index(
+                fields=["user", "category", "-created_at"],
+                name="idx_activity_user_cat",
+            ),
+        ]
+        verbose_name = "Activity Event"
+        verbose_name_plural = "Activity Events"
+
+    def __str__(self) -> str:
+        return f"{self.user_id} | {self.category}:{self.event_type} @ {self.created_at}"
+
+
+    def anonymise(self) -> None:
+        """Scrub PII from this event while keeping the aggregate row."""
+        self.metadata = {}
+        self.ip_address = None
+        self.user_agent = ""
+        self.is_anonymised = True
+        self.save(
+            update_fields=["metadata", "ip_address", "user_agent", "is_anonymised"],
+        )

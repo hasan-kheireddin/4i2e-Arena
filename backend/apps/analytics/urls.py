@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    # Achievement endpoints
     AchievementDetailView,
     AchievementListView,
     AchievementProgressListView,
@@ -8,6 +9,14 @@ from .views import (
     LeaderboardView,
     LevelTableView,
     UserXPDetailView,
+    ActivityHeatmapView,
+    ActivitySummaryView,
+    ActivityTimelineView,
+    AnonymiseActivityView,
+    ExportActivityView,
+    GlobalActivitySummaryView,
+    RecentActivityView,
+    TrackEventView,
 )
 
 urlpatterns = [
@@ -36,6 +45,7 @@ urlpatterns = [
         AchievementDetailView.as_view(),
         name="achievement-detail",
     ),
+
     path(
         "leaderboard/",
         LeaderboardView.as_view(),
@@ -51,5 +61,44 @@ urlpatterns = [
         LevelTableView.as_view(),
         name="level-table",
     ),
-
+    path(
+        "activity/summary/",
+        ActivitySummaryView.as_view(),
+        name="activity-summary",
+    ),
+    path(
+        "activity/timeline/",
+        ActivityTimelineView.as_view(),
+        name="activity-timeline",
+    ),
+    path(
+        "activity/heatmap/",
+        ActivityHeatmapView.as_view(),
+        name="activity-heatmap",
+    ),
+    path(
+        "activity/recent/",
+        RecentActivityView.as_view(),
+        name="activity-recent",
+    ),
+    path(
+        "activity/track/",
+        TrackEventView.as_view(),
+        name="activity-track",
+    ),
+    path(
+        "activity/export/",
+        ExportActivityView.as_view(),
+        name="activity-export",
+    ),
+    path(
+        "activity/anonymise/",
+        AnonymiseActivityView.as_view(),
+        name="activity-anonymise",
+    ),
+    path(
+        "activity/global/",
+        GlobalActivitySummaryView.as_view(),
+        name="activity-global",
+    ),
 ]

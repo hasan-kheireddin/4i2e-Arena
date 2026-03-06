@@ -10,6 +10,7 @@ from apps.analytics.models import (
     AchievementProgress,
     AchievementUnlock,
 )
+from apps.analytics.tracking_service import track_achievement_unlocked
 from apps.analytics.xp_service import (
     apply_streak_bonus,
     award_xp_for_achievement,
@@ -47,7 +48,6 @@ async def check_achievements_after_game(session: GameSession) -> None:
                 xp_reward = ach_data.get("xp_reward", 0)
                 if xp_reward > 0:
                     await award_xp_for_achievement(user_id, xp_reward)
-
 
 
 async def check_tournament_achievements(user_id: int, is_winner: bool) -> None:
@@ -437,6 +437,13 @@ def _create_unlock(
     logger.info(
         "Achievement unlocked: user=%s achievement=%s",
         user_id, achievement.key,
+    )
+    # Track achievement unlock activity event
+    track_achievement_unlocked(
+        user_id,
+        achievement_key=achievement.key,
+        achievement_name=achievement.name,
+        xp_reward=achievement.xp_reward,
     )
 
     return {
