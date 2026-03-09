@@ -20,17 +20,6 @@ export default function DarkModeToggle() {
   const toggleDark = () => setIsDark(!isDark);
 
   return (
-    <button
-      onClick={toggleDark}
-      className="fixed top-4 right-4 p-2 rounded-lg transition-colors z-50"
-      style={{
-        backgroundColor: "var(--color-bg-card)",
-        border: "1px solid var(--color-border)",
-        color: "var(--color-text-primary)",
-      }}
-      aria-label="Toggle dark mode"
-    >
-      {isDark ? "🌙" : "☀️"}
-    </button>
+    <> </>
   );
 }

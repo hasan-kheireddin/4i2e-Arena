@@ -32,7 +32,7 @@ function App() {
 
           {/* ========== PROTECTED ROUTES (With Layout) ========== */}
           <Route
-            path="/dashboard"
+            path="/HomePage"
             element={
                 <Layout>
                   <HomePage />

@@ -1,0 +1,240 @@
+import {
+  Home,
+  Gamepad2,
+  Trophy,
+  BarChart3,
+  History,
+  LineChart,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+} from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { cn } from '../lib/utils';
+import { useState } from 'react';
+import { Avatar } from './ui/Avatar';
+
+interface NavItemDef {
+  label: string;
+  icon: React.ReactNode;
+  to: string;
+  children?: { label: string; to: string }[];
+}
+
+const navItems: NavItemDef[] = [
+  { label: 'Dashboard', icon: <Home className="w-5 h-5" />, to: '/dashboard' },
+  {
+    label: 'Games',
+    icon: <Gamepad2 className="w-5 h-5" />,
+    to: '/games',
+    children: [
+      { label: 'Tic-Tac-Toe', to: '/games/tictactoe' },
+      { label: 'Pong', to: '/games/pong' },
+    ],
+  },
+  { label: 'Tournaments', icon: <Trophy className="w-5 h-5" />, to: '/tournaments' },
+  { label: 'Leaderboard', icon: <BarChart3 className="w-5 h-5" />, to: '/leaderboard' },
+  { label: 'Match History', icon: <History className="w-5 h-5" />, to: '/history' },
+  { label: 'Analytics', icon: <LineChart className="w-5 h-5" />, to: '/analytics' },
+  { label: 'Settings', icon: <Settings className="w-5 h-5" />, to: '/setup-2fa' },
+];
+
+const onlineFriends = [
+  { name: 'Sarah K.', online: true },
+  { name: 'Mike J.', online: true },
+  { name: 'Emma W.', online: true },
+];
+
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const location = useLocation();
+
+  return (
+    <aside
+      className={cn(
+        'fixed top-16 left-0 h-[calc(100vh-64px)] z-40 transition-all duration-250 flex flex-col',
+        collapsed ? 'w-16' : 'w-60'
+      )}
+      style={{
+        backgroundColor: 'var(--color-bg-card)',
+        borderRight: '1px solid var(--color-border)',
+      }}
+    >
+      {/* Collapse Toggle */}
+      <button
+        onClick={onToggle}
+        className="absolute -right-3 top-6 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10"
+        style={{
+          backgroundColor: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-text-muted)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'var(--color-text-primary)';
+          e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--color-text-muted)';
+          e.currentTarget.style.backgroundColor = 'var(--color-bg-card)';
+        }}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+      </button>
+
+      {/* Nav Items */}
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto" aria-label="Sidebar">
+        {navItems.map((item) => {
+          const isActive =
+            item.to === '/dashboard'
+              ? location.pathname === '/dashboard'
+              : location.pathname.startsWith(item.to);
+          const hasChildren = item.children && item.children.length > 0;
+          const isExpanded = expandedItem === item.label;
+
+          return (
+            <div key={item.label}>
+              {hasChildren ? (
+                <button
+                  onClick={() => setExpandedItem(isExpanded ? null : item.label)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 outline-none',
+                    collapsed && 'justify-center px-0'
+                  )}
+                  style={{
+                    backgroundColor: isActive ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    borderLeft: isActive ? '3px solid var(--color-primary)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
+                      e.currentTarget.style.color = 'var(--color-text-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    }
+                  }}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <ChevronRight
+                        className={cn(
+                          'w-4 h-4 transition-transform duration-150',
+                          isExpanded && 'rotate-90'
+                        )}
+                      />
+                    </>
+                  )}
+                </button>
+              ) : (
+                <NavLink
+                  to={item.to}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 outline-none',
+                    collapsed && 'justify-center px-0'
+                  )}
+                  style={{
+                    backgroundColor: isActive ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    borderLeft: isActive ? '3px solid var(--color-primary)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
+                      e.currentTarget.style.color = 'var(--color-text-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    }
+                  }}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  {!collapsed && <span>{item.label}</span>}
+                </NavLink>
+              )}
+
+              {/* Sub-items */}
+              {hasChildren && isExpanded && !collapsed && (
+                <div className="ml-5 mt-1 space-y-0.5">
+                  {item.children!.map((child) => {
+                    const childActive = location.pathname === child.to;
+                    return (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
+                        style={{
+                          color: childActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          backgroundColor: childActive ? 'rgba(168, 85, 247, 0.05)' : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!childActive) {
+                            e.currentTarget.style.color = 'var(--color-text-primary)';
+                            e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!childActive) {
+                            e.currentTarget.style.color = 'var(--color-text-muted)';
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        <Circle className="w-1.5 h-1.5 fill-current" />
+                        {child.label}
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Online Friends */}
+      {!collapsed && (
+        <div className="px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <p 
+            className="text-[10px] font-medium uppercase tracking-widest mb-3"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Online — {onlineFriends.length}
+          </p>
+          <div className="space-y-2">
+            {onlineFriends.map((f) => (
+              <div key={f.name} className="flex items-center gap-2.5 group cursor-pointer">
+                <Avatar name={f.name} size="sm" online />
+                <span 
+                  className="text-xs truncate transition-colors"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-text-primary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-secondary)'}
+                >
+                  {f.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
