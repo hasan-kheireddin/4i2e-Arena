@@ -11,9 +11,16 @@ import ForgotPasswordPage from "./pages/Forgotpasswordpage";
 import ResetPasswordPage from "./pages/Resetpasswordpage";
 import DarkModeToggle from "./components/Darkmodetoggle";
 import TicTacToePage from "./pages/Tictactoepage";
+import PongPage from "./pages/PongPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import NotFoundPage from "./pages/Notfoundpage";
 import LandingPage from "./pages/Landingpage";
+import PlayPage from "./pages/PlayPage";
+import TournamentPage from "./pages/TournamentPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
+import MatchHistoryPage from "./pages/MatchHistoryPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function App() {
   return (
@@ -32,7 +39,7 @@ function App() {
 
           {/* ========== PROTECTED ROUTES (With Layout) ========== */}
           <Route
-            path="/HomePage"
+            path="/home"
             element={
                 <Layout>
                   <HomePage />
@@ -43,20 +50,73 @@ function App() {
           <Route
             path="/setup-2fa"
             element={
-              <ProtectedRoute>
                 <Layout>
                   <Setup2FAPage />
                 </Layout>
-              </ProtectedRoute>
+            }
+          />
+
+          {/* TournamentPage SHOULD have Layout (with Navbar/Sidebar) */}
+          <Route
+            path="/tournaments"
+            element={
+                <Layout>  {/* ← Added Layout */}
+                  <TournamentPage />
+                </Layout>
+            }
+          />
+          <Route
+            path="/leaderboard"
+            element={
+                <Layout>  {/* ← Added Layout */}
+                  <LeaderboardPage />
+                </Layout>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+                <Layout>  {/* ← Added Layout */}
+                  <MatchHistoryPage />
+                </Layout>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+                <Layout>  {/* ← Added Layout */}
+                  <AnalyticsPage />
+                </Layout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+                <Layout>  {/* ← Added Layout */}
+                  <SettingsPage />
+                </Layout>
             }
           />
 
           {/* ========== GAME ROUTES (Protected, No Layout - Full Screen) ========== */}
           <Route
+            path="/games/playpage" 
+            element={
+                <PlayPage />
+            }
+          />
+
+          <Route
             path="/games/tictactoe"
             element={
-              
                 <TicTacToePage />
+            }
+          />
+
+          <Route
+            path="/games/pong"
+            element={
+                <PongPage />
             }
           />
 

@@ -64,7 +64,7 @@ export default function HomePage() {
             </div>
           </div>
           <Link
-            to="/games/tictactoe"
+            to="/games/playpage"
             className="px-6 py-3 rounded-lg font-semibold text-white flex items-center gap-2 transition-all duration-200"
             style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}

@@ -23,21 +23,17 @@ interface NavItemDef {
 }
 
 const navItems: NavItemDef[] = [
-  { label: 'Dashboard', icon: <Home className="w-5 h-5" />, to: '/dashboard' },
+  { label: 'Dashboard', icon: <Home className="w-5 h-5" />, to: '/Home' },
   {
     label: 'Games',
     icon: <Gamepad2 className="w-5 h-5" />,
-    to: '/games',
-    children: [
-      { label: 'Tic-Tac-Toe', to: '/games/tictactoe' },
-      { label: 'Pong', to: '/games/pong' },
-    ],
+    to: '/games/playpage'
   },
   { label: 'Tournaments', icon: <Trophy className="w-5 h-5" />, to: '/tournaments' },
   { label: 'Leaderboard', icon: <BarChart3 className="w-5 h-5" />, to: '/leaderboard' },
   { label: 'Match History', icon: <History className="w-5 h-5" />, to: '/history' },
   { label: 'Analytics', icon: <LineChart className="w-5 h-5" />, to: '/analytics' },
-  { label: 'Settings', icon: <Settings className="w-5 h-5" />, to: '/setup-2fa' },
+  { label: 'Settings', icon: <Settings className="w-5 h-5" />, to: '/settings' },
 ];
 
 const onlineFriends = [
