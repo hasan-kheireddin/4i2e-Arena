@@ -1,70 +1,162 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import { cn } from '../lib/utils';
+import {
+  getTournaments,
+  getMyTournamentStats,
+  joinTournament,
+  getTournamentBracket,
+  createTournament,
+  type Tournament,
+  type TournamentStats,
+  type Bracket,
+} from '../services/tournaments';
 
 type Tab = 'active' | 'upcoming' | 'completed';
 
-interface Tournament {
-  id: string;
-  name: string;
-  game: 'Pong' | 'Tic-Tac-Toe';
-  status: 'active' | 'upcoming' | 'completed';
-  players: { current: number; max: number };
-  prize: string;
-  startDate: string;
-  format: string;
-  entryFee: string;
+function apiStatusToTab(status: Tournament['status']): Tab {
+  if (status === 'in_progress') return 'active';
+  if (status === 'registration') return 'upcoming';
+  return 'completed';
 }
 
-const tournaments: Tournament[] = [
-  { id: '1', name: 'Arena Grand Prix', game: 'Pong', status: 'active', players: { current: 14, max: 16 }, prize: '500 XP', startDate: 'Live Now', format: 'Single Elim', entryFee: 'Free' },
-  { id: '2', name: 'Sunday Showdown', game: 'Tic-Tac-Toe', status: 'active', players: { current: 8, max: 8 }, prize: '200 XP', startDate: 'Round 2', format: 'Double Elim', entryFee: 'Free' },
-  { id: '3', name: 'Weekly Blitz', game: 'Pong', status: 'upcoming', players: { current: 5, max: 32 }, prize: '1000 XP', startDate: 'Tomorrow 6PM', format: 'Swiss', entryFee: '50 XP' },
-  { id: '4', name: 'Newcomer Cup', game: 'Tic-Tac-Toe', status: 'upcoming', players: { current: 12, max: 16 }, prize: '300 XP', startDate: 'Jan 20', format: 'Round Robin', entryFee: 'Free' },
-  { id: '5', name: 'Winter Championship', game: 'Pong', status: 'completed', players: { current: 32, max: 32 }, prize: '2000 XP', startDate: 'Ended Jan 10', format: 'Single Elim', entryFee: '100 XP' },
-  { id: '6', name: 'Holiday Havoc', game: 'Tic-Tac-Toe', status: 'completed', players: { current: 16, max: 16 }, prize: '500 XP', startDate: 'Ended Jan 5', format: 'Double Elim', entryFee: 'Free' },
-];
+function formatStartTime(iso: string | null): string {
+  if (!iso) return 'TBD';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = d.getTime() - now.getTime();
+  if (diffMs < 0) return 'Started';
+  const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffH < 24) return `In ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  return `In ${diffD}d`;
+}
 
-const bracketRounds = [
-  { name: 'Quarter-Finals', matches: [
-    { p1: 'DragonX', p2: 'NovaStar', s1: 3, s2: 1, winner: 'p1' },
-    { p1: 'PhantomAce', p2: 'BlitzKing', s1: 2, s2: 3, winner: 'p2' },
-    { p1: 'Echo', p2: 'Viper', s1: 3, s2: 0, winner: 'p1' },
-    { p1: 'Zenith', p2: 'Spark', s1: 1, s2: 3, winner: 'p2' },
-  ]},
-  { name: 'Semi-Finals', matches: [
-    { p1: 'DragonX', p2: 'BlitzKing', s1: 3, s2: 2, winner: 'p1' },
-    { p1: 'Echo', p2: 'Spark', s1: 0, s2: 0, winner: null },
-  ]},
-  { name: 'Final', matches: [
-    { p1: 'TBD', p2: 'TBD', s1: 0, s2: 0, winner: null },
-  ]},
-];
+function gameLabel(gt: Tournament['game_type']): string {
+  return gt === 'pong' ? 'Pong' : 'Tic-Tac-Toe';
+}
+
+function StatusBadge({ status }: { status: Tournament['status'] }) {
+  const cfg = {
+    in_progress: { label: 'Live', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+    registration: { label: 'Open', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+    completed: { label: 'Ended', color: 'var(--color-text-muted)', bg: 'rgba(148,163,184,0.1)' },
+    canceled: { label: 'Canceled', color: 'var(--color-error)', bg: 'rgba(239,68,68,0.1)' },
+  }[status];
+  return (
+    <span
+      className="px-2 py-0.5 rounded text-xs font-semibold"
+      style={{ color: cfg.color, backgroundColor: cfg.bg }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
 
 export default function TournamentPage() {
   const [tab, setTab] = useState<Tab>('active');
   const [search, setSearch] = useState('');
-  const [showBracket, setShowBracket] = useState(false);
 
-  const filtered = tournaments.filter((t) =>
-    t.status === tab && t.name.toLowerCase().includes(search.toLowerCase())
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [stats, setStats] = useState<TournamentStats | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
+
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  const [bracketTournamentId, setBracketTournamentId] = useState<string | null>(null);
+  const [bracket, setBracket] = useState<Bracket | null>(null);
+  const [loadingBracket, setLoadingBracket] = useState(false);
+  const [bracketError, setBracketError] = useState<string | null>(null);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createGameType, setCreateGameType] = useState<'pong' | 'tictactoe'>('pong');
+  const [createMax, setCreateMax] = useState(8);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [t, s] = await Promise.all([getTournaments(), getMyTournamentStats()]);
+      setTournaments(t);
+      setStats(s);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filtered = tournaments.filter(
+    (t) => apiStatusToTab(t.status) === tab && t.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleJoin = async (id: string) => {
+    setJoiningId(id);
+    setJoinError(null);
+    try {
+      await joinTournament(id);
+      await fetchData();
+    } catch (e: unknown) {
+      const msg = (e as { data?: { detail?: string } })?.data?.detail ?? 'Failed to join tournament';
+      setJoinError(msg);
+    } finally {
+      setJoiningId(null);
+    }
+  };
+
+  const handleViewBracket = async (id: string) => {
+    setBracketTournamentId(id);
+    setBracket(null);
+    setBracketError(null);
+    setLoadingBracket(true);
+    try {
+      const b = await getTournamentBracket(id);
+      setBracket(b);
+    } catch {
+      setBracketError('Failed to load bracket');
+    } finally {
+      setLoadingBracket(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!createName.trim()) { setCreateError('Name is required'); return; }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await createTournament({ name: createName.trim(), game_type: createGameType, max_participants: createMax });
+      setShowCreate(false);
+      setCreateName('');
+      setCreateGameType('pong');
+      setCreateMax(8);
+      await fetchData();
+    } catch (e: unknown) {
+      const msg = (e as { data?: { detail?: string } })?.data?.detail ?? 'Failed to create tournament';
+      setCreateError(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-            Tournaments
-          </h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Tournaments</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
             Compete in organized brackets for glory and XP
           </p>
         </div>
         <button
+          onClick={() => setShowCreate(true)}
           className="px-6 py-2 rounded-lg font-medium text-white flex items-center gap-2 transition-all duration-200"
           style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
           🏆 Create Tournament
         </button>
@@ -72,155 +164,129 @@ export default function TournamentPage() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon="🏆" label="Tournaments Won" value="3" trend="+1" />
-        <StatCard icon="🎯" label="Participated" value="12" />
-        <StatCard icon="🥇" label="Best Placement" value="1st" />
-        <StatCard icon="👑" label="Total Winnings" value="2,450 XP" />
+        <StatCard icon="🏆" label="Tournaments Won" value={stats ? String(stats.tournaments_won) : '—'} />
+        <StatCard icon="🎯" label="Participated" value={stats ? String(stats.tournaments_participated) : '—'} />
+        <StatCard icon="🥇" label="Best Placement" value={stats?.best_placement != null ? `#${stats.best_placement}` : '—'} />
+        <StatCard icon="👑" label="Total Winnings" value={stats ? `${stats.total_winnings_xp.toLocaleString()} XP` : '—'} />
       </div>
 
-      {/* Tabs & Search */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div 
-          className="flex gap-1 rounded-xl p-1"
-          style={{
-            backgroundColor: 'var(--color-bg-card)',
-            border: '1px solid var(--color-border)',
-          }}
+      {/* Join error banner */}
+      {joinError && (
+        <div
+          className="flex items-center justify-between px-4 py-3 rounded-lg text-sm"
+          style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--color-error)' }}
         >
+          <span>{joinError}</span>
+          <button onClick={() => setJoinError(null)} className="ml-4 font-bold">✕</button>
+        </div>
+      )}
+
+      {/* Tabs + Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex rounded-lg p-1 gap-1" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           {(['active', 'upcoming', 'completed'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className="px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all"
+              className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 capitalize')}
               style={{
-                backgroundColor: tab === t ? 'var(--color-primary)' : 'transparent',
-                color: tab === t ? '#ffffff' : 'var(--color-text-secondary)',
-                boxShadow: tab === t ? '0 0 15px rgba(168, 85, 247, 0.3)' : 'none',
-              }}
-              onMouseEnter={(e) => {
-                if (tab !== t) {
-                  e.currentTarget.style.color = 'var(--color-text-primary)';
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (tab !== t) {
-                  e.currentTarget.style.color = 'var(--color-text-secondary)';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
+                backgroundColor: tab === t ? 'rgba(168,85,247,0.2)' : 'transparent',
+                color: tab === t ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
               }}
             >
               {t}
             </button>
           ))}
         </div>
-        <div className="flex-1 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }}>
-            🔍
-          </span>
-          <input
-            placeholder="Search tournaments..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg px-4 py-2 pl-10 text-sm outline-none transition-all duration-200"
-            style={{
-              backgroundColor: 'var(--color-bg-input)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-text-primary)',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-primary)';
-              e.currentTarget.style.boxShadow = '0 0 0 2px rgba(168, 85, 247, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-border)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search tournaments..."
+          className="flex-1 px-4 py-2 rounded-lg text-sm outline-none"
+          style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-primary)',
+          }}
+        />
       </div>
 
       {/* Tournament Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((t) => (
-          <div
-            key={t.id}
-            className="p-4 rounded-lg transition-all duration-200"
-            style={{
-              backgroundColor: 'var(--color-bg-card)',
-              border: '1px solid var(--color-border)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
-              e.currentTarget.style.borderColor = 'var(--color-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--color-bg-card)';
-              e.currentTarget.style.borderColor = 'var(--color-border)';
-            }}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                    {t.name}
-                  </h3>
-                  {t.status === 'active' && (
-                    <span 
-                      className="px-2 py-0.5 rounded-md text-xs font-bold flex items-center gap-1"
-                      style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'var(--color-success)' }}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-                      Live
-                    </span>
-                  )}
+      {loadingData ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-48 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="text-4xl mb-3">🏆</span>
+          <p className="text-sm">No {tab} tournaments{search ? ' matching your search' : ''}.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map((t) => (
+            <div
+              key={t.id}
+              className="p-5 rounded-xl space-y-4 transition-all duration-200"
+              style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t.name}</h3>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                    {gameLabel(t.game_type)} • {t.format ?? 'Open'}
+                  </p>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  {t.game} • {t.format}
-                </p>
+                <StatusBadge status={t.status} />
               </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                  {t.prize}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  {t.entryFee === 'Free' ? 'Free Entry' : `Entry: ${t.entryFee}`}
-                </p>
-              </div>
-            </div>
 
-            {/* Player Count */}
-            <div className="mb-3">
-              <div className="flex items-center justify-between text-xs mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                <span>👥 {t.players.current}/{t.players.max} Players</span>
-                <span>📅 {t.startDate}</span>
+              <div className="grid grid-cols-3 gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                <div>
+                  <p style={{ color: 'var(--color-text-muted)' }}>Players</p>
+                  <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                    {t.participants_count}/{t.max_participants}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--color-text-muted)' }}>Prize</p>
+                  <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t.prize_description ?? '—'}</p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--color-text-muted)' }}>Starts</p>
+                  <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{formatStartTime(t.start_time)}</p>
+                </div>
               </div>
-              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-input)' }}>
-                <div 
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ 
-                    width: `${(t.players.current / t.players.max) * 100}%`,
-                    background: t.players.current >= t.players.max 
-                      ? 'linear-gradient(90deg, #fb923c 0%, #f59e0b 100%)'
-                      : 'linear-gradient(90deg, #a855f7 0%, #ec4899 100%)',
+
+              {/* Player bar */}
+              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-input)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${(t.participants_count / t.max_participants) * 100}%`,
+                    background: 'linear-gradient(90deg, #a855f7 0%, #ec4899 100%)',
                   }}
                 />
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="flex gap-2">
-              {t.status === 'active' && (
-                <>
+              <div className="flex gap-2">
+                {t.status === 'registration' && (
                   <button
-                    onClick={() => setShowBracket(true)}
-                    className="flex-1 px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-all duration-200"
-                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+                    onClick={() => handleJoin(t.id)}
+                    disabled={joiningId === t.id}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all duration-200"
+                    style={{
+                      background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                      opacity: joiningId === t.id ? 0.6 : 1,
+                    }}
                   >
-                    View Bracket
+                    {joiningId === t.id ? 'Joining…' : 'Register'}
                   </button>
+                )}
+                {(t.status === 'in_progress' || t.status === 'completed') && (
                   <button
-                    className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1"
+                    onClick={() => handleViewBracket(t.id)}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
                     style={{
                       backgroundColor: 'var(--color-bg-input)',
                       color: 'var(--color-text-primary)',
@@ -229,115 +295,149 @@ export default function TournamentPage() {
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
                   >
-                    ⚔️ Spectate
+                    {t.status === 'completed' ? 'View Results' : 'View Bracket'}
                   </button>
-                </>
-              )}
-              {t.status === 'upcoming' && (
-                <button
-                  disabled={t.players.current >= t.players.max}
-                  className="flex-1 px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-all duration-200"
-                  style={{ 
-                    background: t.players.current >= t.players.max 
-                      ? 'var(--color-primary-disabled)' 
-                      : 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                    cursor: t.players.current >= t.players.max ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {t.players.current >= t.players.max ? 'Full' : 'Register'}
-                </button>
-              )}
-              {t.status === 'completed' && (
-                <button
-                  className="flex-1 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
-                  style={{
-                    backgroundColor: 'var(--color-bg-input)',
-                    color: 'var(--color-text-primary)',
-                    border: '1px solid var(--color-border)',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
-                >
-                  View Results
-                </button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <div className="col-span-full text-center py-12">
-            <span className="text-6xl mb-3 block">🏆</span>
-            <p style={{ color: 'var(--color-text-secondary)' }}>No tournaments found</p>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Bracket View */}
-      {showBracket && (
-        <div 
-          className="p-6 rounded-lg"
-          style={{
-            backgroundColor: 'var(--color-bg-card)',
-            border: '1px solid var(--color-border)',
-          }}
+      {/* Bracket Panel */}
+      {bracketTournamentId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-              Arena Grand Prix — Bracket
-            </h2>
-            <button
-              onClick={() => setShowBracket(false)}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
-              style={{
-                backgroundColor: 'var(--color-bg-input)',
-                color: 'var(--color-text-primary)',
-                border: '1px solid var(--color-border)',
-              }}
-            >
-              Close
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <div className="flex gap-4 min-w-[700px]">
-              {bracketRounds.map((round) => (
-                <div key={round.name} className="flex-1 space-y-3 min-w-[200px]">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                    {round.name}
-                  </h3>
-                  {round.matches.map((m, mi) => (
-                    <div 
-                      key={mi} 
-                      className="rounded-lg overflow-hidden"
-                      style={{
-                        backgroundColor: 'var(--color-bg-input)',
-                        border: '1px solid var(--color-border)',
-                      }}
+          <div
+            className="w-full max-w-3xl max-h-[80vh] overflow-y-auto rounded-2xl p-6 space-y-4"
+            style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Tournament Bracket</h2>
+              <button
+                onClick={() => { setBracketTournamentId(null); setBracket(null); }}
+                style={{ color: 'var(--color-text-muted)' }}
+                className="text-xl font-bold hover:opacity-70 transition-opacity"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingBracket && (
+              <div className="flex justify-center py-12">
+                <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+              </div>
+            )}
+            {bracketError && <p className="text-sm text-center py-8" style={{ color: 'var(--color-error)' }}>{bracketError}</p>}
+            {bracket && bracket.rounds.map((round) => (
+              <div key={round.round_number}>
+                <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>{round.name}</h3>
+                <div className="space-y-2">
+                  {round.matches.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-3 p-3 rounded-lg text-sm"
+                      style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
                     >
-                      <div 
-                        className="flex items-center justify-between px-3 py-2 text-sm"
-                        style={{
-                          backgroundColor: m.winner === 'p1' ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                          color: m.winner === 'p1' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                        }}
+                      <span
+                        className="flex-1 truncate font-medium"
+                        style={{ color: m.winner_username === m.player1_username ? 'var(--color-success)' : 'var(--color-text-primary)' }}
                       >
-                        <span className="truncate">{m.p1}</span>
-                        <span className="font-mono text-xs font-semibold">{m.s1}</span>
-                      </div>
-                      <div style={{ height: '1px', backgroundColor: 'var(--color-border)' }} />
-                      <div 
-                        className="flex items-center justify-between px-3 py-2 text-sm"
-                        style={{
-                          backgroundColor: m.winner === 'p2' ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                          color: m.winner === 'p2' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                        }}
+                        {m.player1_username ?? 'TBD'}
+                      </span>
+                      <span className="font-mono font-bold text-xs px-2" style={{ color: 'var(--color-text-muted)' }}>
+                        {m.player1_score} – {m.player2_score}
+                      </span>
+                      <span
+                        className="flex-1 truncate font-medium text-right"
+                        style={{ color: m.winner_username === m.player2_username ? 'var(--color-success)' : 'var(--color-text-primary)' }}
                       >
-                        <span className="truncate">{m.p2}</span>
-                        <span className="font-mono text-xs font-semibold">{m.s2}</span>
-                      </div>
+                        {m.player2_username ?? 'TBD'}
+                      </span>
                     </div>
                   ))}
                 </div>
-              ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Create Tournament Modal */}
+      {showCreate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6 space-y-4"
+            style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Create Tournament</h2>
+              <button onClick={() => setShowCreate(false)} style={{ color: 'var(--color-text-muted)' }} className="text-xl font-bold hover:opacity-70">✕</button>
+            </div>
+
+            {createError && (
+              <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--color-error)' }}>
+                {createError}
+              </p>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>Name</label>
+                <input
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="Tournament name"
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>Game</label>
+                <select
+                  value={createGameType}
+                  onChange={(e) => setCreateGameType(e.target.value as 'pong' | 'tictactoe')}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                >
+                  <option value="pong">Pong</option>
+                  <option value="tictactoe">Tic-Tac-Toe</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>Max Players</label>
+                <select
+                  value={createMax}
+                  onChange={(e) => setCreateMax(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                >
+                  {[4, 8, 16, 32].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all duration-200"
+                style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', opacity: creating ? 0.6 : 1 }}
+              >
+                {creating ? 'Creating…' : 'Create'}
+              </button>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -346,27 +446,14 @@ export default function TournamentPage() {
   );
 }
 
-function StatCard({ icon, label, value, trend }: { icon: string; label: string; value: string; trend?: string }) {
+function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div 
-      className="p-4 rounded-lg"
-      style={{ 
-        backgroundColor: 'var(--color-bg-card)',
-        border: '1px solid var(--color-border)',
-      }}
-    >
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-2xl">{icon}</span>
-        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+    <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xl">{icon}</span>
+        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
       </div>
-      <div className="flex items-end gap-2">
-        <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{value}</span>
-        {trend && (
-          <span className="text-sm font-medium mb-1" style={{ color: 'var(--color-success)' }}>
-            {trend}
-          </span>
-        )}
-      </div>
+      <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{value}</p>
     </div>
   );
 }

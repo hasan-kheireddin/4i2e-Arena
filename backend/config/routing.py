@@ -1,7 +1,7 @@
 from django.urls import re_path
 from apps.games.matchmaking_consumer import MatchmakingConsumer
 from apps.games.pong_consumer import PongConsumer
-from apps.games.tictactoe_consumer import TicTacToeConsumer
+from apps.games.tictaktoe_consumer import TicTacToeConsumer
 from apps.tournaments.tournament_consumer import TournamentConsumer
 from apps.analytics.notification_consumer import NotificationConsumer
 

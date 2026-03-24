@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional  # noqa: F401
 
 
 @dataclass(frozen=True)
@@ -50,21 +50,6 @@ def _map_42_profile(data: dict) -> dict:
     }
 
 
-def _map_google_profile(data: dict) -> dict:
-    """
-    Google userinfo endpoint → normalised profile dict.
-
-    Google People/UserInfo returns: sub, email, name, picture, given_name
-    Docs: https://developers.google.com/identity/protocols/oauth2
-    """
-    return {
-        "provider_user_id": data.get("sub", ""),
-        "email": data.get("email", ""),
-        "username": data.get("email", "").split("@")[0],
-        "display_name": data.get("name", ""),
-        "avatar_url": data.get("picture", ""),
-    }
-
 OAUTH_PROVIDERS: Dict[str, OAuthProvider] = {
     "42": OAuthProvider(
         name="42",
@@ -76,17 +61,6 @@ OAUTH_PROVIDERS: Dict[str, OAuthProvider] = {
         client_secret_env="OAUTH_42_CLIENT_SECRET",
         redirect_uri_env="OAUTH_42_REDIRECT_URI",
         profile_mapper=_map_42_profile,
-    ),
-    "google": OAuthProvider(
-        name="google",
-        authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
-        token_url="https://oauth2.googleapis.com/token",
-        user_info_url="https://www.googleapis.com/oauth2/v3/userinfo",
-        scopes=["openid", "email", "profile"],
-        client_id_env="OAUTH_GOOGLE_CLIENT_ID",
-        client_secret_env="OAUTH_GOOGLE_CLIENT_SECRET",
-        redirect_uri_env="OAUTH_GOOGLE_REDIRECT_URI",
-        profile_mapper=_map_google_profile,
     ),
 }
 

@@ -58,7 +58,7 @@ class User(AbstractUser):
 
 class OAuthAccount(models.Model):
     """
-    Links a third-party OAuth provider (42 / Google) to a local User.
+    Links a third-party OAuth provider (42) to a local User.
 
     A user may have multiple OAuth accounts (one per provider).
     The (provider, provider_user_id) pair is unique so the same external
@@ -67,7 +67,6 @@ class OAuthAccount(models.Model):
 
     PROVIDER_CHOICES = [
         ("42", "42 School"),
-        ("google", "Google"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

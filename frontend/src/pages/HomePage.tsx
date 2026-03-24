@@ -1,38 +1,77 @@
+import { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getMyMatches, getMyStats, getLeaderboard, type Match, type LeaderboardEntry, type UserStats } from '../services/games';
 
-// Mock data
-const recentMatches = [
-  { id: 1, opponent: 'DragonSlayer', game: 'Pong', result: 'win' as const, score: '5-3', xp: 25, time: '2h ago' },
-  { id: 2, opponent: 'NightOwl42', game: 'Tic-Tac-Toe', result: 'loss' as const, score: '1-2', xp: 5, time: '5h ago' },
-  { id: 3, opponent: 'ProGamer99', game: 'Pong', result: 'win' as const, score: '5-1', xp: 30, time: '1d ago' },
-];
-
-const topPlayers = [
-  { rank: 1, name: 'MasterPong', points: 3150 },
-  { rank: 2, name: 'AcePlayer', points: 2380 },
-  { rank: 3, name: 'SwiftStrike', points: 2120 },
-  { rank: 4, name: 'GameKing', points: 1890 },
-  { rank: 5, name: 'ProGamer99', points: 1780 },
-];
-
-const achievements = [
-  { name: 'First Blood', icon: '⚔️', rarity: 'common' },
-  { name: 'Winning Streak', icon: '🔥', rarity: 'rare' },
-  { name: 'Tournament Victor', icon: '🏆', rarity: 'epic' },
-];
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
 
 export default function HomePage() {
   const { user } = useAuth();
-  const level = 24;
-  const currentXP = 2450;
-  const xpToNext = 1550;
-  const xpProgress = (currentXP / (currentXP + xpToNext)) * 100;
+
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [recentMatches, setRecentMatches] = useState<Match[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchAll() {
+      try {
+        const [statsData, matchesData, lbData] = await Promise.all([
+          getMyStats(),
+          getMyMatches({ page_size: 3 }),
+          getLeaderboard({ limit: 5 }),
+        ]);
+        if (!cancelled) {
+          setStats(statsData);
+          setRecentMatches(matchesData.results);
+          setLeaderboard(lbData);
+        }
+      } catch {
+        // fallback to zeros / empty arrays
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchAll();
+    return () => { cancelled = true; };
+  }, []);
+
+  const totalXp    = stats?.overview.total_xp ?? 0;
+  const level      = Math.floor(totalXp / 200) + 1;
+  const xpToNext   = 200 - (totalXp % 200);
+  const xpProgress = ((200 - xpToNext) / 200) * 100;
+
+  const totalWins  = stats?.overview.wins ?? 0;
+  const winRatePct = stats ? (stats.overview.win_rate * 100).toFixed(1) + '%' : '0.0%';
+  const streak     = stats?.streaks.current.count ?? 0;
+
+  const myLeaderboardEntry = leaderboard.find((e) => e.username === user?.username);
+  const myRank = myLeaderboardEntry ? `#${myLeaderboardEntry.rank}` : '#–';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div
+          className="w-10 h-10 rounded-full border-4 animate-spin"
+          style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div 
+      <div
         className="relative overflow-hidden rounded-2xl p-6 md:p-8"
         style={{
           background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(236, 72, 153, 0.06) 50%, rgba(249, 115, 22, 0.04) 100%)',
@@ -49,12 +88,12 @@ export default function HomePage() {
                 backgroundClip: 'text',
               }}>{user?.username || 'Player'}</span>
             </h1>
-            <p className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>Level {level} • {currentXP.toLocaleString()} XP</p>
+            <p className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>Level {level} • {totalXp.toLocaleString()} XP</p>
             <div className="mt-3 max-w-xs">
               <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-input)' }}>
-                <div 
+                <div
                   className="h-full rounded-full transition-all duration-500"
-                  style={{ 
+                  style={{
                     width: `${xpProgress}%`,
                     background: 'linear-gradient(90deg, #a855f7 0%, #ec4899 100%)',
                   }}
@@ -77,10 +116,10 @@ export default function HomePage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon="🏆" label="Total Wins" value="156" trend="+12%" />
-        <StatCard icon="📈" label="Win Rate" value="67.3%" />
-        <StatCard icon="🔥" label="Current Streak" value="5" />
-        <StatCard icon="⭐" label="Rank" value="#42" trend="+3" />
+        <StatCard icon="🏆" label="Total Wins" value={String(totalWins)} />
+        <StatCard icon="📈" label="Win Rate" value={winRatePct} />
+        <StatCard icon="🔥" label="Current Streak" value={String(streak)} />
+        <StatCard icon="⭐" label="Rank" value={myRank} />
       </div>
 
       {/* Main Grid */}
@@ -112,8 +151,8 @@ export default function HomePage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Recent Matches</h2>
-              <Link 
-                to="/history" 
+              <Link
+                to="/history"
                 className="text-sm flex items-center gap-1 transition-colors"
                 style={{ color: 'var(--color-primary)' }}
                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
@@ -123,125 +162,87 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="space-y-3">
-              {recentMatches.map((match) => (
-                <div 
-                  key={match.id} 
-                  className="flex items-center gap-4 p-4 rounded-lg transition-all duration-200"
-                  style={{ 
-                    backgroundColor: 'var(--color-bg-card)',
-                    border: '1px solid var(--color-border)',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'}
-                >
-                  <span 
-                    className="px-3 py-1 rounded-md text-xs font-bold text-white"
-                    style={{ 
-                      backgroundColor: match.result === 'win' ? 'var(--color-success)' : 'var(--color-error)',
+              {recentMatches.length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No recent matches yet.</p>
+              )}
+              {recentMatches.map((match) => {
+                const myPlayer = match.players.find((p) => p.username === user?.username);
+                const opponent = match.players.find((p) => p.username !== user?.username);
+                const result: 'win' | 'loss' | 'draw' = myPlayer?.outcome ?? 'loss';
+                const score = `${match.player1_score}-${match.player2_score}`;
+                const xpEarned = myPlayer?.xp_earned ?? 0;
+                const gameIcon = match.game_type === 'pong' ? '🏓' : '⭕';
+                const timeLabel = match.finished_at ? timeAgo(match.finished_at) : '';
+
+                return (
+                  <div
+                    key={match.id}
+                    className="flex items-center gap-4 p-4 rounded-lg transition-all duration-200"
+                    style={{
+                      backgroundColor: 'var(--color-bg-card)',
+                      border: '1px solid var(--color-border)',
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'}
                   >
-                    {match.result.toUpperCase()}
-                  </span>
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-xs">{match.game === 'Pong' ? '🏓' : '⭕'}</span>
-                    <span className="text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>vs {match.opponent}</span>
+                    <span
+                      className="px-3 py-1 rounded-md text-xs font-bold text-white"
+                      style={{
+                        backgroundColor:
+                          result === 'win' ? 'var(--color-success)' :
+                          result === 'draw' ? '#f59e0b' :
+                          'var(--color-error)',
+                      }}
+                    >
+                      {result.toUpperCase()}
+                    </span>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-xs">{gameIcon}</span>
+                      <span className="text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
+                        vs {opponent?.username ?? 'Unknown'}
+                      </span>
+                    </div>
+                    <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text-primary)' }}>{score}</span>
+                    <span className="text-xs font-medium" style={{ color: 'var(--color-success)' }}>+{xpEarned} XP</span>
+                    <span className="text-xs hidden sm:block" style={{ color: 'var(--color-text-muted)' }}>{timeLabel}</span>
                   </div>
-                  <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text-primary)' }}>{match.score}</span>
-                  <span className="text-xs font-medium" style={{ color: 'var(--color-success)' }}>+{match.xp} XP</span>
-                  <span className="text-xs hidden sm:block" style={{ color: 'var(--color-text-muted)' }}>{match.time}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
 
         {/* Right Column (1/3) */}
         <div className="space-y-6">
-          {/* Leaderboard Preview */}
           <Card title="Leaderboard" link="/leaderboard">
             <div className="space-y-2">
-              {topPlayers.map((player) => (
+              {leaderboard.length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No leaderboard data yet.</p>
+              )}
+              {leaderboard.map((player) => (
                 <div key={player.rank} className="flex items-center gap-3 py-1.5">
-                  <span 
+                  <span
                     className="text-xs font-bold w-5 text-center"
-                    style={{ 
+                    style={{
                       color: player.rank === 1 ? '#fbbf24' :
                              player.rank === 2 ? '#94a3b8' :
-                             player.rank === 3 ? '#fb923c' : 
+                             player.rank === 3 ? '#fb923c' :
                              'var(--color-text-muted)',
                     }}
                   >
                     #{player.rank}
                   </span>
-                  <div 
+                  <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
                     style={{ backgroundColor: 'var(--color-primary)' }}
                   >
-                    {player.name.charAt(0)}
+                    {player.username.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm truncate flex-1" style={{ color: 'var(--color-text-primary)' }}>{player.name}</span>
-                  <span className="text-xs font-mono" style={{ color: 'var(--color-primary)' }}>{player.points.toLocaleString()}</span>
+                  <span className="text-sm truncate flex-1" style={{ color: 'var(--color-text-primary)' }}>{player.username}</span>
+                  <span className="text-xs font-mono" style={{ color: 'var(--color-primary)' }}>{player.total_xp.toLocaleString()}</span>
                 </div>
               ))}
             </div>
-          </Card>
-
-          {/* Achievements */}
-          <Card title="Achievements" subtitle="24/50">
-            <div className="space-y-3">
-              {achievements.map((a) => (
-                <div key={a.name} className="flex items-center gap-3">
-                  <span className="text-2xl">{a.icon}</span>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{a.name}</p>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{a.rarity}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-input)' }}>
-              <div 
-                className="h-full rounded-full transition-all duration-500"
-                style={{ 
-                  width: `${(24/50) * 100}%`,
-                  background: 'linear-gradient(90deg, #a855f7 0%, #ec4899 100%)',
-                }}
-              />
-            </div>
-          </Card>
-
-          {/* Online Players */}
-          <Card title="Online Players" subtitle="24 online">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex -space-x-2">
-                {['A', 'B', 'C', 'D', 'E', 'F'].map((initial, i) => (
-                  <div 
-                    key={i}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2"
-                    style={{ 
-                      backgroundColor: 'var(--color-primary)',
-                      ringColor: 'var(--color-bg-card)',
-                    }}
-                  >
-                    {initial}
-                  </div>
-                ))}
-              </div>
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>+18 more</span>
-            </div>
-            <Link
-              to="/games/tictactoe"
-              className="w-full px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
-              style={{ 
-                backgroundColor: 'var(--color-bg-input)',
-                color: 'var(--color-text-primary)',
-                border: '1px solid var(--color-border)',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
-            >
-              👥 Challenge Random
-            </Link>
           </Card>
         </div>
       </div>
@@ -249,12 +250,11 @@ export default function HomePage() {
   );
 }
 
-// Helper Components
 function StatCard({ icon, label, value, trend }: { icon: string; label: string; value: string; trend?: string }) {
   return (
-    <div 
+    <div
       className="p-4 rounded-lg"
-      style={{ 
+      style={{
         backgroundColor: 'var(--color-bg-card)',
         border: '1px solid var(--color-border)',
       }}
@@ -278,9 +278,9 @@ function StatCard({ icon, label, value, trend }: { icon: string; label: string; 
 function GameCard({ icon, title, players, to, gradient }: { icon: string; title: string; players: number; to: string; gradient: string }) {
   return (
     <Link to={to}>
-      <div 
+      <div
         className="h-40 flex flex-col items-center justify-center gap-3 rounded-lg transition-all duration-200 group"
-        style={{ 
+        style={{
           background: gradient,
           border: '1px solid transparent',
         }}
@@ -303,9 +303,9 @@ function GameCard({ icon, title, players, to, gradient }: { icon: string; title:
 
 function Card({ title, subtitle, link, children }: { title: string; subtitle?: string; link?: string; children: React.ReactNode }) {
   return (
-    <div 
+    <div
       className="p-4 rounded-lg"
-      style={{ 
+      style={{
         backgroundColor: 'var(--color-bg-card)',
         border: '1px solid var(--color-border)',
       }}
@@ -314,8 +314,8 @@ function Card({ title, subtitle, link, children }: { title: string; subtitle?: s
         <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
         {subtitle && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{subtitle}</span>}
         {link && (
-          <Link 
-            to={link} 
+          <Link
+            to={link}
             className="text-xs transition-opacity"
             style={{ color: 'var(--color-primary)' }}
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}

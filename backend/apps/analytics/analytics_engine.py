@@ -27,7 +27,6 @@ from django.db.models.functions import (
     TruncWeek,
 )
 from django.utils import timezone
-
 from apps.analytics.models import ActivityEvent, EventCategory
 from apps.games.models import (
     GameType,

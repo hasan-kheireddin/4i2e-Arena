@@ -14,6 +14,15 @@ class GameType(str, enum.Enum):
     TICTACTOE = "tictactoe"
 
 
+class FinishReason(str, enum.Enum):
+    SCORE = "score"                          # Normal win by score / move
+    DRAW = "draw"                            # Draw (no winner)
+    FORFEIT = "forfeit"                      # Explicit forfeit
+    DISCONNECT_FORFEIT = "disconnect_forfeit"  # Forfeit due to disconnect
+    CANCELED = "canceled"                    # Game canceled before start
+    SERVER_ERROR = "server_error"            # Internal error
+
+
 class SessionStatus(str, enum.Enum):
     WAITING = "waiting"         # Waiting for second player
     PLAYING = "playing"         # Game in progress
@@ -61,6 +70,8 @@ class GameSession:
     group_name: str = ""
     created_at: float = field(default_factory=time.time)
     finished_at: float | None = None
+    finish_reason: FinishReason | None = None
+    winner_id: int | None = None
 
     def __post_init__(self) -> None:
         if not self.group_name:
@@ -93,15 +104,22 @@ class GameSession:
     def get_opponent_slot(self, slot: int) -> int:
         return 2 if slot == 1 else 1
 
-    def mark_finished(self) -> None:
+    def mark_finished(
+        self,
+        reason: FinishReason | None = None,
+        winner_id: int | None = None,
+    ) -> None:
         """Transition status to FINISHED and record timestamp."""
         self.status = SessionStatus.FINISHED
         self.finished_at = time.time()
+        self.finish_reason = reason
+        self.winner_id = winner_id
 
-    def mark_abandoned(self) -> None:
+    def mark_abandoned(self, reason: FinishReason | None = None) -> None:
         """Transition status to ABANDONED and record timestamp."""
         self.status = SessionStatus.ABANDONED
         self.finished_at = time.time()
+        self.finish_reason = reason
 
     def mark_player_disconnected(self, slot: int) -> None:
         """Mark a player slot as disconnected and record timestamp.

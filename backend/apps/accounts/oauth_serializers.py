@@ -5,12 +5,12 @@ from .oauth_providers import OAUTH_PROVIDERS
 class OAuthInitiateSerializer(serializers.Serializer):
     """
     Validates the provider name sent by the frontend when the user
-    clicks "Sign in with 42" or "Sign in with Google".
+    clicks "Sign in with 42".
     """
 
     provider = serializers.ChoiceField(
         choices=list(OAUTH_PROVIDERS.keys()),
-        help_text="OAuth provider name: '42' or 'google'.",
+        help_text="OAuth provider name: '42'.",
     )
 
 
