@@ -160,7 +160,7 @@ export default function PlayPage() {
               </div>
             </Link>
 
-            <Link to={`/games/tictactoe?mode=${selectedMode}${selectedMode === 'ai' ? `&difficulty=${aiDifficulty}` : ''}`}>
+            <Link to={`/games/tictactoe?mode=${selectedMode === 'ai' ? 'local' : selectedMode}`}>
               <div 
                 className="flex items-center gap-4 p-5 rounded-lg transition-all duration-200 group"
                 style={{
