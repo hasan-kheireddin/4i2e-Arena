@@ -27,7 +27,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function SettingsPage() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tab, setTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
 
@@ -69,13 +69,9 @@ export default function SettingsPage() {
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     i18n.changeLanguage(lang);
-    
-    // Apply RTL for Arabic
-    if (lang === 'ar') {
-      document.documentElement.setAttribute('dir', 'rtl');
-    } else {
-      document.documentElement.setAttribute('dir', 'ltr');
-    }
+    localStorage.setItem('i18nextLng', lang);
+    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', lang);
   };
 
   const handleSave = () => {
@@ -83,18 +79,18 @@ export default function SettingsPage() {
     setTimeout(() => setSaving(false), 1000);
   };
 
-  const tabs: { key: SettingsTab; label: string; icon: string }[] = [
-    { key: 'profile', label: 'Profile', icon: '👤' },
-    { key: 'security', label: 'Security', icon: '🛡️' },
-    { key: 'notifications', label: 'Notifications', icon: '🔔' },
-    { key: 'appearance', label: 'Appearance', icon: '🎨' },
-    { key: 'audio', label: 'Audio', icon: '🔊' },
+  const tabs: { key: SettingsTab; label: string }[] = [
+    { key: 'profile', label: t('settings.tabs.profile') },
+    { key: 'security', label: t('settings.tabs.security') },
+    { key: 'notifications', label: t('settings.tabs.notifications') },
+    { key: 'appearance', label: t('settings.tabs.appearance') },
+    { key: 'audio', label: t('settings.tabs.audio') },
   ];
 
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--color-text-primary)' }}>
-        Settings
+        {t('settings.title')}
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
@@ -129,7 +125,6 @@ export default function SettingsPage() {
                 }
               }}
             >
-              <span>{t.icon}</span>
               {t.label}
             </button>
           ))}
@@ -148,32 +143,32 @@ export default function SettingsPage() {
                 }}
               >
                 <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                  Profile Information
+                  {t('settings.profile.title')}
                 </h2>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative group">
                     <Avatar name={username} size="lg" />
-                    <button 
-                      className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    <button
+                      className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white font-bold"
                       style={{ backgroundColor: 'var(--color-primary)' }}
                     >
-                      <span className="text-sm">📷</span>
+                      +
                     </button>
                   </div>
                   <div>
                     <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{username}</p>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{email}</p>
                     <button className="text-xs mt-1 hover:underline" style={{ color: 'var(--color-primary)' }}>
-                      Change avatar
+                      {t('settings.profile.change_avatar')}
                     </button>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <InputField label="Username" value={username} onChange={setUsername} icon="👤" />
-                  <InputField label="Email" type="email" value={email} onChange={setEmail} icon="✉️" />
+                  <InputField label={t('settings.profile.username')} value={username} onChange={setUsername} />
+                  <InputField label={t('settings.profile.email')} type="email" value={email} onChange={setEmail} />
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
-                      Bio
+                      {t('settings.profile.bio')}
                     </label>
                     <textarea
                       value={bio}
@@ -185,7 +180,7 @@ export default function SettingsPage() {
                         border: '1px solid var(--color-border)',
                         color: 'var(--color-text-primary)',
                       }}
-                      placeholder="Tell others about yourself..."
+                      placeholder={t('settings.profile.bio_placeholder')}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = 'var(--color-primary)';
                         e.currentTarget.style.boxShadow = '0 0 0 2px rgba(168, 85, 247, 0.2)';
@@ -208,7 +203,7 @@ export default function SettingsPage() {
                     cursor: saving ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  💾 {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? t('settings.profile.saving') : t('settings.profile.save')}
                 </button>
               </div>
             </>
@@ -219,27 +214,27 @@ export default function SettingsPage() {
             <>
               <Card>
                 <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                  Change Password
+                  {t('settings.security.change_password')}
                 </h2>
                 <div className="space-y-4">
-                  <InputField label="Current Password" type="password" placeholder="••••••••" />
-                  <InputField label="New Password" type="password" placeholder="••••••••" />
-                  <InputField label="Confirm New Password" type="password" placeholder="••••••••" />
+                  <InputField label={t('settings.security.current_password')} type="password" placeholder="••••••••" />
+                  <InputField label={t('settings.security.new_password')} type="password" placeholder="••••••••" />
+                  <InputField label={t('settings.security.confirm_password')} type="password" placeholder="••••••••" />
                 </div>
-                <button 
+                <button
                   className="mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
                   style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
                 >
-                  Update Password
+                  {t('settings.security.update_password')}
                 </button>
               </Card>
 
               <Card>
                 <h2 className="text-base font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>
-                  Two-Factor Authentication
+                  {t('settings.security.two_factor')}
                 </h2>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                  Add an extra layer of security to your account
+                  {t('settings.security.two_factor_desc')}
                 </p>
                 <div 
                   className="flex items-center justify-between p-3 rounded-lg"
@@ -248,14 +243,11 @@ export default function SettingsPage() {
                     border: '1px solid var(--color-border)',
                   }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🛡️</span>
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                        Authenticator App
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--color-success)' }}>Enabled</p>
-                    </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                      {t('settings.security.authenticator_app')}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--color-success)' }}>{t('settings.security.enabled')}</p>
                   </div>
                   <button 
                     className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
@@ -265,30 +257,30 @@ export default function SettingsPage() {
                       border: '1px solid var(--color-border)',
                     }}
                   >
-                    Manage
+                    {t('settings.security.manage')}
                   </button>
                 </div>
               </Card>
 
               <Card>
                 <h2 className="text-base font-semibold mb-2" style={{ color: 'var(--color-error)' }}>
-                  Danger Zone
+                  {t('settings.security.danger_zone')}
                 </h2>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                  Irreversible and destructive actions
+                  {t('settings.security.danger_desc')}
                 </p>
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-all flex items-center gap-2"
                     style={{ backgroundColor: 'var(--color-error)' }}
                   >
-                    🚪 Sign Out All Devices
+                    {t('settings.security.sign_out_all')}
                   </button>
-                  <button 
-                    className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-all flex items-center gap-2"
+                  <button
+                    className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-all"
                     style={{ backgroundColor: 'var(--color-error)' }}
                   >
-                    🗑️ Delete Account
+                    {t('settings.security.delete_account')}
                   </button>
                 </div>
               </Card>
@@ -299,16 +291,16 @@ export default function SettingsPage() {
           {tab === 'notifications' && (
             <Card>
               <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                Notification Preferences
+                {t('settings.notifications.title')}
               </h2>
               <div className="space-y-4">
                 {[
-                  { key: 'matchInvites' as const, label: 'Match Invites', desc: 'Get notified when someone challenges you' },
-                  { key: 'tournamentUpdates' as const, label: 'Tournament Updates', desc: 'Bracket changes, match scheduling' },
-                  { key: 'friendRequests' as const, label: 'Friend Requests', desc: 'New friend requests and acceptances' },
-                  { key: 'achievements' as const, label: 'Achievements', desc: 'Badge unlocks and milestone alerts' },
-                  { key: 'marketing' as const, label: 'Marketing Emails', desc: 'News, updates, and promotional content' },
-                  { key: 'sound' as const, label: 'Sound Notifications', desc: 'Play sounds for in-app notifications' },
+                  { key: 'matchInvites' as const, label: t('settings.notifications.match_invites'), desc: t('settings.notifications.match_invites_desc') },
+                  { key: 'tournamentUpdates' as const, label: t('settings.notifications.tournament_updates'), desc: t('settings.notifications.tournament_updates_desc') },
+                  { key: 'friendRequests' as const, label: t('settings.notifications.friend_requests'), desc: t('settings.notifications.friend_requests_desc') },
+                  { key: 'achievements' as const, label: t('settings.notifications.achievements'), desc: t('settings.notifications.achievements_desc') },
+                  { key: 'marketing' as const, label: t('settings.notifications.marketing'), desc: t('settings.notifications.marketing_desc') },
+                  { key: 'sound' as const, label: t('settings.notifications.sound'), desc: t('settings.notifications.sound_desc') },
                 ].map((item) => (
                   <div 
                     key={item.key} 
@@ -339,7 +331,7 @@ export default function SettingsPage() {
             <>
               <Card>
                 <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                  Theme
+                  {t('settings.appearance.theme')}
                 </h2>
                 <div 
                   className="flex items-center justify-between p-4 rounded-lg mb-4"
@@ -349,13 +341,12 @@ export default function SettingsPage() {
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{isDark ? '🌙' : '☀️'}</span>
                     <div>
                       <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                        Dark Mode
+                        {t('settings.appearance.dark_mode')}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {isDark ? 'Easy on the eyes' : 'Bright and clean'}
+                        {isDark ? t('settings.appearance.dark_mode_on') : t('settings.appearance.dark_mode_off')}
                       </p>
                     </div>
                   </div>
@@ -365,7 +356,7 @@ export default function SettingsPage() {
 
               <Card>
                 <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                  Language
+                  {t('settings.appearance.language')}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -384,7 +375,7 @@ export default function SettingsPage() {
                         color: language === lang.code ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                       }}
                     >
-                      <span className="text-2xl">{lang.flag}</span>
+                      <span className="text-xl">{lang.flag}</span>
                       <span className="text-sm font-medium">{lang.label}</span>
                     </button>
                   ))}
@@ -397,10 +388,15 @@ export default function SettingsPage() {
           {tab === 'audio' && (
             <Card>
               <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                Audio Settings
+                {t('settings.audio.title')}
               </h2>
               <div className="space-y-6">
-                {['Master Volume', 'Game Effects', 'Music', 'Notifications'].map((label) => (
+                {[
+                  t('settings.audio.master_volume'),
+                  t('settings.audio.game_effects'),
+                  t('settings.audio.music'),
+                  t('settings.audio.notifications'),
+                ].map((label) => (
                   <div key={label}>
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{label}</span>
@@ -411,11 +407,7 @@ export default function SettingsPage() {
                       min={0}
                       max={100}
                       defaultValue={75}
-                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                        accentColor: 'var(--color-primary)',
-                      }}
+                      className="w-full appearance-none cursor-pointer"
                     />
                   </div>
                 ))}
@@ -443,19 +435,17 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function InputField({ 
-  label, 
-  type = 'text', 
-  value, 
-  onChange, 
-  placeholder, 
-  icon 
-}: { 
-  label?: string; 
-  type?: string; 
-  value?: string; 
-  onChange?: (val: string) => void; 
-  placeholder?: string; 
-  icon?: string;
+  label,
+  type = 'text',
+  value,
+  onChange,
+  placeholder,
+}: {
+  label?: string;
+  type?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -465,9 +455,6 @@ function InputField({
         </label>
       )}
       <div className="relative">
-        {icon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>
-        )}
         <input
           type={type}
           value={value}
@@ -475,7 +462,6 @@ function InputField({
           placeholder={placeholder}
           className="w-full rounded-lg px-4 py-2 text-sm outline-none transition-all"
           style={{
-            paddingLeft: icon ? '2.5rem' : '1rem',
             backgroundColor: 'var(--color-bg-input)',
             border: '1px solid var(--color-border)',
             color: 'var(--color-text-primary)',

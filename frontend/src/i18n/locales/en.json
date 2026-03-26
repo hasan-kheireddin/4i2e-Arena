@@ -27,7 +27,13 @@
   },
   "navbar": {
     "home": "Home",
-    "logout": "Logout"
+    "logout": "Logout",
+    "search_placeholder": "Search players, games...",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "settings": "Settings",
+    "toggle_theme": "Toggle Theme",
+    "sign_out": "Sign Out"
   },
   "2fa": {
     "verify_title": "Two-Factor Authentication",
@@ -95,5 +101,98 @@
     "passwords_not_match": "Passwords do not match",
     "code_length": "Please enter a 6-digit code",
     "invalid_code": "Invalid code. Please try again."
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "profile": "Profile",
+      "security": "Security",
+      "notifications": "Notifications",
+      "appearance": "Appearance",
+      "audio": "Audio"
+    },
+    "profile": {
+      "title": "Profile Information",
+      "change_avatar": "Change avatar",
+      "username": "Username",
+      "email": "Email",
+      "bio": "Bio",
+      "bio_placeholder": "Tell others about yourself...",
+      "save": "Save Changes",
+      "saving": "Saving..."
+    },
+    "security": {
+      "change_password": "Change Password",
+      "current_password": "Current Password",
+      "new_password": "New Password",
+      "confirm_password": "Confirm New Password",
+      "update_password": "Update Password",
+      "two_factor": "Two-Factor Authentication",
+      "two_factor_desc": "Add an extra layer of security to your account",
+      "authenticator_app": "Authenticator App",
+      "enabled": "Enabled",
+      "manage": "Manage",
+      "danger_zone": "Danger Zone",
+      "danger_desc": "Irreversible and destructive actions",
+      "sign_out_all": "Sign Out All Devices",
+      "delete_account": "Delete Account"
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "match_invites": "Match Invites",
+      "match_invites_desc": "Get notified when someone challenges you",
+      "tournament_updates": "Tournament Updates",
+      "tournament_updates_desc": "Bracket changes, match scheduling",
+      "friend_requests": "Friend Requests",
+      "friend_requests_desc": "New friend requests and acceptances",
+      "achievements": "Achievements",
+      "achievements_desc": "Badge unlocks and milestone alerts",
+      "marketing": "Marketing Emails",
+      "marketing_desc": "News, updates, and promotional content",
+      "sound": "Sound Notifications",
+      "sound_desc": "Play sounds for in-app notifications"
+    },
+    "appearance": {
+      "theme": "Theme",
+      "dark_mode": "Dark Mode",
+      "dark_mode_on": "Easy on the eyes",
+      "dark_mode_off": "Bright and clean",
+      "language": "Language"
+    },
+    "audio": {
+      "title": "Audio Settings",
+      "master_volume": "Master Volume",
+      "game_effects": "Game Effects",
+      "music": "Music",
+      "notifications": "Notifications"
+    }
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "games": "Games",
+    "tournaments": "Tournaments",
+    "leaderboard": "Leaderboard",
+    "match_history": "Match History",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "online": "Online"
+  },
+  "home": {
+    "welcome_back": "Welcome back,",
+    "level": "Level",
+    "xp_to_next": "XP to Level",
+    "quick_play": "Quick Play",
+    "recent_matches": "Recent Matches",
+    "view_all": "View All",
+    "no_matches": "No recent matches yet.",
+    "players_online": "players online",
+    "leaderboard": "Leaderboard",
+    "no_leaderboard": "No leaderboard data yet.",
+    "stat": {
+      "total_wins": "Total Wins",
+      "win_rate": "Win Rate",
+      "streak": "Current Streak",
+      "rank": "Rank"
+    }
   }
 }

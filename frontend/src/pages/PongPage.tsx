@@ -337,7 +337,7 @@ export default function PongPage() {
                   color: mode === m ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                 }}
               >
-                {m === 'local' ? '🖥 Local (vs AI)' : '🌐 Online (PvP)'}
+                {m === 'local' ? 'Local (vs AI)' : 'Online (PvP)'}
               </button>
             ))}
           </div>
@@ -370,18 +370,17 @@ export default function PongPage() {
 
           {/* Online overlays */}
           {mode === 'online' && onlinePhase === 'idle' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10, 14, 26, 0.9)', backdropFilter: 'blur(8px)' }}>
-              <span className="text-6xl">🏓</span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10, 14, 26, 0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Online Pong</h2>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Real-time PvP — server authoritative</p>
               <button onClick={handleFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-                🔍 Find Match
+                Find Match
               </button>
             </div>
           )}
 
           {mode === 'online' && onlinePhase === 'matchmaking' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10, 14, 26, 0.9)', backdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10, 14, 26, 0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
               <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
               <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Searching for opponent…</p>
               <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
@@ -389,7 +388,7 @@ export default function PongPage() {
           )}
 
           {mode === 'online' && onlinePhase === 'waiting' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10, 14, 26, 0.9)', backdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10, 14, 26, 0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
               <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: '#ec4899', borderTopColor: 'transparent' }} />
               <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Waiting for opponent…</p>
               <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
@@ -406,43 +405,43 @@ export default function PongPage() {
 
           {/* Local pause */}
           {mode === 'local' && paused && !gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10, 14, 26, 0.8)', backdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10, 14, 26, 0.8)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
               <h2 className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>PAUSED</h2>
               <div className="flex gap-3">
-                <button onClick={() => setPaused(false)} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>▶️ Resume</button>
-                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>🔄 Restart</button>
+                <button onClick={() => setPaused(false)} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>Resume</button>
+                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Restart</button>
               </div>
             </div>
           )}
 
           {/* Local game over */}
           {mode === 'local' && gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10, 14, 26, 0.85)', backdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10, 14, 26, 0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
               <h2 className="text-4xl font-extrabold" style={{ color: playerWon ? 'var(--color-success)' : 'var(--color-error)' }}>
-                {playerWon ? '🎉 VICTORY' : 'DEFEAT'}
+                {playerWon ? 'VICTORY' : 'DEFEAT'}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
               <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 <span>Duration: {formatTime(time)}</span>
               </div>
               <div className="flex gap-3 mt-2">
-                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>🔄 Rematch</button>
-                <Link to="/dashboard"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>🏠 Back</button></Link>
+                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>Rematch</button>
+                <Link to="/dashboard"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back</button></Link>
               </div>
             </div>
           )}
 
           {/* Online game over */}
           {mode === 'online' && onlinePhase === 'over' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10, 14, 26, 0.85)', backdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10, 14, 26, 0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
               <h2 className="text-4xl font-extrabold" style={{ color: iWon ? 'var(--color-success)' : isDraw ? '#fbbf24' : 'var(--color-error)' }}>
-                {iWon ? '🎉 VICTORY' : isDraw ? 'DRAW' :
+                {iWon ? 'VICTORY' : isDraw ? 'DRAW' :
                  onlineReason === 'disconnect_forfeit' ? 'OPPONENT LEFT' : 'DEFEAT'}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{onlineScore.p1} — {onlineScore.p2}</p>
               <div className="flex gap-3 mt-2">
-                <button onClick={() => { setGamePath(null); setOnlinePhase('idle'); }} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>🔍 New Match</button>
-                <Link to="/dashboard"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>🏠 Back</button></Link>
+                <button onClick={() => { setGamePath(null); setOnlinePhase('idle'); }} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>New Match</button>
+                <Link to="/dashboard"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back</button></Link>
               </div>
             </div>
           )}
@@ -465,7 +464,7 @@ export default function PongPage() {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
               >
-                {paused ? '▶️ Resume' : '⏸️ Pause'}
+                {paused ? 'Resume' : 'Pause'}
               </button>
             )}
             {mode === 'online' && onlinePhase === 'playing' && (
@@ -476,7 +475,7 @@ export default function PongPage() {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
               >
-                🏳 Forfeit
+                Forfeit
               </button>
             )}
           </div>

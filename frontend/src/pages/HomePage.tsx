@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { useAuth } from "../context/AuthContext";
 import { getMyMatches, getMyStats, getLeaderboard, type Match, type LeaderboardEntry, type UserStats } from '../services/games';
 
@@ -12,6 +13,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -81,14 +83,14 @@ export default function HomePage() {
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-              Welcome back, <span style={{
+              {t('home.welcome_back')} <span style={{
                 background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
               }}>{user?.username || 'Player'}</span>
             </h1>
-            <p className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>Level {level} • {totalXp.toLocaleString()} XP</p>
+            <p className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>{t('home.level')} {level} • {totalXp.toLocaleString()} XP</p>
             <div className="mt-3 max-w-xs">
               <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-input)' }}>
                 <div
@@ -99,7 +101,7 @@ export default function HomePage() {
                   }}
                 />
               </div>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{xpToNext.toLocaleString()} XP to Level {level + 1}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{xpToNext.toLocaleString()} {t('home.xp_to_next')} {level + 1}</p>
             </div>
           </div>
           <Link
@@ -109,17 +111,17 @@ export default function HomePage() {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
           >
-            ⚡ Quick Play
+            Quick Play
           </Link>
         </div>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon="🏆" label="Total Wins" value={String(totalWins)} />
-        <StatCard icon="📈" label="Win Rate" value={winRatePct} />
-        <StatCard icon="🔥" label="Current Streak" value={String(streak)} />
-        <StatCard icon="⭐" label="Rank" value={myRank} />
+        <StatCard label={t('home.stat.total_wins')} value={String(totalWins)} />
+        <StatCard label={t('home.stat.win_rate')} value={winRatePct} />
+        <StatCard label={t('home.stat.streak')} value={String(streak)} />
+        <StatCard label={t('home.stat.rank')} value={myRank} />
       </div>
 
       {/* Main Grid */}
@@ -128,19 +130,19 @@ export default function HomePage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Quick Play Games */}
           <div>
-            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>Quick Play</h2>
+            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>{t('home.quick_play')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <GameCard
-                icon="🏓"
                 title="Pong"
                 players={24}
+                playersLabel={t('home.players_online')}
                 to="/games/pong"
                 gradient="linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.1) 100%)"
               />
               <GameCard
-                icon="⭕"
                 title="Tic-Tac-Toe"
                 players={18}
+                playersLabel={t('home.players_online')}
                 to="/games/tictactoe"
                 gradient="linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)"
               />
@@ -150,7 +152,7 @@ export default function HomePage() {
           {/* Recent Matches */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Recent Matches</h2>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t('home.recent_matches')}</h2>
               <Link
                 to="/history"
                 className="text-sm flex items-center gap-1 transition-colors"
@@ -158,12 +160,12 @@ export default function HomePage() {
                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
               >
-                View All →
+                {t('home.view_all')} →
               </Link>
             </div>
             <div className="space-y-3">
               {recentMatches.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No recent matches yet.</p>
+                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('home.no_matches')}</p>
               )}
               {recentMatches.map((match) => {
                 const myPlayer = match.players.find((p) => p.username === user?.username);
@@ -171,7 +173,7 @@ export default function HomePage() {
                 const result: 'win' | 'loss' | 'draw' = myPlayer?.outcome ?? 'loss';
                 const score = `${match.player1_score}-${match.player2_score}`;
                 const xpEarned = myPlayer?.xp_earned ?? 0;
-                const gameIcon = match.game_type === 'pong' ? '🏓' : '⭕';
+                const gameIcon = match.game_type === 'pong' ? 'Pong' : 'TTT';
                 const timeLabel = match.finished_at ? timeAgo(match.finished_at) : '';
 
                 return (
@@ -214,10 +216,10 @@ export default function HomePage() {
 
         {/* Right Column (1/3) */}
         <div className="space-y-6">
-          <Card title="Leaderboard" link="/leaderboard">
+          <Card title={t('home.leaderboard')} link="/leaderboard">
             <div className="space-y-2">
               {leaderboard.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No leaderboard data yet.</p>
+                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('home.no_leaderboard')}</p>
               )}
               {leaderboard.map((player) => (
                 <div key={player.rank} className="flex items-center gap-3 py-1.5">
@@ -250,7 +252,7 @@ export default function HomePage() {
   );
 }
 
-function StatCard({ icon, label, value, trend }: { icon: string; label: string; value: string; trend?: string }) {
+function StatCard({ label, value, trend }: { label: string; value: string; trend?: string }) {
   return (
     <div
       className="p-4 rounded-lg"
@@ -260,7 +262,6 @@ function StatCard({ icon, label, value, trend }: { icon: string; label: string; 
       }}
     >
       <div className="flex items-center gap-3 mb-2">
-        <span className="text-2xl">{icon}</span>
         <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
       </div>
       <div className="flex items-end gap-2">
@@ -275,11 +276,11 @@ function StatCard({ icon, label, value, trend }: { icon: string; label: string; 
   );
 }
 
-function GameCard({ icon, title, players, to, gradient }: { icon: string; title: string; players: number; to: string; gradient: string }) {
+function GameCard({ title, players, playersLabel, to, gradient }: { title: string; players: number; playersLabel: string; to: string; gradient: string }) {
   return (
     <Link to={to}>
       <div
-        className="h-40 flex flex-col items-center justify-center gap-3 rounded-lg transition-all duration-200 group"
+        className="h-40 flex flex-col items-center justify-center gap-3 rounded-lg transition-all duration-200"
         style={{
           background: gradient,
           border: '1px solid transparent',
@@ -293,15 +294,15 @@ function GameCard({ icon, title, players, to, gradient }: { icon: string; title:
           e.currentTarget.style.borderColor = 'transparent';
         }}
       >
-        <span className="text-5xl group-hover:scale-110 transition-transform duration-200">{icon}</span>
         <h3 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
-        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{players} players online</p>
+        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{players} {playersLabel}</p>
       </div>
     </Link>
   );
 }
 
 function Card({ title, subtitle, link, children }: { title: string; subtitle?: string; link?: string; children: React.ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div
       className="p-4 rounded-lg"
@@ -321,7 +322,7 @@ function Card({ title, subtitle, link, children }: { title: string; subtitle?: s
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            View All
+            {t('home.view_all')}
           </Link>
         )}
       </div>

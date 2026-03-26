@@ -8,5 +8,7 @@ export default {
   theme: {
     extend: {},
   },
+  // RTL variant is built-in to Tailwind v3.
+  // Enabling it explicitly ensures rtl: and ltr: utilities are included.
   plugins: [],
 }

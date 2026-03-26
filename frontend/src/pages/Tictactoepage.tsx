@@ -224,7 +224,7 @@ export default function TicTacToePage() {
                   color: mode === m ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                 }}
               >
-                {m === 'local' ? '🖥 Local' : '🌐 Online'}
+                {m === 'local' ? 'Local' : 'Online'}
               </button>
             ))}
           </div>
@@ -272,8 +272,8 @@ export default function TicTacToePage() {
                         onMouseEnter={(e) => { if (!cell && !winner) { e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'; e.currentTarget.style.borderColor = 'var(--color-primary)'; } }}
                         onMouseLeave={(e) => { if (!cell && !winner) { e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'; e.currentTarget.style.borderColor = 'var(--color-border)'; } }}
                       >
-                        {cell === 'X' && <span style={{ color: 'var(--color-primary)' }}>✕</span>}
-                        {cell === 'O' && <span style={{ color: '#ec4899' }}>○</span>}
+                        {cell === 'X' && <span className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>X</span>}
+                        {cell === 'O' && <span className="text-4xl font-bold leading-none" style={{ color: '#ec4899' }}>○</span>}
                       </button>
                     );
                   })}
@@ -282,15 +282,15 @@ export default function TicTacToePage() {
                 {winner && (
                   <div className="text-center">
                     <h2 className="text-2xl font-bold mb-2" style={{ color: winner === 'X' ? 'var(--color-success)' : winner === 'O' ? 'var(--color-error)' : '#fbbf24' }}>
-                      {winner === 'draw' ? "It's a Draw!" : winner === 'X' ? '🎉 You Win!' : 'You Lose!'}
+                      {winner === 'draw' ? "It's a Draw!" : winner === 'X' ? 'You Win!' : 'You Lose!'}
                     </h2>
                     <div className="flex gap-3 justify-center">
                       <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-                        🔄 Play Again
+                        Play Again
                       </button>
                       <Link to="/dashboard">
                         <button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-                          🏠 Back
+                          Back
                         </button>
                       </Link>
                     </div>
@@ -341,7 +341,6 @@ export default function TicTacToePage() {
             {/* Idle */}
             {onlinePhase === 'idle' && (
               <div className="flex flex-col items-center justify-center py-24 gap-6">
-                <div className="text-6xl">⭕</div>
                 <h2 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Online Tic-Tac-Toe</h2>
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Play against real opponents in real-time</p>
                 <button
@@ -351,7 +350,7 @@ export default function TicTacToePage() {
                   onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                   onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  🔍 Find Match
+                  Find Match
                 </button>
               </div>
             )}
@@ -430,7 +429,7 @@ export default function TicTacToePage() {
                           onMouseEnter={(e) => { if (canClick) { e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'; e.currentTarget.style.borderColor = 'var(--color-primary)'; } }}
                           onMouseLeave={(e) => { if (canClick) { e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'; e.currentTarget.style.borderColor = 'var(--color-border)'; } }}
                         >
-                          {cell === 'X' && <span style={{ color: 'var(--color-primary)' }}>✕</span>}
+                          {cell === 'X' && <span className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>X</span>}
                           {cell === 'O' && <span style={{ color: '#ec4899' }}>○</span>}
                         </button>
                       );
@@ -447,18 +446,18 @@ export default function TicTacToePage() {
                              'var(--color-error)',
                     }}>
                       {onlineDraw ? "It's a Draw!" :
-                       onlineWinner === myMark ? '🎉 You Win!' :
+                       onlineWinner === myMark ? 'You Win!' :
                        onlineReason === 'disconnect_forfeit' ? 'Opponent Disconnected — You Win!' :
                        onlineReason === 'forfeit' ? 'Opponent Forfeited' :
                        'You Lose!'}
                     </h2>
                     <div className="flex gap-3 justify-center">
                       <button onClick={handlePlayAgainOnline} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-                        🔍 Find New Match
+                        Find New Match
                       </button>
                       <Link to="/dashboard">
                         <button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-                          🏠 Back
+                          Back
                         </button>
                       </Link>
                     </div>
@@ -475,7 +474,7 @@ export default function TicTacToePage() {
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'}
                     >
-                      🏳 Forfeit
+                      Forfeit
                     </button>
                   </div>
                 )}

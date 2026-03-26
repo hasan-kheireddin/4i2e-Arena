@@ -15,11 +15,10 @@ function ProgressBar({ value, color }: { value: number; color: 'purple' | 'pink'
   );
 }
 
-function StatCard({ icon, label, value, trend, positive }: { icon: string; label: string; value: string; trend?: string; positive?: boolean }) {
+function StatCard({ label, value, trend, positive }: { label: string; value: string; trend?: string; positive?: boolean }) {
   return (
     <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
       <div className="flex items-center gap-3 mb-2">
-        <span className="text-2xl">{icon}</span>
         <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
       </div>
       <div className="flex items-end gap-2">
@@ -41,7 +40,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <span className="text-4xl block mb-3">⏳</span>
+        <div className="w-10 h-10 rounded-full border-4 animate-spin" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
       </div>
     );
   }
@@ -68,17 +67,17 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon="🏆" label="Win Rate" value={`${winRatePct}%`} />
-        <StatCard icon="🔥" label="Total Games" value={String(ov?.total_matches ?? 0)} />
-        <StatCard icon="🎯" label="Current Streak" value={streakLabel} trend={`Best: ${stats?.streaks.longest_win ?? 0}W`} positive />
-        <StatCard icon="⏱️" label="Avg Duration" value={ov ? `${Math.round(ov.avg_duration / 60)}m ${Math.round(ov.avg_duration % 60)}s` : '—'} />
+        <StatCard label="Win Rate" value={`${winRatePct}%`} />
+        <StatCard label="Total Games" value={String(ov?.total_matches ?? 0)} />
+        <StatCard label="Current Streak" value={streakLabel} trend={`Best: ${stats?.streaks.longest_win ?? 0}W`} positive />
+        <StatCard label="Avg Duration" value={ov ? `${Math.round(ov.avg_duration / 60)}m ${Math.round(ov.avg_duration % 60)}s` : '—'} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weekly W/L Chart */}
         <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>📊 Recent Performance</h3>
+            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Recent Performance</h3>
             <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Last {last7.length} days</span>
           </div>
           {last7.length === 0 ? (
@@ -114,7 +113,7 @@ export default function AnalyticsPage() {
 
         {/* Game Distribution */}
         <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--color-text-primary)' }}>🥧 Game Distribution</h3>
+          <h3 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>Game Distribution</h3>
           <div className="flex items-center gap-6 mb-6">
             <div className="relative w-28 h-28 shrink-0">
               <div className="w-full h-full rounded-full" style={{ background: `conic-gradient(var(--color-primary) 0% ${pongPct}%,#ec4899 ${pongPct}% 100%)` }} />
@@ -143,7 +142,7 @@ export default function AnalyticsPage() {
 
         {/* Performance Metrics */}
         <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--color-text-primary)' }}>📈 Performance Metrics</h3>
+          <h3 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>Performance Metrics</h3>
           <div className="space-y-4">
             {[
               { label: 'Total Wins', value: String(ov?.wins ?? 0) },

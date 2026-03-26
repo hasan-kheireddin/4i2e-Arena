@@ -131,9 +131,8 @@ export default function MatchHistoryPage() {
           ))}
         </div>
         <div className="flex-1 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2">🔍</span>
           <input placeholder="Search opponent..." value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg px-4 py-2 pl-10 text-sm outline-none transition-all"
+            className="w-full rounded-lg px-4 py-2 text-sm outline-none transition-all"
             style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
             onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(168, 85, 247, 0.2)'; }}
             onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }} />
@@ -143,9 +142,9 @@ export default function MatchHistoryPage() {
       {/* Match List */}
       <div className="space-y-2">
         {loading && matches.length === 0 ? (
-          <div className="text-center py-12"><span className="text-4xl block mb-3">⏳</span><p style={{ color: 'var(--color-text-secondary)' }}>Loading matches...</p></div>
+          <div className="text-center py-12"><p style={{ color: 'var(--color-text-secondary)' }}>Loading matches...</p></div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12"><span className="text-6xl block mb-3">🎮</span><p style={{ color: 'var(--color-text-secondary)' }}>No matches found</p></div>
+          <div className="text-center py-12"><p style={{ color: 'var(--color-text-secondary)' }}>No matches found</p></div>
         ) : (
           filtered.map((match) => {
             const outcome = getMyOutcome(match);
@@ -157,9 +156,9 @@ export default function MatchHistoryPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'; e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}>
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-2xl"
-                    style={{ backgroundColor: outcome === 'win' ? 'rgba(34,197,94,0.1)' : outcome === 'loss' ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)' }}>
-                    {match.game_type === 'pong' ? '🏓' : '⭕'}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
+                    style={{ backgroundColor: outcome === 'win' ? 'rgba(34,197,94,0.1)' : outcome === 'loss' ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)', color: outcome === 'win' ? 'var(--color-success)' : outcome === 'loss' ? 'var(--color-error)' : '#fbbf24' }}>
+                    {match.game_type === 'pong' ? 'P' : 'T'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -175,7 +174,7 @@ export default function MatchHistoryPage() {
                     <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                       <span className="capitalize">{match.game_type === 'tictactoe' ? 'Tic-Tac-Toe' : 'Pong'}</span>
                       <span>Score: {score}</span>
-                      <span>⏱️ {formatDuration(match.duration_seconds)}</span>
+                      <span>{formatDuration(match.duration_seconds)}</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">

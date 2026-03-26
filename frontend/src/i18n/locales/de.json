@@ -27,7 +27,13 @@
   },
   "navbar": {
     "home": "Startseite",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "search_placeholder": "Spieler, Spiele suchen...",
+    "notifications": "Benachrichtigungen",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "toggle_theme": "Design wechseln",
+    "sign_out": "Abmelden"
   },
   "2fa": {
     "verify_title": "Zwei-Faktor-Authentifizierung",
@@ -95,5 +101,98 @@
     "passwords_not_match": "Passwörter stimmen nicht überein",
     "code_length": "Bitte geben Sie einen 6-stelligen Code ein",
     "invalid_code": "Ungültiger Code. Bitte versuchen Sie es erneut."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "tabs": {
+      "profile": "Profil",
+      "security": "Sicherheit",
+      "notifications": "Benachrichtigungen",
+      "appearance": "Erscheinungsbild",
+      "audio": "Audio"
+    },
+    "profile": {
+      "title": "Profilinformationen",
+      "change_avatar": "Avatar ändern",
+      "username": "Benutzername",
+      "email": "E-Mail",
+      "bio": "Bio",
+      "bio_placeholder": "Erzählen Sie anderen von sich...",
+      "save": "Änderungen speichern",
+      "saving": "Speichern..."
+    },
+    "security": {
+      "change_password": "Passwort ändern",
+      "current_password": "Aktuelles Passwort",
+      "new_password": "Neues Passwort",
+      "confirm_password": "Neues Passwort bestätigen",
+      "update_password": "Passwort aktualisieren",
+      "two_factor": "Zwei-Faktor-Authentifizierung",
+      "two_factor_desc": "Fügen Sie Ihrem Konto eine zusätzliche Sicherheitsebene hinzu",
+      "authenticator_app": "Authentifizierungs-App",
+      "enabled": "Aktiviert",
+      "manage": "Verwalten",
+      "danger_zone": "Gefahrenzone",
+      "danger_desc": "Unwiderrufliche und destruktive Aktionen",
+      "sign_out_all": "Von allen Geräten abmelden",
+      "delete_account": "Konto löschen"
+    },
+    "notifications": {
+      "title": "Benachrichtigungseinstellungen",
+      "match_invites": "Match-Einladungen",
+      "match_invites_desc": "Benachrichtigt werden, wenn jemand Sie herausfordert",
+      "tournament_updates": "Turnier-Updates",
+      "tournament_updates_desc": "Bracket-Änderungen, Spielplanung",
+      "friend_requests": "Freundschaftsanfragen",
+      "friend_requests_desc": "Neue Anfragen und Annahmen",
+      "achievements": "Errungenschaften",
+      "achievements_desc": "Badge-Freischaltungen und Meilensteine",
+      "marketing": "Marketing-E-Mails",
+      "marketing_desc": "Neuigkeiten, Updates und Werbeinhalte",
+      "sound": "Tonbenachrichtigungen",
+      "sound_desc": "Töne für In-App-Benachrichtigungen abspielen"
+    },
+    "appearance": {
+      "theme": "Design",
+      "dark_mode": "Dunkelmodus",
+      "dark_mode_on": "Schonend für die Augen",
+      "dark_mode_off": "Hell und sauber",
+      "language": "Sprache"
+    },
+    "audio": {
+      "title": "Audioeinstellungen",
+      "master_volume": "Hauptlautstärke",
+      "game_effects": "Spieleffekte",
+      "music": "Musik",
+      "notifications": "Benachrichtigungen"
+    }
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "games": "Spiele",
+    "tournaments": "Turniere",
+    "leaderboard": "Rangliste",
+    "match_history": "Spielverlauf",
+    "analytics": "Analysen",
+    "settings": "Einstellungen",
+    "online": "Online"
+  },
+  "home": {
+    "welcome_back": "Willkommen zurück,",
+    "level": "Level",
+    "xp_to_next": "XP bis Level",
+    "quick_play": "Schnellspiel",
+    "recent_matches": "Letzte Matches",
+    "view_all": "Alle anzeigen",
+    "no_matches": "Noch keine letzten Matches.",
+    "players_online": "Spieler online",
+    "leaderboard": "Rangliste",
+    "no_leaderboard": "Noch keine Ranglisten-Daten.",
+    "stat": {
+      "total_wins": "Gesamtsiege",
+      "win_rate": "Siegrate",
+      "streak": "Aktuelle Serie",
+      "rank": "Rang"
+    }
   }
 }

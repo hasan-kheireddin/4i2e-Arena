@@ -20,6 +20,11 @@
     "react-i18next": "^16.5.4",
     "react-router-dom": "^6.30.3"
   },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "Firefox ESR"
+  ],
   "devDependencies": {
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",

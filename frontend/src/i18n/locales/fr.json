@@ -27,7 +27,13 @@
   },
   "navbar": {
     "home": "Accueil",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "search_placeholder": "Rechercher des joueurs, des jeux...",
+    "notifications": "Notifications",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "toggle_theme": "Changer le thème",
+    "sign_out": "Se déconnecter"
   },
   "2fa": {
     "verify_title": "Authentification à deux facteurs",
@@ -95,5 +101,98 @@
     "passwords_not_match": "Les mots de passe ne correspondent pas",
     "code_length": "Veuillez entrer un code à 6 chiffres",
     "invalid_code": "Code invalide. Veuillez réessayer."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "tabs": {
+      "profile": "Profil",
+      "security": "Sécurité",
+      "notifications": "Notifications",
+      "appearance": "Apparence",
+      "audio": "Audio"
+    },
+    "profile": {
+      "title": "Informations du profil",
+      "change_avatar": "Changer l'avatar",
+      "username": "Nom d'utilisateur",
+      "email": "Email",
+      "bio": "Bio",
+      "bio_placeholder": "Parlez de vous aux autres...",
+      "save": "Enregistrer les modifications",
+      "saving": "Enregistrement..."
+    },
+    "security": {
+      "change_password": "Changer le mot de passe",
+      "current_password": "Mot de passe actuel",
+      "new_password": "Nouveau mot de passe",
+      "confirm_password": "Confirmer le nouveau mot de passe",
+      "update_password": "Mettre à jour le mot de passe",
+      "two_factor": "Authentification à deux facteurs",
+      "two_factor_desc": "Ajoutez une couche de sécurité supplémentaire à votre compte",
+      "authenticator_app": "Application d'authentification",
+      "enabled": "Activé",
+      "manage": "Gérer",
+      "danger_zone": "Zone dangereuse",
+      "danger_desc": "Actions irréversibles et destructives",
+      "sign_out_all": "Déconnecter tous les appareils",
+      "delete_account": "Supprimer le compte"
+    },
+    "notifications": {
+      "title": "Préférences de notification",
+      "match_invites": "Invitations de match",
+      "match_invites_desc": "Soyez notifié quand quelqu'un vous défie",
+      "tournament_updates": "Mises à jour du tournoi",
+      "tournament_updates_desc": "Modifications du tableau, planification des matchs",
+      "friend_requests": "Demandes d'amis",
+      "friend_requests_desc": "Nouvelles demandes et acceptations",
+      "achievements": "Succès",
+      "achievements_desc": "Déverrouillages de badges et alertes",
+      "marketing": "Emails marketing",
+      "marketing_desc": "Actualités, mises à jour et contenu promotionnel",
+      "sound": "Notifications sonores",
+      "sound_desc": "Jouer des sons pour les notifications"
+    },
+    "appearance": {
+      "theme": "Thème",
+      "dark_mode": "Mode sombre",
+      "dark_mode_on": "Agréable pour les yeux",
+      "dark_mode_off": "Lumineux et propre",
+      "language": "Langue"
+    },
+    "audio": {
+      "title": "Paramètres audio",
+      "master_volume": "Volume principal",
+      "game_effects": "Effets de jeu",
+      "music": "Musique",
+      "notifications": "Notifications"
+    }
+  },
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "games": "Jeux",
+    "tournaments": "Tournois",
+    "leaderboard": "Classement",
+    "match_history": "Historique",
+    "analytics": "Analytique",
+    "settings": "Paramètres",
+    "online": "En ligne"
+  },
+  "home": {
+    "welcome_back": "Bon retour,",
+    "level": "Niveau",
+    "xp_to_next": "XP pour le niveau",
+    "quick_play": "Jeu rapide",
+    "recent_matches": "Matchs récents",
+    "view_all": "Voir tout",
+    "no_matches": "Aucun match récent.",
+    "players_online": "joueurs en ligne",
+    "leaderboard": "Classement",
+    "no_leaderboard": "Aucune donnée de classement.",
+    "stat": {
+      "total_wins": "Victoires totales",
+      "win_rate": "Taux de victoire",
+      "streak": "Série actuelle",
+      "rank": "Rang"
+    }
   }
 }

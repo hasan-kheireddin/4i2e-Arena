@@ -27,7 +27,13 @@
   },
   "navbar": {
     "home": "الرئيسية",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "search_placeholder": "ابحث عن لاعبين، ألعاب...",
+    "notifications": "الإشعارات",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "toggle_theme": "تبديل السمة",
+    "sign_out": "تسجيل الخروج"
   },
   "2fa": {
     "verify_title": "المصادقة الثنائية",
@@ -95,5 +101,98 @@
     "passwords_not_match": "كلمات المرور غير متطابقة",
     "code_length": "يرجى إدخال رمز مكون من 6 أرقام",
     "invalid_code": "رمز غير صالح. يرجى المحاولة مرة أخرى."
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "tabs": {
+      "profile": "الملف الشخصي",
+      "security": "الأمان",
+      "notifications": "الإشعارات",
+      "appearance": "المظهر",
+      "audio": "الصوت"
+    },
+    "profile": {
+      "title": "معلومات الملف الشخصي",
+      "change_avatar": "تغيير الصورة",
+      "username": "اسم المستخدم",
+      "email": "البريد الإلكتروني",
+      "bio": "نبذة",
+      "bio_placeholder": "أخبر الآخرين عن نفسك...",
+      "save": "حفظ التغييرات",
+      "saving": "جارٍ الحفظ..."
+    },
+    "security": {
+      "change_password": "تغيير كلمة المرور",
+      "current_password": "كلمة المرور الحالية",
+      "new_password": "كلمة المرور الجديدة",
+      "confirm_password": "تأكيد كلمة المرور الجديدة",
+      "update_password": "تحديث كلمة المرور",
+      "two_factor": "المصادقة الثنائية",
+      "two_factor_desc": "أضف طبقة أمان إضافية لحسابك",
+      "authenticator_app": "تطبيق المصادقة",
+      "enabled": "مفعّل",
+      "manage": "إدارة",
+      "danger_zone": "منطقة الخطر",
+      "danger_desc": "إجراءات لا يمكن التراجع عنها",
+      "sign_out_all": "تسجيل الخروج من جميع الأجهزة",
+      "delete_account": "حذف الحساب"
+    },
+    "notifications": {
+      "title": "تفضيلات الإشعارات",
+      "match_invites": "دعوات المباريات",
+      "match_invites_desc": "احصل على إشعار عندما يتحداك شخص ما",
+      "tournament_updates": "تحديثات البطولة",
+      "tournament_updates_desc": "تغييرات الجدول وجدولة المباريات",
+      "friend_requests": "طلبات الصداقة",
+      "friend_requests_desc": "طلبات الصداقة الجديدة والقبول",
+      "achievements": "الإنجازات",
+      "achievements_desc": "إلغاء قفل الشارات وتنبيهات المعالم",
+      "marketing": "رسائل التسويق",
+      "marketing_desc": "أخبار وتحديثات ومحتوى ترويجي",
+      "sound": "إشعارات صوتية",
+      "sound_desc": "تشغيل أصوات للإشعارات داخل التطبيق"
+    },
+    "appearance": {
+      "theme": "السمة",
+      "dark_mode": "الوضع الداكن",
+      "dark_mode_on": "مريح للعيون",
+      "dark_mode_off": "مشرق ونظيف",
+      "language": "اللغة"
+    },
+    "audio": {
+      "title": "إعدادات الصوت",
+      "master_volume": "مستوى الصوت الرئيسي",
+      "game_effects": "مؤثرات اللعبة",
+      "music": "الموسيقى",
+      "notifications": "الإشعارات"
+    }
+  },
+  "sidebar": {
+    "dashboard": "لوحة التحكم",
+    "games": "الألعاب",
+    "tournaments": "البطولات",
+    "leaderboard": "لوحة المتصدرين",
+    "match_history": "سجل المباريات",
+    "analytics": "التحليلات",
+    "settings": "الإعدادات",
+    "online": "متصل"
+  },
+  "home": {
+    "welcome_back": "مرحبًا بعودتك،",
+    "level": "المستوى",
+    "xp_to_next": "نقطة للمستوى",
+    "quick_play": "لعب سريع",
+    "recent_matches": "المباريات الأخيرة",
+    "view_all": "عرض الكل",
+    "no_matches": "لا توجد مباريات حديثة.",
+    "players_online": "لاعب متصل",
+    "leaderboard": "لوحة المتصدرين",
+    "no_leaderboard": "لا توجد بيانات متصدرين.",
+    "stat": {
+      "total_wins": "إجمالي الانتصارات",
+      "win_rate": "معدل الفوز",
+      "streak": "السلسلة الحالية",
+      "rank": "الترتيب"
+    }
   }
 }

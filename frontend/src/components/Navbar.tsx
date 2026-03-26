@@ -1,10 +1,14 @@
 import { Search, Bell, ChevronDown, LogOut, User, Settings, Sun } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
+import { useDir } from '@/hooks/useDir';
 
 export function Navbar() {
+  const { t } = useTranslation();
+  const { isRTL } = useDir();
   const [searchFocused, setSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -20,26 +24,25 @@ export function Navbar() {
   }, []);
 
   return (
-    <header 
+    <header
       className="fixed top-0 left-0 right-0 z-50 h-16"
       style={{
         backgroundColor: 'var(--color-bg-card)',
         borderBottom: '1px solid var(--color-border)',
         backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
       }}
     >
       <div className="flex items-center justify-between h-full px-4 lg:px-6">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div 
+          <div
             className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-            }}
+            style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
           >
             <span className="text-white font-bold text-sm">FT</span>
           </div>
-          <span 
+          <span
             className="text-xl font-extrabold hidden sm:block"
             style={{
               background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
@@ -53,20 +56,30 @@ export function Navbar() {
         </Link>
 
         {/* Search */}
-        <div className={cn(
-          'relative mx-4 transition-all duration-250',
-          searchFocused ? 'w-full max-w-[500px]' : 'w-full max-w-[400px]'
-        )}>
-          <Search 
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" 
+        <div
+          className={cn(
+            'relative mx-4 transition-all duration-250',
+            searchFocused ? 'w-full max-w-[500px]' : 'w-full max-w-[400px]'
+          )}
+        >
+          {/* Search icon — left in LTR, right in RTL */}
+          <Search
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
+              isRTL ? 'right-3' : 'left-3'
+            )}
             style={{ color: 'var(--color-text-muted)' }}
           />
           <input
             type="text"
-            placeholder="Search players, games..."
+            placeholder={t('navbar.search_placeholder')}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            className="w-full h-9 pl-10 pr-14 rounded-full text-sm outline-none transition-all duration-200"
+            className={cn(
+              'w-full h-9 rounded-full text-sm outline-none transition-all duration-200',
+              // Swap padding sides in RTL so text doesn't overlap the icon
+              isRTL ? 'pr-10 pl-14' : 'pl-10 pr-14'
+            )}
             style={{
               backgroundColor: 'var(--color-bg-input)',
               border: searchFocused ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
@@ -74,8 +87,12 @@ export function Navbar() {
               boxShadow: searchFocused ? '0 0 0 2px rgba(168, 85, 247, 0.2)' : 'none',
             }}
           />
-          <kbd 
-            className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono rounded"
+          {/* Keyboard shortcut hint — right in LTR, left in RTL */}
+          <kbd
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono rounded',
+              isRTL ? 'left-3' : 'right-3'
+            )}
             style={{
               color: 'var(--color-text-muted)',
               backgroundColor: 'var(--color-bg)',
@@ -101,11 +118,15 @@ export function Navbar() {
               e.currentTarget.style.color = 'var(--color-text-secondary)';
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
-            aria-label="Notifications"
+            aria-label={t('navbar.notifications')}
           >
             <Bell className="w-5 h-5" />
-            <span 
-              className="absolute top-1 right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+            {/* Badge — top-right in LTR, top-left in RTL */}
+            <span
+              className={cn(
+                'absolute top-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center',
+                isRTL ? 'left-1' : 'right-1'
+              )}
               style={{ backgroundColor: 'var(--color-error)' }}
             >
               3
@@ -117,44 +138,43 @@ export function Navbar() {
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 p-1.5 rounded-lg transition-colors outline-none"
-              style={{
-                backgroundColor: userMenuOpen ? 'var(--color-bg-hover)' : 'transparent',
-              }}
+              style={{ backgroundColor: userMenuOpen ? 'var(--color-bg-hover)' : 'transparent' }}
               onMouseEnter={(e) => !userMenuOpen && (e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)')}
               onMouseLeave={(e) => !userMenuOpen && (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               <Avatar name="Alex Chen" size="sm" online />
-              <ChevronDown 
+              <ChevronDown
                 className={cn(
                   'w-3.5 h-3.5 transition-transform duration-150 hidden sm:block',
                   userMenuOpen && 'rotate-180'
-                )} 
+                )}
                 style={{ color: 'var(--color-text-muted)' }}
               />
             </button>
 
             {userMenuOpen && (
-              <div 
-                className="absolute right-0 top-full mt-2 w-56 rounded-xl shadow-lg py-1"
+              <div
+                className={cn(
+                  'absolute top-full mt-2 w-56 rounded-xl shadow-lg py-1',
+                  // Align dropdown to the correct side in RTL vs LTR
+                  isRTL ? 'left-0' : 'right-0'
+                )}
                 style={{
                   backgroundColor: 'var(--color-bg-card)',
                   border: '1px solid var(--color-border)',
                 }}
               >
-                <div 
-                  className="px-4 py-3"
-                  style={{ borderBottom: '1px solid var(--color-border)' }}
-                >
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Alex Chen</p>
                   <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>alex@arena.gg</p>
                 </div>
                 <div className="py-1">
-                  <DropdownItem icon={<User className="w-4 h-4" />} label="Profile" to="/profile" />
-                  <DropdownItem icon={<Settings className="w-4 h-4" />} label="Settings" to="/settings" />
-                  <DropdownItem icon={<Sun className="w-4 h-4" />} label="Toggle Theme" />
+                  <DropdownItem icon={<User className="w-4 h-4" />} label={t('navbar.profile')} to="/profile" />
+                  <DropdownItem icon={<Settings className="w-4 h-4" />} label={t('navbar.settings')} to="/settings" />
+                  <DropdownItem icon={<Sun className="w-4 h-4" />} label={t('navbar.toggle_theme')} />
                 </div>
                 <div className="py-1" style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <DropdownItem icon={<LogOut className="w-4 h-4" />} label="Sign Out" danger />
+                  <DropdownItem icon={<LogOut className="w-4 h-4" />} label={t('navbar.sign_out')} danger />
                 </div>
               </div>
             )}
@@ -192,8 +212,8 @@ function DropdownItem({
 
   if (to) {
     return (
-      <Link 
-        to={to} 
+      <Link
+        to={to}
         className="w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors outline-none"
         style={baseStyle}
         onMouseEnter={handleMouseEnter}
@@ -205,7 +225,7 @@ function DropdownItem({
     );
   }
   return (
-    <button 
+    <button
       className="w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors outline-none"
       style={baseStyle}
       onMouseEnter={handleMouseEnter}

@@ -158,16 +158,16 @@ export default function TournamentPage() {
           onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          🏆 Create Tournament
+          Create Tournament
         </button>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon="🏆" label="Tournaments Won" value={stats ? String(stats.tournaments_won) : '—'} />
-        <StatCard icon="🎯" label="Participated" value={stats ? String(stats.tournaments_participated) : '—'} />
-        <StatCard icon="🥇" label="Best Placement" value={stats?.best_placement != null ? `#${stats.best_placement}` : '—'} />
-        <StatCard icon="👑" label="Total Winnings" value={stats ? `${stats.total_winnings_xp.toLocaleString()} XP` : '—'} />
+        <StatCard label="Tournaments Won" value={stats ? String(stats.tournaments_won) : '—'} />
+        <StatCard label="Participated" value={stats ? String(stats.tournaments_participated) : '—'} />
+        <StatCard label="Best Placement" value={stats?.best_placement != null ? `#${stats.best_placement}` : '—'} />
+        <StatCard label="Total Winnings" value={stats ? `${stats.total_winnings_xp.toLocaleString()} XP` : '—'} />
       </div>
 
       {/* Join error banner */}
@@ -177,7 +177,7 @@ export default function TournamentPage() {
           style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--color-error)' }}
         >
           <span>{joinError}</span>
-          <button onClick={() => setJoinError(null)} className="ml-4 font-bold">✕</button>
+          <button onClick={() => setJoinError(null)} className="ml-4"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -220,7 +220,6 @@ export default function TournamentPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--color-text-muted)' }}>
-          <span className="text-4xl mb-3">🏆</span>
           <p className="text-sm">No {tab} tournaments{search ? ' matching your search' : ''}.</p>
         </div>
       ) : (
@@ -308,7 +307,7 @@ export default function TournamentPage() {
       {bracketTournamentId && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         >
           <div
             className="w-full max-w-3xl max-h-[80vh] overflow-y-auto rounded-2xl p-6 space-y-4"
@@ -319,9 +318,9 @@ export default function TournamentPage() {
               <button
                 onClick={() => { setBracketTournamentId(null); setBracket(null); }}
                 style={{ color: 'var(--color-text-muted)' }}
-                className="text-xl font-bold hover:opacity-70 transition-opacity"
+                className="hover:opacity-70 transition-opacity text-lg leading-none"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -369,7 +368,7 @@ export default function TournamentPage() {
       {showCreate && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         >
           <div
             className="w-full max-w-md rounded-2xl p-6 space-y-4"
@@ -377,7 +376,7 @@ export default function TournamentPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Create Tournament</h2>
-              <button onClick={() => setShowCreate(false)} style={{ color: 'var(--color-text-muted)' }} className="text-xl font-bold hover:opacity-70">✕</button>
+              <button onClick={() => setShowCreate(false)} style={{ color: 'var(--color-text-muted)' }} className="hover:opacity-70 text-lg leading-none">×</button>
             </div>
 
             {createError && (
@@ -446,13 +445,10 @@ export default function TournamentPage() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xl">{icon}</span>
-        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
-      </div>
+      <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
       <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{value}</p>
     </div>
   );
