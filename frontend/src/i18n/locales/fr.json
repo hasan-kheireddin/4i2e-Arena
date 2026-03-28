@@ -109,7 +109,8 @@
       "security": "Sécurité",
       "notifications": "Notifications",
       "appearance": "Apparence",
-      "audio": "Audio"
+      "audio": "Audio",
+      "privacy": "Confidentialité"
     },
     "profile": {
       "title": "Informations du profil",
@@ -141,8 +142,6 @@
       "title": "Préférences de notification",
       "match_invites": "Invitations de match",
       "match_invites_desc": "Soyez notifié quand quelqu'un vous défie",
-      "tournament_updates": "Mises à jour du tournoi",
-      "tournament_updates_desc": "Modifications du tableau, planification des matchs",
       "friend_requests": "Demandes d'amis",
       "friend_requests_desc": "Nouvelles demandes et acceptations",
       "achievements": "Succès",
@@ -165,12 +164,24 @@
       "game_effects": "Effets de jeu",
       "music": "Musique",
       "notifications": "Notifications"
+    },
+    "privacy": {
+      "export_title": "Exporter vos données",
+      "export_desc": "Téléchargez tous vos événements d'activité. Utile pour les sauvegardes ou le transfert de données.",
+      "export_btn": "Télécharger {{format}}",
+      "exporting": "Exportation...",
+      "import_title": "Importer des données",
+      "import_desc": "Restaurez des événements à partir d'un fichier exporté (JSON, CSV ou XML). Les doublons sont ignorés automatiquement.",
+      "import_btn": "Choisir un fichier et importer",
+      "importing": "Importation...",
+      "import_imported": "{{count}} événements importés.",
+      "import_skipped": "{{count}} doublon(s) ignoré(s).",
+      "import_errors": "{{count}} erreur(s) — cliquez pour développer"
     }
   },
   "sidebar": {
     "dashboard": "Tableau de bord",
     "games": "Jeux",
-    "tournaments": "Tournois",
     "leaderboard": "Classement",
     "match_history": "Historique",
     "analytics": "Analytique",

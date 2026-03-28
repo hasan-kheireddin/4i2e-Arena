@@ -1,7 +1,6 @@
 import {
   Home,
   Gamepad2,
-  Trophy,
   BarChart3,
   History,
   LineChart,
@@ -44,7 +43,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems: NavItemDef[] = [
     { label: t('sidebar.dashboard'),    icon: <Home className="w-5 h-5" />,     to: '/Home' },
     { label: t('sidebar.games'),         icon: <Gamepad2 className="w-5 h-5" />, to: '/games/playpage' },
-    { label: t('sidebar.tournaments'),   icon: <Trophy className="w-5 h-5" />,   to: '/tournaments' },
     { label: t('sidebar.leaderboard'),   icon: <BarChart3 className="w-5 h-5" />,to: '/leaderboard' },
     { label: t('sidebar.match_history'), icon: <History className="w-5 h-5" />,  to: '/history' },
     { label: t('sidebar.analytics'),     icon: <LineChart className="w-5 h-5" />,to: '/analytics' },

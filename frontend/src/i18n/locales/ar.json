@@ -109,7 +109,8 @@
       "security": "الأمان",
       "notifications": "الإشعارات",
       "appearance": "المظهر",
-      "audio": "الصوت"
+      "audio": "الصوت",
+      "privacy": "الخصوصية"
     },
     "profile": {
       "title": "معلومات الملف الشخصي",
@@ -141,8 +142,6 @@
       "title": "تفضيلات الإشعارات",
       "match_invites": "دعوات المباريات",
       "match_invites_desc": "احصل على إشعار عندما يتحداك شخص ما",
-      "tournament_updates": "تحديثات البطولة",
-      "tournament_updates_desc": "تغييرات الجدول وجدولة المباريات",
       "friend_requests": "طلبات الصداقة",
       "friend_requests_desc": "طلبات الصداقة الجديدة والقبول",
       "achievements": "الإنجازات",
@@ -165,12 +164,24 @@
       "game_effects": "مؤثرات اللعبة",
       "music": "الموسيقى",
       "notifications": "الإشعارات"
+    },
+    "privacy": {
+      "export_title": "تصدير بياناتك",
+      "export_desc": "قم بتنزيل جميع أحداث نشاطك. مفيد للنسخ الاحتياطي أو نقل البيانات.",
+      "export_btn": "تنزيل {{format}}",
+      "exporting": "جارٍ التصدير...",
+      "import_title": "استيراد البيانات",
+      "import_desc": "استعد الأحداث من ملف مُصدَّر سابقاً (JSON أو CSV أو XML). يتم تخطي التكرارات تلقائياً.",
+      "import_btn": "اختر ملفاً واستورد",
+      "importing": "جارٍ الاستيراد...",
+      "import_imported": "تم استيراد {{count}} حدث.",
+      "import_skipped": "تم تخطي {{count}} مكرر.",
+      "import_errors": "{{count}} خطأ — انقر للتوسيع"
     }
   },
   "sidebar": {
     "dashboard": "لوحة التحكم",
     "games": "الألعاب",
-    "tournaments": "البطولات",
     "leaderboard": "لوحة المتصدرين",
     "match_history": "سجل المباريات",
     "analytics": "التحليلات",

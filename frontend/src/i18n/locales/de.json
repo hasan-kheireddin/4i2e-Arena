@@ -109,7 +109,8 @@
       "security": "Sicherheit",
       "notifications": "Benachrichtigungen",
       "appearance": "Erscheinungsbild",
-      "audio": "Audio"
+      "audio": "Audio",
+      "privacy": "Datenschutz"
     },
     "profile": {
       "title": "Profilinformationen",
@@ -141,8 +142,6 @@
       "title": "Benachrichtigungseinstellungen",
       "match_invites": "Match-Einladungen",
       "match_invites_desc": "Benachrichtigt werden, wenn jemand Sie herausfordert",
-      "tournament_updates": "Turnier-Updates",
-      "tournament_updates_desc": "Bracket-Änderungen, Spielplanung",
       "friend_requests": "Freundschaftsanfragen",
       "friend_requests_desc": "Neue Anfragen und Annahmen",
       "achievements": "Errungenschaften",
@@ -165,12 +164,24 @@
       "game_effects": "Spieleffekte",
       "music": "Musik",
       "notifications": "Benachrichtigungen"
+    },
+    "privacy": {
+      "export_title": "Daten exportieren",
+      "export_desc": "Laden Sie alle Ihre Aktivitätsereignisse herunter. Nützlich für Backups oder Datenübertragungen.",
+      "export_btn": "{{format}} herunterladen",
+      "exporting": "Exportiere...",
+      "import_title": "Daten importieren",
+      "import_desc": "Stellen Sie Ereignisse aus einer exportierten Datei wieder her (JSON, CSV oder XML). Duplikate werden automatisch übersprungen.",
+      "import_btn": "Datei auswählen und importieren",
+      "importing": "Importiere...",
+      "import_imported": "{{count}} Ereignisse importiert.",
+      "import_skipped": "{{count}} Duplikat(e) übersprungen.",
+      "import_errors": "{{count}} Fehler – zum Erweitern klicken"
     }
   },
   "sidebar": {
     "dashboard": "Dashboard",
     "games": "Spiele",
-    "tournaments": "Turniere",
     "leaderboard": "Rangliste",
     "match_history": "Spielverlauf",
     "analytics": "Analysen",

@@ -109,7 +109,8 @@
       "security": "Security",
       "notifications": "Notifications",
       "appearance": "Appearance",
-      "audio": "Audio"
+      "audio": "Audio",
+      "privacy": "Privacy"
     },
     "profile": {
       "title": "Profile Information",
@@ -141,8 +142,6 @@
       "title": "Notification Preferences",
       "match_invites": "Match Invites",
       "match_invites_desc": "Get notified when someone challenges you",
-      "tournament_updates": "Tournament Updates",
-      "tournament_updates_desc": "Bracket changes, match scheduling",
       "friend_requests": "Friend Requests",
       "friend_requests_desc": "New friend requests and acceptances",
       "achievements": "Achievements",
@@ -165,12 +164,24 @@
       "game_effects": "Game Effects",
       "music": "Music",
       "notifications": "Notifications"
+    },
+    "privacy": {
+      "export_title": "Export Your Data",
+      "export_desc": "Download all your activity events. Useful for backups or transferring data.",
+      "export_btn": "Download {{format}}",
+      "exporting": "Exporting...",
+      "import_title": "Import Data",
+      "import_desc": "Restore activity events from a previously exported file (JSON, CSV, or XML). Duplicate events are skipped automatically.",
+      "import_btn": "Choose File & Import",
+      "importing": "Importing...",
+      "import_imported": "Imported {{count}} events.",
+      "import_skipped": "Skipped {{count}} duplicates.",
+      "import_errors": "{{count}} error(s) — click to expand"
     }
   },
   "sidebar": {
     "dashboard": "Dashboard",
     "games": "Games",
-    "tournaments": "Tournaments",
     "leaderboard": "Leaderboard",
     "match_history": "Match History",
     "analytics": "Analytics",

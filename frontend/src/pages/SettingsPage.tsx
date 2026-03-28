@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/utils';
+import { exportActivityData, importActivityData, type ExportFormat, type ImportResult } from '../services/analytics';
 
-type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance' | 'audio';
+type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance' | 'audio' | 'privacy';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -39,7 +40,6 @@ export default function SettingsPage() {
   // Notification prefs
   const [notifs, setNotifs] = useState({
     matchInvites: true,
-    tournamentUpdates: true,
     friendRequests: true,
     achievements: true,
     marketing: false,
@@ -74,6 +74,42 @@ export default function SettingsPage() {
     document.documentElement.setAttribute('lang', lang);
   };
 
+  // Privacy / data export-import state
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
+  const [exporting, setExporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportActivityData(exportFormat);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setImportError(null);
+    try {
+      const result = await importActivityData(file);
+      setImportResult(result);
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = () => {
     setSaving(true);
     setTimeout(() => setSaving(false), 1000);
@@ -85,6 +121,7 @@ export default function SettingsPage() {
     { key: 'notifications', label: t('settings.tabs.notifications') },
     { key: 'appearance', label: t('settings.tabs.appearance') },
     { key: 'audio', label: t('settings.tabs.audio') },
+    { key: 'privacy', label: t('settings.tabs.privacy') },
   ];
 
   return (
@@ -296,7 +333,6 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 {[
                   { key: 'matchInvites' as const, label: t('settings.notifications.match_invites'), desc: t('settings.notifications.match_invites_desc') },
-                  { key: 'tournamentUpdates' as const, label: t('settings.notifications.tournament_updates'), desc: t('settings.notifications.tournament_updates_desc') },
                   { key: 'friendRequests' as const, label: t('settings.notifications.friend_requests'), desc: t('settings.notifications.friend_requests_desc') },
                   { key: 'achievements' as const, label: t('settings.notifications.achievements'), desc: t('settings.notifications.achievements_desc') },
                   { key: 'marketing' as const, label: t('settings.notifications.marketing'), desc: t('settings.notifications.marketing_desc') },
@@ -380,6 +416,111 @@ export default function SettingsPage() {
                     </button>
                   ))}
                 </div>
+              </Card>
+            </>
+          )}
+
+          {/* Privacy Tab */}
+          {tab === 'privacy' && (
+            <>
+              {/* Export */}
+              <Card>
+                <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+                  {t('settings.privacy.export_title')}
+                </h2>
+                <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                  {t('settings.privacy.export_desc')}
+                </p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {(['json', 'csv', 'xml'] as ExportFormat[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => setExportFormat(fmt)}
+                      className="px-4 py-1.5 rounded-lg text-sm font-medium uppercase transition-all"
+                      style={{
+                        border: exportFormat === fmt ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        backgroundColor: exportFormat === fmt ? 'rgba(168, 85, 247, 0.12)' : 'var(--color-bg-input)',
+                        color: exportFormat === fmt ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      }}
+                    >
+                      {fmt}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                  style={{
+                    background: exporting ? 'var(--color-primary-disabled)' : 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                    cursor: exporting ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {exporting ? t('settings.privacy.exporting') : t('settings.privacy.export_btn', { format: exportFormat.toUpperCase() })}
+                </button>
+              </Card>
+
+              {/* Import */}
+              <Card>
+                <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+                  {t('settings.privacy.import_title')}
+                </h2>
+                <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                  {t('settings.privacy.import_desc')}
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,.csv,.xml"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                  className="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-bg-input)',
+                    color: importing ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+                    cursor: importing ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {importing ? t('settings.privacy.importing') : t('settings.privacy.import_btn')}
+                </button>
+
+                {/* Import result */}
+                {importResult && (
+                  <div
+                    className="mt-4 p-3 rounded-lg text-sm space-y-1"
+                    style={{
+                      backgroundColor: 'var(--color-bg-input)',
+                      border: '1px solid var(--color-border)',
+                    }}
+                  >
+                    <p style={{ color: 'var(--color-success)' }}>
+                      {t('settings.privacy.import_imported', { count: importResult.imported })}
+                    </p>
+                    {importResult.skipped > 0 && (
+                      <p style={{ color: 'var(--color-text-muted)' }}>
+                        {t('settings.privacy.import_skipped', { count: importResult.skipped })}
+                      </p>
+                    )}
+                    {importResult.errors.length > 0 && (
+                      <details>
+                        <summary className="cursor-pointer" style={{ color: 'var(--color-error)' }}>
+                          {t('settings.privacy.import_errors', { count: importResult.errors.length })}
+                        </summary>
+                        <ul className="mt-2 pl-4 space-y-0.5 list-disc" style={{ color: 'var(--color-error)' }}>
+                          {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                )}
+                {importError && (
+                  <p className="mt-3 text-sm" style={{ color: 'var(--color-error)' }}>{importError}</p>
+                )}
               </Card>
             </>
           )}

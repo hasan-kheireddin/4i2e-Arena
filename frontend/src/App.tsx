@@ -16,7 +16,6 @@ import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import NotFoundPage from "./pages/Notfoundpage";
 import LandingPage from "./pages/Landingpage";
 import PlayPage from "./pages/PlayPage";
-import TournamentPage from "./pages/TournamentPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import MatchHistoryPage from "./pages/MatchHistoryPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
@@ -56,15 +55,6 @@ function App() {
             }
           />
 
-          {/* TournamentPage SHOULD have Layout (with Navbar/Sidebar) */}
-          <Route
-            path="/tournaments"
-            element={
-                <Layout>  {/* ← Added Layout */}
-                  <TournamentPage />
-                </Layout>
-            }
-          />
           <Route
             path="/leaderboard"
             element={

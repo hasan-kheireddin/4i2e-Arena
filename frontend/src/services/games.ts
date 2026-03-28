@@ -67,7 +67,7 @@ export interface Match {
   id: string;
   game_session_id: string;
   game_type: 'pong' | 'tictactoe';
-  game_mode: 'pvp' | 'pve' | 'tournament';
+  game_mode: 'pvp' | 'pve';
   finish_reason: string;
   winner_id: string | null;
   winner_username: string | null;
@@ -77,7 +77,6 @@ export interface Match {
   finished_at: string;
   duration_seconds: number;
   ai_difficulty: string;
-  tournament_id: string | null;
   players: MatchPlayer[];
 }
 
@@ -153,7 +152,7 @@ export interface LeaderboardEntry {
 
 export interface MatchFilters {
   game_type?: 'pong' | 'tictactoe';
-  game_mode?: 'pvp' | 'pve' | 'tournament';
+  game_mode?: 'pvp' | 'pve';
   outcome?: 'win' | 'loss' | 'draw';
   page?: number;
   page_size?: number;
