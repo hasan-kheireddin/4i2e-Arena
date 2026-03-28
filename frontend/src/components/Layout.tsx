@@ -1,7 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
-import { useDir } from "../hooks/useDir";
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,7 +8,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { isRTL } = useDir();
 
   const sidebarWidth = sidebarCollapsed ? '64px' : '240px';
 
@@ -23,7 +21,7 @@ export default function Layout({ children }: LayoutProps) {
       <main
         className="pt-16 transition-all duration-250"
         style={{
-          [isRTL ? 'marginRight' : 'marginLeft']: sidebarWidth,
+          marginLeft: sidebarWidth,
         }}
       >
         <div className="p-6">

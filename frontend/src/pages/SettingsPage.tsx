@@ -70,7 +70,6 @@ export default function SettingsPage() {
     setLanguage(lang);
     i18n.changeLanguage(lang);
     localStorage.setItem('i18nextLng', lang);
-    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
     document.documentElement.setAttribute('lang', lang);
   };
 
@@ -399,7 +398,6 @@ export default function SettingsPage() {
                     { code: 'en', label: 'English', flag: '🇬🇧' },
                     { code: 'fr', label: 'Français', flag: '🇫🇷' },
                     { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-                    { code: 'ar', label: 'العربية', flag: '🇱🇧' },
                   ].map((lang) => (
                     <button
                       key={lang.code}

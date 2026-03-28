@@ -1,4 +1,4 @@
-setup: ssl-generate build migrate up ## First-time project setup
+setup: ssl-generate build up migrate ## First-time project setup
 	@echo "\n✅  Setup complete! Run 'make up' to start the platform.\n"
 
 up:

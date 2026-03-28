@@ -4,11 +4,9 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
-import { useDir } from '@/hooks/useDir';
 
 export function Navbar() {
   const { t } = useTranslation();
-  const { isRTL } = useDir();
   const [searchFocused, setSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -62,12 +60,8 @@ export function Navbar() {
             searchFocused ? 'w-full max-w-[500px]' : 'w-full max-w-[400px]'
           )}
         >
-          {/* Search icon — left in LTR, right in RTL */}
           <Search
-            className={cn(
-              'absolute top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
-              isRTL ? 'right-3' : 'left-3'
-            )}
+            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none left-3"
             style={{ color: 'var(--color-text-muted)' }}
           />
           <input
@@ -75,11 +69,7 @@ export function Navbar() {
             placeholder={t('navbar.search_placeholder')}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            className={cn(
-              'w-full h-9 rounded-full text-sm outline-none transition-all duration-200',
-              // Swap padding sides in RTL so text doesn't overlap the icon
-              isRTL ? 'pr-10 pl-14' : 'pl-10 pr-14'
-            )}
+            className="w-full h-9 rounded-full text-sm outline-none transition-all duration-200 pl-10 pr-14"
             style={{
               backgroundColor: 'var(--color-bg-input)',
               border: searchFocused ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
@@ -87,12 +77,8 @@ export function Navbar() {
               boxShadow: searchFocused ? '0 0 0 2px rgba(168, 85, 247, 0.2)' : 'none',
             }}
           />
-          {/* Keyboard shortcut hint — right in LTR, left in RTL */}
           <kbd
-            className={cn(
-              'absolute top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono rounded',
-              isRTL ? 'left-3' : 'right-3'
-            )}
+            className="absolute top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono rounded right-3"
             style={{
               color: 'var(--color-text-muted)',
               backgroundColor: 'var(--color-bg)',
@@ -121,12 +107,8 @@ export function Navbar() {
             aria-label={t('navbar.notifications')}
           >
             <Bell className="w-5 h-5" />
-            {/* Badge — top-right in LTR, top-left in RTL */}
             <span
-              className={cn(
-                'absolute top-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center',
-                isRTL ? 'left-1' : 'right-1'
-              )}
+              className="absolute top-1 right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
               style={{ backgroundColor: 'var(--color-error)' }}
             >
               3
@@ -154,11 +136,7 @@ export function Navbar() {
 
             {userMenuOpen && (
               <div
-                className={cn(
-                  'absolute top-full mt-2 w-56 rounded-xl shadow-lg py-1',
-                  // Align dropdown to the correct side in RTL vs LTR
-                  isRTL ? 'left-0' : 'right-0'
-                )}
+                className="absolute top-full mt-2 w-56 rounded-xl shadow-lg py-1 right-0"
                 style={{
                   backgroundColor: 'var(--color-bg-card)',
                   border: '1px solid var(--color-border)',
