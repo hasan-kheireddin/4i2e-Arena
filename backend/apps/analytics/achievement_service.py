@@ -50,31 +50,6 @@ async def check_achievements_after_game(session: GameSession) -> None:
                     await award_xp_for_achievement(user_id, xp_reward)
 
 
-async def check_tournament_achievements(user_id: int, is_winner: bool) -> None:
-    """
-    Called from the tournament service when a tournament finishes.
-    Checks tournament-specific achievements.
-    """
-    newly_unlocked: list[dict[str, Any]] = []
-
-    # Tournament participation
-    unlocked = await _increment_and_check(user_id, "tournament_first")
-    if unlocked:
-        newly_unlocked.append(unlocked)
-
-    if is_winner:
-        unlocked = await _increment_and_check(user_id, "tournament_win")
-        if unlocked:
-            newly_unlocked.append(unlocked)
-
-        unlocked = await _increment_and_check(user_id, "tournament_wins_5")
-        if unlocked:
-            newly_unlocked.append(unlocked)
-
-    if newly_unlocked:
-        await _send_unlock_notifications(user_id, newly_unlocked)
-
-
 async def check_level_achievements(user_id: int, new_level: int) -> None:
     """
     Called when a user levels up.  Checks milestone achievements.

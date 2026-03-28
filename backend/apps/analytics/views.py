@@ -19,7 +19,8 @@
 #   GET  /api/analytics/activity/heatmap/        → Hourly heatmap
 #   GET  /api/analytics/activity/recent/         → Recent activity feed
 #   POST /api/analytics/activity/track/          → Frontend page-view tracking
-#   GET  /api/analytics/activity/export/         → Export user data
+#   GET  /api/analytics/activity/export/         → Export user data (JSON/CSV/XML)
+#   POST /api/analytics/activity/import/         → Import user data (JSON/CSV/XML)
 #   POST /api/analytics/activity/anonymise/      → Anonymise user data
 #   GET  /api/analytics/activity/global/         → Platform-wide summary (admin)
 #
@@ -421,7 +422,14 @@ from .aggregation_service import (
     get_recent_activity,
     get_user_activity_summary,
 )
-from .privacy_service import anonymise_user_events, export_user_events
+from .privacy_service import (
+    anonymise_user_events,
+    export_user_events,
+    export_user_events_csv,
+    export_user_events_xml,
+    import_user_events,
+    parse_import_file,
+)
 from .tracking_service import get_client_ip, get_user_agent, track_page_view
 
 
@@ -552,24 +560,124 @@ class TrackEventView(APIView):
 
 
 # ---------------------------------------------------------------------------
-# GET /api/analytics/activity/export/ — Data portability
+# GET  /api/analytics/activity/export/  — Data portability (JSON / CSV / XML)
+# POST /api/analytics/activity/import/  — Data import (JSON / CSV / XML)
 # ---------------------------------------------------------------------------
 
 class ExportActivityView(APIView):
     """
-    Export all activity events for the authenticated user in JSON format.
+    Export all activity events for the authenticated user.
 
-    Supports GDPR data portability requirements.
+    Query parameter:
+      - ``format`` — ``json`` (default) | ``csv`` | ``xml``
+
+    All formats trigger a file download via Content-Disposition header.
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        data = export_user_events(request.user.pk)
-        return Response(
-            {"events": data, "total": len(data)},
-            status=status.HTTP_200_OK,
+        fmt = request.query_params.get("format", "json").lower()
+        user_id = request.user.pk
+
+        if fmt == "csv":
+            from django.http import HttpResponse
+            content = export_user_events_csv(user_id)
+            response = HttpResponse(content, content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = (
+                'attachment; filename="activity_export.csv"'
+            )
+            return response
+
+        if fmt == "xml":
+            from django.http import HttpResponse
+            content = export_user_events_xml(user_id)
+            response = HttpResponse(content, content_type="application/xml; charset=utf-8")
+            response["Content-Disposition"] = (
+                'attachment; filename="activity_export.xml"'
+            )
+            return response
+
+        # Default: JSON
+        from django.http import HttpResponse
+        import json as _json
+        data = export_user_events(user_id)
+        payload = _json.dumps({"events": data, "total": len(data)}, ensure_ascii=False)
+        response = HttpResponse(payload, content_type="application/json; charset=utf-8")
+        response["Content-Disposition"] = (
+            'attachment; filename="activity_export.json"'
         )
+        return response
+
+
+class ImportActivityView(APIView):
+    """
+    Import activity events from a previously exported file.
+
+    Accepts multipart file upload OR raw request body.
+    Supported formats (detected from Content-Type or file extension):
+      - JSON: list of event objects, or ``{"events": [...]}``
+      - CSV:  exported CSV with header row
+      - XML:  exported XML document
+
+    Rules:
+      - Events whose ``id`` already exists in the DB are skipped (idempotent).
+      - Events are always imported for the authenticated user — the
+        ``user_id`` field in the file is ignored for security.
+      - Returns a summary: imported / skipped / errors.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        # ── Resolve file content and content-type ──────────────────────────
+        uploaded = request.FILES.get("file")
+        if uploaded:
+            content = uploaded.read()
+            # Detect format from filename extension if content-type is generic
+            ct = uploaded.content_type or ""
+            name = (uploaded.name or "").lower()
+            if "octet-stream" in ct or not ct:
+                if name.endswith(".csv"):
+                    ct = "text/csv"
+                elif name.endswith(".xml"):
+                    ct = "application/xml"
+                else:
+                    ct = "application/json"
+        else:
+            # Accept raw body with explicit Content-Type
+            content = request.body
+            ct = request.content_type or "application/json"
+
+        if not content:
+            return Response(
+                {"detail": "No file or body provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Parse ──────────────────────────────────────────────────────────
+        rows, parse_error = parse_import_file(content, ct)
+        if parse_error:
+            return Response(
+                {"detail": parse_error},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not rows:
+            return Response(
+                {"detail": "File contained no events.", "imported": 0, "skipped": 0, "errors": []},
+                status=status.HTTP_200_OK,
+            )
+
+        # ── Import ─────────────────────────────────────────────────────────
+        result = import_user_events(request.user.pk, rows)
+
+        http_status = (
+            status.HTTP_200_OK
+            if result["imported"] > 0 or not result["errors"]
+            else status.HTTP_400_BAD_REQUEST
+        )
+        return Response(result, status=http_status)
 
 
 # ---------------------------------------------------------------------------

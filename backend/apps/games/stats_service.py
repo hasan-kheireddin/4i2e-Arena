@@ -175,7 +175,7 @@ def _compute_user_stats(
 
     # --- By game mode breakdown ---------------------------------------------
     by_game_mode = {}
-    for gm in ["pvp", "pve", "tournament"]:
+    for gm in ["pvp", "pve"]:
         gm_agg = base_qs.filter(match__game_mode=gm).aggregate(
             total=Count("id"),
             wins=Count("id", filter=Q(outcome="win")),
@@ -604,8 +604,8 @@ def _compute_leaderboard(
     if game_type:
         base_qs = base_qs.filter(match__game_type=game_type)
 
-    # Only consider PvP and tournament matches for fairness
-    base_qs = base_qs.filter(match__game_mode__in=["pvp", "tournament"])
+    # Only consider PvP matches for fairness
+    base_qs = base_qs.filter(match__game_mode__in=["pvp"])
 
     player_stats = (
         base_qs.values("user_id", "user__username", "user__display_name")

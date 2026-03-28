@@ -21,7 +21,6 @@ from apps.games.session import (
 from apps.analytics.achievement_service import check_achievements_after_game
 from apps.analytics.xp_service import award_xp_after_game
 from apps.games.match_recording_service import record_match
-from apps.tournaments.tournament_service import is_tournament_game, on_game_finished
 
 logger = logging.getLogger("games.pong")
 
@@ -86,8 +85,6 @@ class PongConsumer(BaseConsumer):
             await self._broadcast_game_over(
                 session, reason="disconnect_forfeit",
             )
-            # Notify tournament system (bracket advancement)
-            await on_game_finished(session)
             # Check achievements for all players
             await check_achievements_after_game(session)
             # Award XP to participants
@@ -301,8 +298,6 @@ class PongConsumer(BaseConsumer):
 
         await self._stop_tick_loop(session)
         await self._broadcast_game_over(session, reason="forfeit")
-        # Notify tournament system (bracket advancement)
-        await on_game_finished(session)
         # Check achievements for all players
         await check_achievements_after_game(session)
         # Award XP to participants
@@ -337,8 +332,6 @@ class PongConsumer(BaseConsumer):
                         reason=FinishReason.SCORE,
                     )
                     await self._broadcast_game_over(session, reason="score")
-                    # Notify tournament system (bracket advancement)
-                    await on_game_finished(session)
                     # Check achievements for all players
                     await check_achievements_after_game(session)
                     # Award XP to participants

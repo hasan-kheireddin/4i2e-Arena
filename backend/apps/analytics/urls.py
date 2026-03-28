@@ -16,6 +16,7 @@ from .views import (
     ActivityTimelineView,
     AnonymiseActivityView,
     ExportActivityView,
+    ImportActivityView,
     GlobalActivitySummaryView,
     RecentActivityView,
     TrackEventView,
@@ -104,6 +105,11 @@ urlpatterns = [
         "activity/export/",
         ExportActivityView.as_view(),
         name="activity-export",
+    ),
+    path(
+        "activity/import/",
+        ImportActivityView.as_view(),
+        name="activity-import",
     ),
     path(
         "activity/anonymise/",

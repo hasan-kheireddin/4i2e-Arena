@@ -28,7 +28,6 @@ class MatchOutcome(models.TextChoices):
 class GameMode(models.TextChoices):
     PVP = "pvp", "Player vs Player"
     PVE = "pve", "Player vs AI"
-    TOURNAMENT = "tournament", "Tournament Match"
 
 
 class Match(models.Model):
@@ -92,24 +91,6 @@ class Match(models.Model):
     duration_seconds = models.FloatField(
         default=0.0,
         help_text="Game duration in seconds (finished_at - started_at).",
-    )
-
-    # Optional tournament link
-    tournament = models.ForeignKey(
-        "tournaments.Tournament",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="matches",
-        help_text="Tournament this match belongs to (if any).",
-    )
-    tournament_round = models.ForeignKey(
-        "tournaments.TournamentRound",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="matches",
-        help_text="Tournament round this match belongs to (if any).",
     )
 
     # Scores snapshot (denormalized for quick queries)

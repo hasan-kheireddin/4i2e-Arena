@@ -11,7 +11,6 @@ class AchievementCategory(models.TextChoices):
     STREAKS = "streaks", "Streaks"
     SKILL = "skill", "Skill"
     SOCIAL = "social", "Social"
-    TOURNAMENT = "tournament", "Tournament"
     MILESTONE = "milestone", "Milestone"
 
 
@@ -176,7 +175,6 @@ class EventCategory(models.TextChoices):
     AUTH = "auth", "Authentication"
     GAME = "game", "Game"
     ACHIEVEMENT = "achievement", "Achievement"
-    TOURNAMENT = "tournament", "Tournament"
     SOCIAL = "social", "Social"
     PROFILE = "profile", "Profile"
     NAVIGATION = "navigation", "Navigation"

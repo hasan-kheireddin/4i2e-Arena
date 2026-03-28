@@ -50,7 +50,7 @@ def _apply_match_filters(queryset, params):
 
     Supported filters:
       - ``game_type``   — "pong" or "tictactoe"
-      - ``game_mode``   — "pvp", "pve", "tournament"
+      - ``game_mode``   — "pvp", "pve"
       - ``finish_reason`` — "score", "draw", "forfeit", etc.
       - ``opponent``    — filter by opponent user UUID
       - ``outcome``     — "win", "loss", "draw" (requires user context)
@@ -112,7 +112,7 @@ class MatchListView(generics.ListAPIView):
 
     Query parameters:
       - ``game_type`` — filter by game type
-      - ``game_mode`` — filter by mode (pvp / pve / tournament)
+      - ``game_mode`` — filter by mode (pvp / pve)
       - ``finish_reason`` — filter by finish reason
       - ``from_date`` / ``to_date`` — date range
       - ``page`` / ``page_size`` — pagination
@@ -125,7 +125,7 @@ class MatchListView(generics.ListAPIView):
     def get_queryset(self):
         qs = (
             Match.objects
-            .select_related("winner", "tournament")
+            .select_related("winner")
             .prefetch_related("players__user")
             .order_by("-finished_at")
         )
@@ -151,7 +151,7 @@ class UserMatchListView(generics.ListAPIView):
         qs = (
             Match.objects
             .filter(players__user=user)
-            .select_related("winner", "tournament")
+            .select_related("winner")
             .prefetch_related("players__user")
             .order_by("-finished_at")
             .distinct()
@@ -171,7 +171,7 @@ class MatchDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         return (
             Match.objects
-            .select_related("winner", "tournament", "tournament_round")
+            .select_related("winner")
             .prefetch_related("players__user")
         )
 
@@ -180,7 +180,7 @@ class UserMatchHistoryView(generics.ListAPIView):
     """
     List another user's match history (public view).
 
-    Only shows PvP and tournament matches (excludes PvE).
+    Only shows PvP matches (excludes PvE).
     """
 
     serializer_class = MatchListSerializer
@@ -193,9 +193,9 @@ class UserMatchHistoryView(generics.ListAPIView):
             Match.objects
             .filter(
                 players__user_id=user_id,
-                game_mode__in=["pvp", "tournament"],
+                game_mode__in=["pvp"],
             )
-            .select_related("winner", "tournament")
+            .select_related("winner")
             .prefetch_related("players__user")
             .order_by("-finished_at")
             .distinct()
@@ -257,7 +257,7 @@ class MatchSummaryView(APIView):
 
         # --- By game mode ---
         by_game_mode = {}
-        for gm in ["pvp", "pve", "tournament"]:
+        for gm in ["pvp", "pve"]:
             gm_qs = participations.filter(match__game_mode=gm)
             gm_total = gm_qs.count()
             if gm_total > 0:
@@ -359,7 +359,7 @@ class PublicUserStatsView(APIView):
     """
     Return statistics for any user (public view).
 
-    Only includes PvP and tournament data in the response.
+    Only includes PvP data in the response.
 
     Query parameters:
       - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
@@ -401,7 +401,7 @@ class LeaderboardView(APIView):
       - ``metric``    — ``"wins"`` (default), ``"win_rate"``, ``"xp"``
       - ``limit``     — max entries (1–100, default 50)
 
-    Only PvP and tournament matches are considered.
+    Only PvP matches are considered.
     Players must have at least 5 qualifying matches to appear.
     Results are cached for 10 minutes.
     """

@@ -74,10 +74,6 @@ class MatchListSerializer(serializers.ModelSerializer):
     winner_username = serializers.CharField(
         source="winner.username", read_only=True, allow_null=True,
     )
-    tournament_id = serializers.UUIDField(
-        source="tournament.id", read_only=True, allow_null=True,
-    )
-
     class Meta:
         model = Match
         fields = [
@@ -94,17 +90,12 @@ class MatchListSerializer(serializers.ModelSerializer):
             "finished_at",
             "duration_seconds",
             "ai_difficulty",
-            "tournament_id",
             "players",
         ]
 
 
 class MatchDetailSerializer(serializers.ModelSerializer):
-    """
-    Full match detail serializer.
-
-    Adds metadata and tournament round info on top of the list fields.
-    """
+    """Full match detail serializer."""
 
     players = MatchPlayerSerializer(many=True, read_only=True)
     winner_id = serializers.UUIDField(
@@ -113,15 +104,6 @@ class MatchDetailSerializer(serializers.ModelSerializer):
     winner_username = serializers.CharField(
         source="winner.username", read_only=True, allow_null=True,
     )
-    tournament_id = serializers.UUIDField(
-        source="tournament.id", read_only=True, allow_null=True,
-    )
-    tournament_name = serializers.CharField(
-        source="tournament.name", read_only=True, allow_null=True,
-    )
-    tournament_round_id = serializers.UUIDField(
-        source="tournament_round.id", read_only=True, allow_null=True,
-    )
 
     class Meta:
         model = Match
@@ -139,9 +121,6 @@ class MatchDetailSerializer(serializers.ModelSerializer):
             "finished_at",
             "duration_seconds",
             "ai_difficulty",
-            "tournament_id",
-            "tournament_name",
-            "tournament_round_id",
             "metadata",
             "players",
             "created_at",

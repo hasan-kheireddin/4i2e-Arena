@@ -86,13 +86,6 @@ def _create_match_record(session: GameSession) -> Optional[str]:
         except User.DoesNotExist:
             logger.warning("Winner user %s not found", session.winner_id)
 
-    # Tournament link (if applicable)
-    tournament = None
-    tournament_round = None
-    tournament_data = _find_tournament_link(session.game_id)
-    if tournament_data:
-        tournament, tournament_round = tournament_data
-
     # Metadata from engine
     metadata = _extract_metadata(session)
 
@@ -106,8 +99,6 @@ def _create_match_record(session: GameSession) -> Optional[str]:
         started_at=started_at,
         finished_at=finished_at,
         duration_seconds=round(max(duration, 0), 2),
-        tournament=tournament,
-        tournament_round=tournament_round,
         player1_score=p1_score,
         player2_score=p2_score,
         ai_difficulty=session.ai_difficulty or "",
@@ -185,15 +176,7 @@ def _map_finish_reason(reason: FinishReason | None) -> str:
 
 
 def _determine_game_mode(session: GameSession) -> str:
-    """Determine the game mode (PvP / PvE / Tournament)."""
-    # Check tournament first
-    from apps.tournaments.models import TournamentRound
-    try:
-        TournamentRound.objects.get(game_session_id=session.game_id)
-        return GameMode.TOURNAMENT
-    except TournamentRound.DoesNotExist:
-        pass
-
+    """Determine the game mode (PvP / PvE)."""
     if session.ai is not None:
         return GameMode.PVE
     return GameMode.PVP
@@ -251,22 +234,6 @@ def _get_player_score(session: GameSession, slot: int) -> int:
         return int(scores.get(str(slot), scores.get(slot, 0)))
 
     return 0  # TTT doesn't have numerical scores
-
-def _find_tournament_link(game_id: str):
-    """
-    Check if this game session is linked to a tournament round.
-    Returns (tournament, tournament_round) or None.
-    """
-    from apps.tournaments.models import TournamentRound
-
-    try:
-        round_obj = TournamentRound.objects.select_related(
-            "tournament",
-        ).get(game_session_id=game_id)
-        return (round_obj.tournament, round_obj)
-    except TournamentRound.DoesNotExist:
-        return None
-
 
 def _extract_metadata(session: GameSession) -> dict[str, Any]:
     """

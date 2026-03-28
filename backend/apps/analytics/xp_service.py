@@ -37,12 +37,6 @@ STREAK_BONUSES: dict[int, int] = {
     10: 50,  # 10-game streak bonus
 }
 
-# Tournament XP bonuses
-XP_TOURNAMENT_PARTICIPATION: int = 50
-XP_TOURNAMENT_WIN_MATCH: int = 40       # per tournament match won
-XP_TOURNAMENT_CHAMPION: int = 200       # tournament winner bonus
-XP_TOURNAMENT_FINALIST: int = 75        # runner-up
-
 # Achievement XP is defined per-achievement in achievement_definitions.py
 # and passed via award_xp_for_achievement()
 
@@ -155,67 +149,6 @@ async def award_xp_after_game(session: GameSession) -> None:
                         check_level_achievements,
                     )
                     await check_level_achievements(user_id, result["new_level"])
-
-
-async def award_xp_for_tournament(
-    user_id: int,
-    *,
-    is_champion: bool = False,
-    is_finalist: bool = False,
-    is_match_win: bool = False,
-    is_participation: bool = False,
-    matches_won: int = 0,
-) -> None:
-    """
-    Award tournament-specific XP bonuses.
-
-    Called from the tournament service at different stages:
-      - ``is_match_win=True``: when a player wins a tournament match
-      - ``is_participation=True``: when a tournament completes (all players)
-      - ``is_champion=True``: for the tournament winner
-      - ``is_finalist=True``: for the runner-up
-    """
-    xp_amount = 0
-    breakdown: dict[str, int] = {}
-
-    if is_participation:
-        xp_amount += XP_TOURNAMENT_PARTICIPATION
-        breakdown["tournament_participation"] = XP_TOURNAMENT_PARTICIPATION
-
-    if is_match_win:
-        xp_amount += XP_TOURNAMENT_WIN_MATCH
-        breakdown["tournament_match_win"] = XP_TOURNAMENT_WIN_MATCH
-
-    if matches_won > 0:
-        match_xp = XP_TOURNAMENT_WIN_MATCH * matches_won
-        xp_amount += match_xp
-        breakdown["tournament_match_wins"] = match_xp
-
-    if is_champion:
-        xp_amount += XP_TOURNAMENT_CHAMPION
-        breakdown["tournament_champion"] = XP_TOURNAMENT_CHAMPION
-    elif is_finalist:
-        xp_amount += XP_TOURNAMENT_FINALIST
-        breakdown["tournament_finalist"] = XP_TOURNAMENT_FINALIST
-
-    if xp_amount > 0:
-        result = await _apply_xp(user_id, xp_amount)
-        if result:
-            await _send_xp_notification(
-                user_id=user_id,
-                xp_gained=xp_amount,
-                breakdown=breakdown,
-                new_xp=result["new_xp"],
-                new_level=result["new_level"],
-                old_level=result["old_level"],
-                leveled_up=result["leveled_up"],
-            )
-
-            if result["leveled_up"]:
-                from apps.analytics.achievement_service import (
-                    check_level_achievements,
-                )
-                await check_level_achievements(user_id, result["new_level"])
 
 
 async def award_xp_for_achievement(user_id: int, xp_reward: int) -> None:
