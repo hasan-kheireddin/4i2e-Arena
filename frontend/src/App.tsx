@@ -18,7 +18,6 @@ import LandingPage from "./pages/Landingpage";
 import PlayPage from "./pages/PlayPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import MatchHistoryPage from "./pages/MatchHistoryPage";
-import AnalyticsPage from "./pages/AnalyticsPage";
 import SettingsPage from "./pages/SettingsPage";
 
 function App() {
@@ -68,14 +67,6 @@ function App() {
             element={
                 <Layout>  {/* ← Added Layout */}
                   <MatchHistoryPage />
-                </Layout>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-                <Layout>  {/* ← Added Layout */}
-                  <AnalyticsPage />
                 </Layout>
             }
           />

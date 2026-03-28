@@ -130,15 +130,16 @@ class LogoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(
-            {"detail": "Successfully logged out."},
-            status=status.HTTP_200_OK,
-        )
         # Track logout event
         track_logout(
             request.user.pk,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
+        )
+
+        return Response(
+            {"detail": "Successfully logged out."},
+            status=status.HTTP_200_OK,
         )
 
 class CustomTokenRefreshView(TokenRefreshView):

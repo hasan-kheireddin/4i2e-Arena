@@ -3,7 +3,6 @@ import {
   Gamepad2,
   BarChart3,
   History,
-  LineChart,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -45,7 +44,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { label: t('sidebar.games'),         icon: <Gamepad2 className="w-5 h-5" />, to: '/games/playpage' },
     { label: t('sidebar.leaderboard'),   icon: <BarChart3 className="w-5 h-5" />,to: '/leaderboard' },
     { label: t('sidebar.match_history'), icon: <History className="w-5 h-5" />,  to: '/history' },
-    { label: t('sidebar.analytics'),     icon: <LineChart className="w-5 h-5" />,to: '/analytics' },
     { label: t('sidebar.settings'),      icon: <Settings className="w-5 h-5" />, to: '/settings' },
   ];
 

@@ -20,14 +20,6 @@ from .views import (
     GlobalActivitySummaryView,
     RecentActivityView,
     TrackEventView,
-    # Analytics engine endpoints (Task 10.2)
-    OpponentsSummaryView,
-    PeakHoursView,
-    PerformanceInsightsView,
-    PerformanceTrendView,
-    RivalriesView,
-    SessionAnalysisView,
-    WinRateTrendView,
 )
 
 urlpatterns = [
@@ -122,40 +114,4 @@ urlpatterns = [
         name="activity-global",
     ),
 
-    # Analytics engine endpoints (Task 10.2)
-    path(
-        "insights/win-rate-trend/",
-        WinRateTrendView.as_view(),
-        name="insights-win-rate-trend",
-    ),
-    path(
-        "insights/performance-trend/",
-        PerformanceTrendView.as_view(),
-        name="insights-performance-trend",
-    ),
-    path(
-        "insights/peak-hours/",
-        PeakHoursView.as_view(),
-        name="insights-peak-hours",
-    ),
-    path(
-        "insights/sessions/",
-        SessionAnalysisView.as_view(),
-        name="insights-sessions",
-    ),
-    path(
-        "insights/opponents/",
-        OpponentsSummaryView.as_view(),
-        name="insights-opponents",
-    ),
-    path(
-        "insights/rivalries/",
-        RivalriesView.as_view(),
-        name="insights-rivalries",
-    ),
-    path(
-        "insights/recommendations/",
-        PerformanceInsightsView.as_view(),
-        name="insights-recommendations",
-    ),
 ]
