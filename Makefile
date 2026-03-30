@@ -71,11 +71,15 @@ clean: ## Stop services and remove volumes (⚠️  deletes database data!)
 	docker compose down -v --remove-orphans
 	@echo "All containers, networks, and volumes removed."
 
+fclean: ## Full clean: stop services, remove volumes, and remove all built images
+	docker compose down -v --remove-orphans --rmi all
+	@echo "All containers, networks, volumes, and images removed."
+
 prune: ## Remove all unused Docker resources
 	docker system prune -f
 	@echo "Docker system pruned."
 
 .PHONY: help setup up down build rebuild logs \
         migrate makemigrations createsuperuser shell \
-        test lint clean ssl-generate \
+        test lint clean fclean ssl-generate \
         db-shell redis-cli
