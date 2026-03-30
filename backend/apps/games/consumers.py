@@ -1,18 +1,18 @@
 
-from __future__ import annotation
+from __future__ import annotations
 import json
 import logging
 import time
 from typing import Any
 
-from channels.generic.websocket import AsyncWebSocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer
 
 logger = logging.getLogger("channels.consumer")
 
 MAX_MESSAGE_SIZE: int = 65_536
 
 
-class BaseConsumer(AsyncWebSocketConsumer):
+class BaseConsumer(AsyncWebsocketConsumer):
     """
     Abstract base consumer with lifecycle hooks, auth gating, group
     management, and structured JSON messaging.
