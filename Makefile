@@ -1,5 +1,10 @@
-setup: ssl-generate build up migrate ## First-time project setup
-	@echo "\n✅  Setup complete! Run 'make up' to start the platform.\n"
+.DEFAULT_GOAL := setup
+
+setup: ssl-generate build up ## First-time project setup: generates SSL, builds images, starts all services
+	@echo ""
+	@echo "Setup complete! Migrations are running inside the backend container."
+	@echo "Run 'make logs-backend' to follow progress."
+	@echo ""
 
 up:
 	docker compose up -d
@@ -32,7 +37,6 @@ status:
 	docker compose ps
 
 migrate: ## Run Django database migrations
-	docker compose exec backend python manage.py makemigrations --noinput
 	docker compose exec backend python manage.py migrate
 
 makemigrations: ## Create new Django migration files
