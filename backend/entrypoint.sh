@@ -18,6 +18,21 @@ except Exception:
 done
 echo "Database is ready!"
 
+echo "Waiting for Redis..."
+while ! python -c "
+import os, sys, redis
+try:
+    r = redis.from_url(os.environ.get('REDIS_URL', 'redis://redis:6379/0'), socket_connect_timeout=2)
+    r.ping()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; do
+    echo " Redis not ready, retrying in 2s..."
+    sleep 2
+done
+echo "Redis is ready!"
+
 echo "Creating migrations..."
 python manage.py makemigrations --noinput
 echo "Applying migrations..."

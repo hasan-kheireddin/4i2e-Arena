@@ -14,7 +14,7 @@ import TicTacToePage from "./pages/Tictactoepage";
 import PongPage from "./pages/PongPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import NotFoundPage from "./pages/Notfoundpage";
-import LandingPage from "./pages/Landingpage";
+import LandingPage from "./pages/LandingPage";
 import PlayPage from "./pages/PlayPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import MatchHistoryPage from "./pages/MatchHistoryPage";
