@@ -63,8 +63,8 @@ export default function TicTacToePage() {
   const [onlinePhase, setOnlinePhase] = useState<OnlinePhase>('idle');
   const [gameId, setGameId] = useState<string | null>(null);
   const [mySlot, setMySlot] = useState<number | null>(null);
-  const [onlineBoard, setOnlineBoard] = useState<(string | null)[]>(Array(9).fill(null));
-  const [currentTurn, setCurrentTurn] = useState<number>(1);
+  const [onlineBoard, setOnlineBoard] = useState<CellValue[]>(Array(9).fill(null));
+  const [currentTurn, setCurrentTurn] = useState<string>('X');
   const [onlineWinner, setOnlineWinner] = useState<string | null>(null);
   const [onlineDraw, setOnlineDraw] = useState(false);
   const [onlineReason, setOnlineReason] = useState<string | null>(null);
@@ -123,18 +123,19 @@ export default function TicTacToePage() {
           }
         }
       } else if (type === 'game_state') {
-        const state = data.state as { board: (string | null)[]; current_turn: number } | undefined;
-        if (state) {
-          setOnlineBoard(state.board);
-          setCurrentTurn(state.current_turn);
-          setMoveError(null);
-        }
+        // Backend sends 2D board: [["X",null,null],[...],[...]] — flatten it
+        const rawBoard = data.board as (CellValue[] | null)[] | undefined;
+        if (rawBoard) setOnlineBoard(rawBoard.flat() as CellValue[]);
+        const cp = data.current_player as string | undefined;
+        if (cp) setCurrentTurn(cp);
+        setMoveError(null);
+        setOnlinePhase((prev) => prev === 'waiting' ? 'playing' : prev);
       } else if (type === 'game_over') {
         const w = data.winner as string | null;
         const draw = data.is_draw as boolean;
         const reason = data.reason as string;
-        const fs = data.final_state as { board?: (string | null)[] } | undefined;
-        if (fs?.board) setOnlineBoard(fs.board);
+        const fs = data.final_state as { board?: (CellValue[] | null)[] } | undefined;
+        if (fs?.board) setOnlineBoard(fs.board.flat() as CellValue[]);
         setOnlineWinner(w);
         setOnlineDraw(draw);
         setOnlineReason(reason);
@@ -173,10 +174,13 @@ export default function TicTacToePage() {
     setOnlinePhase('idle');
   };
 
+  // Derived mark — must be before handleOnlineCell
+  const myMark = mySlot === 1 ? 'X' : 'O';
+
   const handleOnlineCell = (i: number) => {
     if (onlinePhase !== 'playing') return;
     if (onlineBoard[i]) return;
-    if (currentTurn !== mySlot) return;
+    if (currentTurn !== myMark) return;
     gameSend({ type: 'move', cell: i });
   };
 
@@ -198,10 +202,9 @@ export default function TicTacToePage() {
   };
 
   // ── derived online values ───────────────────────────────────────────────
-  const myMark = mySlot === 1 ? 'X' : 'O';
-  const isMyTurn = onlinePhase === 'playing' && currentTurn === mySlot;
+  const isMyTurn = onlinePhase === 'playing' && currentTurn === myMark;
   const onlineWinLine: number[] | null = onlineWinner
-    ? checkWinner(onlineBoard as CellValue[]).line
+    ? checkWinner(onlineBoard).line
     : null;
 
   return (
@@ -288,7 +291,7 @@ export default function TicTacToePage() {
                       <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
                         Play Again
                       </button>
-                      <Link to="/dashboard">
+                      <Link to="/home">
                         <button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
                           Back
                         </button>
@@ -455,7 +458,7 @@ export default function TicTacToePage() {
                       <button onClick={handlePlayAgainOnline} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
                         Find New Match
                       </button>
-                      <Link to="/dashboard">
+                      <Link to="/home">
                         <button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
                           Back
                         </button>

@@ -32,7 +32,7 @@ export default function OAuthCallbackPage() {
       try {
         const res = await oauthCallback(provider, { code, state });
         setUser(res.user);
-        navigate("/");
+        navigate("/home");
       } catch (err: unknown) {
         const apiErr = err as ApiError;
         setError(apiErr.detail ?? "Authentication failed. Please try again.");

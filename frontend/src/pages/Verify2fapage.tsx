@@ -101,7 +101,7 @@ export default function Verify2FAPage() {
     try {
       const res = await twoFAVerify({ temp_token: tempToken, code: codeString });
       setUser(res.user);
-      navigate("/");
+      navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? "Invalid code. Please try again.");
@@ -129,7 +129,7 @@ export default function Verify2FAPage() {
     try {
       const res = await twoFARecovery({ temp_token: tempToken, code: recoveryCode.trim() });
       setUser(res.user);
-      navigate("/");
+      navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? "Invalid recovery code. Please try again.");

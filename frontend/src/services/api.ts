@@ -1,5 +1,4 @@
-const API_BASE = "/api/accounts";
-
+// Token helpers
 export function getAccessToken(): string | null {
   return localStorage.getItem("access_token");
 }
@@ -69,7 +68,7 @@ async function doRefresh(): Promise<boolean> {
   if (!refresh) return false;
 
   try {
-    const res = await fetch(`${API_BASE}/token/refresh/`, {
+    const res = await fetch("/api/accounts/token/refresh/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh }),
@@ -107,7 +106,8 @@ interface FetchOptions {
 }
 
 /**
- * Make an API request. Automatically:
+ * Generic API fetch. Accepts full paths like `/api/accounts/login/` or `/api/games/matches/`.
+ * Automatically:
  * - Attaches JWT Authorization header (if auth !== false)
  * - Retries once on 401 after refreshing the access token
  * - Throws an ApiError on failure
@@ -129,7 +129,7 @@ export async function apiFetch<T = unknown>(
     return headers;
   };
 
-  let res = await fetch(`${API_BASE}${path}`, {
+  let res = await fetch(path, {
     method,
     headers: buildHeaders(),
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -139,7 +139,7 @@ export async function apiFetch<T = unknown>(
   if (res.status === 401 && auth) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      res = await fetch(`${API_BASE}${path}`, {
+      res = await fetch(path, {
         method,
         headers: buildHeaders(),
         body: body !== undefined ? JSON.stringify(body) : undefined,

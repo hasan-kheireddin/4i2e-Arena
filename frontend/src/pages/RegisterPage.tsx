@@ -125,7 +125,7 @@ export default function RegisterPage() {
         password2: formData.confirmPassword,
       });
       setUser(res.user);
-      navigate("/");
+      navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       if (apiErr.detail) {

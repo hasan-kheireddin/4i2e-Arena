@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Avatar } from '../components/ui/Avatar';
 import { useGameSocket } from '../hooks/useGameSocket';
 
@@ -13,7 +13,6 @@ type OnlinePhase = 'idle' | 'matchmaking' | 'waiting' | 'playing' | 'over';
 interface OnlineGameState {
   ball: { x: number; y: number; vx: number; vy: number };
   paddles: { [slot: number]: { y: number } };
-  score?: { [slot: number]: number };
 }
 
 const WIN_SCORE = 7;
@@ -81,12 +80,18 @@ function drawFrame(
 }
 
 export default function PongPage() {
-  const [mode, setMode] = useState<Mode>('local');
+  // Read mode and difficulty from URL params (set by PlayPage)
+  const [searchParams] = useSearchParams();
+  const urlMode = searchParams.get('mode') === 'online' ? 'online' : 'local';
+  const urlDiff = (['easy', 'medium', 'hard'].includes(searchParams.get('difficulty') ?? '')
+    ? searchParams.get('difficulty')!
+    : 'medium') as Difficulty;
 
+  const [mode, setMode] = useState<Mode>(urlMode);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState(false);
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [difficulty, setDifficulty] = useState<Difficulty>(urlDiff);
 
   const gameState = useRef({
     p1: { y: 250 } as PaddleState,
@@ -94,7 +99,6 @@ export default function PongPage() {
     ball: { x: 400, y: 250, vx: 4, vy: 3 } as BallState,
   });
 
-  // shared keyboard state
   const keysRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -125,8 +129,8 @@ export default function PongPage() {
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
 
-  // online paddle position tracked locally for keyboard sending
-  const onlinePaddleYRef = useRef(250);
+  // Tracks last sent direction to avoid spamming identical messages
+  const prevDirectionRef = useRef<'up' | 'down' | 'stop'>('stop');
 
   // ── local game loop ───────────────────────────────────────────────────────
   const animate = useCallback(() => {
@@ -139,7 +143,6 @@ export default function PongPage() {
     const keys = keysRef.current;
 
     if (!gameOver) {
-      // player paddle — keyboard
       if (keys['w'] || keys['W'] || keys['ArrowUp']) {
         gs.p1.y = Math.max(40, gs.p1.y - PADDLE_SPEED);
       }
@@ -147,17 +150,13 @@ export default function PongPage() {
         gs.p1.y = Math.min(canvas.height - 40, gs.p1.y + PADDLE_SPEED);
       }
 
-      // AI paddle — tracks ball at difficulty speed
       gs.p2.y += (gs.ball.y - gs.p2.y) * AI_SPEED[difficulty];
 
-      // ball movement
       gs.ball.x += gs.ball.vx;
       gs.ball.y += gs.ball.vy;
 
-      // wall bounce
       if (gs.ball.y <= 8 || gs.ball.y >= canvas.height - 8) gs.ball.vy *= -1;
 
-      // paddle collisions
       if (gs.ball.x <= 22 && gs.ball.x >= 10 && gs.ball.y >= gs.p1.y - 40 && gs.ball.y <= gs.p1.y + 40) {
         gs.ball.vx = Math.abs(gs.ball.vx) * 1.02;
         gs.ball.vy += (gs.ball.y - gs.p1.y) * 0.04;
@@ -167,7 +166,6 @@ export default function PongPage() {
         gs.ball.vy += (gs.ball.y - gs.p2.y) * 0.04;
       }
 
-      // scoring
       if (gs.ball.x < 0) {
         setScore((prev) => { const next = { ...prev, p2: prev.p2 + 1 }; if (next.p2 >= WIN_SCORE) setGameOver(true); return next; });
         gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: -4, vy: 3 };
@@ -196,30 +194,41 @@ export default function PongPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const { ball, paddles } = onlineGameState;
-    drawFrame(ctx, canvas, paddles[1]?.y ?? 250, paddles[2]?.y ?? 250, ball);
+    // Backend field is 800×600, canvas is 800×500 — scale Y coordinates
+    const scaleY = canvas.height / 600;
+    drawFrame(
+      ctx, canvas,
+      (paddles[1]?.y ?? 300) * scaleY,
+      (paddles[2]?.y ?? 300) * scaleY,
+      { ...ball, y: ball.y * scaleY },
+    );
   }, [mode, onlineGameState]);
 
-  // ── online keyboard paddle send ───────────────────────────────────────────
+  // ── online keyboard input → direction-based messages ─────────────────────
   const gameSendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
 
   useEffect(() => {
     if (mode !== 'online' || onlinePhase !== 'playing') return;
     const interval = setInterval(() => {
       const keys = keysRef.current;
-      let moved = false;
-      if (keys['w'] || keys['W'] || keys['ArrowUp']) {
-        onlinePaddleYRef.current = Math.max(40, onlinePaddleYRef.current - PADDLE_SPEED);
-        moved = true;
+      let dir: 'up' | 'down' | 'stop' = 'stop';
+      if (keys['w'] || keys['W'] || keys['ArrowUp']) dir = 'up';
+      else if (keys['s'] || keys['S'] || keys['ArrowDown']) dir = 'down';
+
+      // Only send when direction changes to avoid flooding the server
+      if (dir !== prevDirectionRef.current) {
+        prevDirectionRef.current = dir;
+        gameSendRef.current({ type: 'input', direction: dir });
       }
-      if (keys['s'] || keys['S'] || keys['ArrowDown']) {
-        onlinePaddleYRef.current = Math.min(460, onlinePaddleYRef.current + PADDLE_SPEED);
-        moved = true;
+    }, 16); // ~60fps polling
+    return () => {
+      clearInterval(interval);
+      // Send stop when effect cleans up (phase change / unmount)
+      if (prevDirectionRef.current !== 'stop') {
+        gameSendRef.current({ type: 'input', direction: 'stop' });
+        prevDirectionRef.current = 'stop';
       }
-      if (moved) {
-        gameSendRef.current({ type: 'paddle_move', y: Math.round(onlinePaddleYRef.current) });
-      }
-    }, 33);
-    return () => clearInterval(interval);
+    };
   }, [mode, onlinePhase]);
 
   // ── matchmaking socket ────────────────────────────────────────────────────
@@ -231,6 +240,8 @@ export default function PongPage() {
     onMessage: useCallback((data: Record<string, unknown>) => {
       if (data.type === 'match_found') {
         const gid = data.game_id as string;
+        const opponent = data.opponent as { username?: string } | undefined;
+        if (opponent?.username) setOpponentName(opponent.username);
         setGameId(gid);
         setMmPath(null);
         setGamePath(`/ws/game/pong/${gid}/`);
@@ -247,6 +258,7 @@ export default function PongPage() {
     }, [gameId]),
     onMessage: useCallback((data: Record<string, unknown>) => {
       const type = data.type as string;
+
       if (type === 'game_joined') {
         const slot = data.slot as number;
         setMySlot(slot);
@@ -261,22 +273,23 @@ export default function PongPage() {
       } else if (type === 'game_start') {
         setOnlinePhase('playing');
       } else if (type === 'game_state') {
-        const state = data.state as OnlineGameState | undefined;
-        if (state) {
-          setOnlineGameState(state);
-          if (state.score) {
-            setOnlineScore({ p1: state.score[1] ?? 0, p2: state.score[2] ?? 0 });
-          }
+        const ball = data.ball as { x: number; y: number; vx: number; vy: number };
+        const p1 = data.player1 as { score: number; paddle: { y: number } } | undefined;
+        const p2 = data.player2 as { score: number; paddle: { y: number } } | undefined;
+        if (p1 && p2) {
+          setOnlineGameState({ ball, paddles: { 1: { y: p1.paddle.y }, 2: { y: p2.paddle.y } } });
+          setOnlineScore({ p1: p1.score, p2: p2.score });
         }
+        // Transition from waiting → playing on first state frame
+        setOnlinePhase((prev) => prev === 'waiting' ? 'playing' : prev);
       } else if (type === 'game_over') {
-        const winner = data.winner as string | null;
+        const winner = data.winner as number | null;
         const reason = data.reason as string;
+        const fs = data.final_state as { player1?: { score: number }; player2?: { score: number } } | undefined;
         setOnlineReason(reason);
-        if (winner) {
-          const slot = parseInt(String(winner).replace(/\D/g, ''), 10);
-          setOnlineWinnerSlot(isNaN(slot) ? null : slot);
-        } else {
-          setOnlineWinnerSlot(null);
+        setOnlineWinnerSlot(winner ?? null);
+        if (fs?.player1 && fs?.player2) {
+          setOnlineScore({ p1: fs.player1.score, p2: fs.player2.score });
         }
         setOnlinePhase('over');
       } else if (type === 'player_left') {
@@ -289,7 +302,6 @@ export default function PongPage() {
     }, [onlinePhase]),
   });
 
-  // keep gameSendRef in sync
   useEffect(() => { gameSendRef.current = gameSend; }, [gameSend]);
 
   // ── local reset ───────────────────────────────────────────────────────────
@@ -303,7 +315,6 @@ export default function PongPage() {
 
   // ── online helpers ────────────────────────────────────────────────────────
   const handleFindMatch = () => {
-    onlinePaddleYRef.current = 250;
     setOnlinePhase('matchmaking');
     setOnlineGameState(null);
     setOnlineScore({ p1: 0, p2: 0 });
@@ -314,6 +325,7 @@ export default function PongPage() {
     setOpponentName('Opponent');
     setGameId(null);
     setGamePath(null);
+    prevDirectionRef.current = 'stop';
     setMmPath('/ws/matchmaking/');
   };
 
@@ -386,10 +398,10 @@ export default function PongPage() {
 
           {/* Online — idle */}
           {mode === 'online' && onlinePhase === 'idle' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Online Pong</h2>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Real-time PvP — server authoritative</p>
-              <button onClick={handleFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #EF4444 100%)' }}>
+              <button onClick={handleFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
                 Find Match
               </button>
             </div>
@@ -397,18 +409,19 @@ export default function PongPage() {
 
           {/* Online — matchmaking */}
           {mode === 'online' && onlinePhase === 'matchmaking' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-              <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: '#3B82F6', borderTopColor: 'transparent' }} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
+              <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
               <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Searching for opponent…</p>
               <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
             </div>
           )}
 
-          {/* Online — waiting */}
+          {/* Online — waiting for game to start */}
           {mode === 'online' && onlinePhase === 'waiting' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-              <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: '#EF4444', borderTopColor: 'transparent' }} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
+              <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: '#a855f7', borderTopColor: 'transparent' }} />
               <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Waiting for opponent…</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>vs {opponentName}</p>
               <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
             </div>
           )}
@@ -424,21 +437,21 @@ export default function PongPage() {
 
           {/* Local — game over */}
           {mode === 'local' && gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-5xl font-extrabold" style={{ color: playerWon ? '#3B82F6' : '#EF4444' }}>
                 {playerWon ? 'Win' : 'Lose'}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
               <div className="flex gap-3 mt-2">
                 <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>Play Again</button>
-                <Link to="/dashboard"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back</button></Link>
+                <Link to="/home"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back</button></Link>
               </div>
             </div>
           )}
 
           {/* Online — game over */}
           {mode === 'online' && onlinePhase === 'over' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-5xl font-extrabold" style={{ color: iWon ? '#3B82F6' : '#EF4444' }}>
                 {iWon ? 'Win' : 'Lose'}
               </h2>
@@ -450,8 +463,8 @@ export default function PongPage() {
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Opponent forfeited</p>
               )}
               <div className="flex gap-3 mt-2">
-                <button onClick={() => { setGamePath(null); setOnlinePhase('idle'); }} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #EF4444 100%)' }}>New Match</button>
-                <Link to="/dashboard"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back</button></Link>
+                <button onClick={() => { setGamePath(null); setOnlinePhase('idle'); }} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>New Match</button>
+                <Link to="/home"><button className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back</button></Link>
               </div>
             </div>
           )}
@@ -459,7 +472,6 @@ export default function PongPage() {
 
         {/* Controls Bar */}
         <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          {/* left — difficulty (local) or empty (online) */}
           <div className="flex items-center gap-2">
             {mode === 'local' && (['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
               <button
@@ -476,8 +488,6 @@ export default function PongPage() {
               </button>
             ))}
           </div>
-
-          {/* right — hint + forfeit */}
           <div className="flex items-center gap-3">
             <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
               W / S &nbsp;or&nbsp; ↑ / ↓

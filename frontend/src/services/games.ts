@@ -1,56 +1,16 @@
-import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './api';
+import { apiFetch } from './api';
 
-const GAMES_BASE = '/api/games';
+const G = '/api/games';
 
-async function gamesApiFetch<T = unknown>(
-  path: string,
-  opts: { method?: string; body?: unknown } = {},
-): Promise<T> {
-  const { method = 'GET', body } = opts;
-
-  const buildHeaders = (): Record<string, string> => {
-    const h: Record<string, string> = { 'Content-Type': 'application/json' };
-    const token = getAccessToken();
-    if (token) h['Authorization'] = `Bearer ${token}`;
-    return h;
-  };
-
-  let res = await fetch(`${GAMES_BASE}${path}`, {
-    method,
-    headers: buildHeaders(),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-
-  if (res.status === 401) {
-    const refresh = getRefreshToken();
-    if (refresh) {
-      const rRes = await fetch('/api/accounts/token/refresh/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh }),
-      });
-      if (rRes.ok) {
-        const data = await rRes.json();
-        setTokens(data.access, data.refresh ?? refresh);
-        res = await fetch(`${GAMES_BASE}${path}`, {
-          method,
-          headers: buildHeaders(),
-          body: body !== undefined ? JSON.stringify(body) : undefined,
-        });
-      } else {
-        clearTokens();
-      }
-    }
-  }
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw Object.assign(new Error(err.detail || 'Request failed'), { status: res.status, data: err });
-  }
-
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+function buildQuery(params: Record<string, string | number | undefined>): string {
+  const q = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+  return q ? `?${q}` : '';
 }
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface MatchPlayer {
   user_id: string;
@@ -76,7 +36,7 @@ export interface Match {
   started_at: string;
   finished_at: string;
   duration_seconds: number;
-  ai_difficulty: string;
+  ai_difficulty: string | null;
   players: MatchPlayer[];
 }
 
@@ -136,6 +96,7 @@ export interface UserStats {
   recent_form: string[];
 }
 
+/** Entry returned by /api/games/stats/leaderboard/ */
 export interface LeaderboardEntry {
   rank: number;
   user_id: string;
@@ -158,34 +119,50 @@ export interface MatchFilters {
   page_size?: number;
 }
 
-function buildQuery(params: Record<string, string | number | undefined>): string {
-  const q = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== '')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-    .join('&');
-  return q ? `?${q}` : '';
-}
+// ── API calls ─────────────────────────────────────────────────────────────────
 
+/** GET /api/games/matches/me/ */
 export function getMyMatches(filters: MatchFilters = {}): Promise<PaginatedMatches> {
-  return gamesApiFetch<PaginatedMatches>(`/matches/me/${buildQuery(filters as Record<string, string | number | undefined>)}`);
+  return apiFetch<PaginatedMatches>(
+    `${G}/matches/me/${buildQuery(filters as Record<string, string | number | undefined>)}`
+  );
 }
 
+/** GET /api/games/matches/<id>/ */
 export function getMatch(id: string): Promise<Match> {
-  return gamesApiFetch<Match>(`/matches/${id}/`);
+  return apiFetch<Match>(`${G}/matches/${id}/`);
 }
 
+/** GET /api/games/matches/user/<uuid>/ */
+export function getUserMatches(userId: string, filters: { game_type?: string; page?: number; page_size?: number } = {}): Promise<PaginatedMatches> {
+  return apiFetch<PaginatedMatches>(`${G}/matches/user/${userId}/${buildQuery(filters as Record<string, string | number | undefined>)}`);
+}
+
+/** GET /api/games/stats/me/ */
 export function getMyStats(game_type?: string): Promise<UserStats> {
-  return gamesApiFetch<UserStats>(`/stats/me/${game_type ? `?game_type=${game_type}` : ''}`);
+  return apiFetch<UserStats>(`${G}/stats/me/${game_type ? `?game_type=${game_type}` : ''}`);
 }
 
+/** GET /api/games/stats/user/<uuid>/ */
 export function getUserStats(userId: string, game_type?: string): Promise<UserStats> {
-  return gamesApiFetch<UserStats>(`/stats/user/${userId}/${game_type ? `?game_type=${game_type}` : ''}`);
+  return apiFetch<UserStats>(`${G}/stats/user/${userId}/${game_type ? `?game_type=${game_type}` : ''}`);
 }
 
-export function getLeaderboard(params: { game_type?: string; metric?: string; limit?: number } = {}): Promise<LeaderboardEntry[]> {
-  return gamesApiFetch<LeaderboardEntry[]>(`/stats/leaderboard/${buildQuery(params as Record<string, string | number | undefined>)}`);
+/** GET /api/games/stats/head-to-head/<uuid>/ */
+export function getHeadToHead(opponentId: string): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(`${G}/stats/head-to-head/${opponentId}/`);
 }
 
+/** GET /api/games/stats/leaderboard/ */
+export function getLeaderboard(
+  params: { game_type?: string; metric?: string; limit?: number } = {}
+): Promise<LeaderboardEntry[]> {
+  return apiFetch<LeaderboardEntry[]>(
+    `${G}/stats/leaderboard/${buildQuery(params as Record<string, string | number | undefined>)}`
+  );
+}
+
+/** GET /api/games/matches/summary/ */
 export function getMatchSummary(): Promise<Record<string, unknown>> {
-  return gamesApiFetch<Record<string, unknown>>('/matches/summary/');
+  return apiFetch<Record<string, unknown>>(`${G}/matches/summary/`);
 }

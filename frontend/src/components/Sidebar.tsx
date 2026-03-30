@@ -32,6 +32,19 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
+/** Classes shared by all nav items (both button and NavLink variants) */
+const navItemBase = (collapsed: boolean) =>
+  cn(
+    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 outline-none border-l-[3px]',
+    collapsed && 'justify-center px-0'
+  );
+
+/** Active vs inactive conditional classes */
+const navItemVariant = (isActive: boolean) =>
+  isActive
+    ? 'bg-brand/10 text-brand border-l-brand'
+    : 'text-secondary border-l-transparent hover:bg-surface-hover hover:text-primary';
+
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { t } = useTranslation();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
@@ -45,47 +58,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { label: t('sidebar.settings'),      icon: <Settings className="w-5 h-5" />, to: '/settings' },
   ];
 
-  const sidebarBorderStyle = { borderRight: '1px solid var(--color-border)' };
-
-  const activeItemStyle = (isActive: boolean) => ({
-    backgroundColor: isActive ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-    color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-    borderLeft: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
-  });
-
   const CollapseIcon = collapsed ? ChevronRight : ChevronLeft;
 
   return (
     <aside
       className={cn(
-        'fixed top-16 left-0',
-        'h-[calc(100vh-64px)] z-40 transition-all duration-250 flex flex-col',
+        'fixed top-16 left-0 h-[calc(100vh-64px)] z-40 transition-all duration-250 flex flex-col',
+        'bg-surface border-r',
         collapsed ? 'w-16' : 'w-60'
       )}
-      style={{
-        backgroundColor: 'var(--color-bg-card)',
-        ...sidebarBorderStyle,
-      }}
     >
       {/* Collapse Toggle */}
       <button
         onClick={onToggle}
-        className={cn(
-          'absolute top-6 -right-3 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10',
-        )}
-        style={{
-          backgroundColor: 'var(--color-bg-card)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-text-muted)',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = 'var(--color-text-primary)';
-          e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--color-text-muted)';
-          e.currentTarget.style.backgroundColor = 'var(--color-bg-card)';
-        }}
+        className="absolute top-6 -right-3 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10 bg-surface border text-muted hover:text-primary hover:bg-surface-hover"
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         <CollapseIcon className="w-3.5 h-3.5" />
@@ -106,31 +92,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {hasChildren ? (
                 <button
                   onClick={() => setExpandedItem(isExpanded ? null : item.label)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 outline-none',
-                    collapsed && 'justify-center px-0'
-                  )}
-                  style={activeItemStyle(isActive)}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
-                      e.currentTarget.style.color = 'var(--color-text-primary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    }
-                  }}
+                  className={cn(navItemBase(collapsed), navItemVariant(isActive))}
                   title={collapsed ? item.label : undefined}
                 >
                   <span className="shrink-0">{item.icon}</span>
                   {!collapsed && (
                     <>
-                      <span className="flex-1 text-left">
-                        {item.label}
-                      </span>
+                      <span className="flex-1 text-left">{item.label}</span>
                       <ChevronRight
                         className={cn(
                           'w-4 h-4 transition-transform duration-150',
@@ -143,23 +111,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               ) : (
                 <NavLink
                   to={item.to}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 outline-none',
-                    collapsed && 'justify-center px-0'
-                  )}
-                  style={activeItemStyle(isActive)}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
-                      e.currentTarget.style.color = 'var(--color-text-primary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    }
-                  }}
+                  className={cn(navItemBase(collapsed), navItemVariant(isActive))}
                   title={collapsed ? item.label : undefined}
                 >
                   <span className="shrink-0">{item.icon}</span>
@@ -176,23 +128,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <NavLink
                         key={child.to}
                         to={child.to}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
-                        style={{
-                          color: childActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          backgroundColor: childActive ? 'rgba(168, 85, 247, 0.05)' : 'transparent',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!childActive) {
-                            e.currentTarget.style.color = 'var(--color-text-primary)';
-                            e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!childActive) {
-                            e.currentTarget.style.color = 'var(--color-text-muted)';
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }
-                        }}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                          childActive
+                            ? 'text-brand bg-brand/5'
+                            : 'text-muted hover:text-primary hover:bg-surface-hover'
+                        )}
                       >
                         <Circle className="w-1.5 h-1.5 fill-current" />
                         {child.label}
@@ -208,23 +149,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Online Friends */}
       {!collapsed && (
-        <div className="px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <p
-            className="text-[10px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
+        <div className="px-4 py-4 border-t">
+          <p className="text-[10px] font-medium uppercase tracking-widest mb-3 text-muted">
             {t('sidebar.online')} — {onlineFriends.length}
           </p>
           <div className="space-y-2">
             {onlineFriends.map((f) => (
-              <div key={f.name} className="flex items-center gap-2.5 group cursor-pointer">
+              <div key={f.name} className="flex items-center gap-2.5 cursor-pointer">
                 <Avatar name={f.name} size="sm" online />
-                <span
-                  className="text-xs truncate transition-colors"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-primary)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
-                >
+                <span className="text-xs truncate transition-colors text-secondary hover:text-primary">
                   {f.name}
                 </span>
               </div>

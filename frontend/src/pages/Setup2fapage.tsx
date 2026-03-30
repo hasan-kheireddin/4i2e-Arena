@@ -62,7 +62,7 @@ export default function Setup2FAPage() {
 
     try {
       await twoFAConfirm(code);
-      navigate("/");
+      navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? "Invalid code. Please try again.");

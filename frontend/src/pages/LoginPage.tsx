@@ -77,7 +77,7 @@ export default function LoginPage() {
         navigate(`/verify-2fa?temp=${encodeURIComponent(res.temp_token)}`);
       } else {
         setUser(res.user);
-        navigate("/");
+        navigate("/home");
       }
     } catch (err: unknown) {
       const apiErr = err as ApiError;

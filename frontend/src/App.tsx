@@ -39,65 +39,81 @@ function App() {
           <Route
             path="/home"
             element={
+              <ProtectedRoute>
                 <Layout>
                   <HomePage />
                 </Layout>
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/setup-2fa"
             element={
+              <ProtectedRoute>
                 <Layout>
                   <Setup2FAPage />
                 </Layout>
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/leaderboard"
             element={
-                <Layout>  {/* ← Added Layout */}
+              <ProtectedRoute>
+                <Layout>
                   <LeaderboardPage />
                 </Layout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/history"
             element={
-                <Layout>  {/* ← Added Layout */}
+              <ProtectedRoute>
+                <Layout>
                   <MatchHistoryPage />
                 </Layout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/settings"
             element={
-                <Layout>  {/* ← Added Layout */}
+              <ProtectedRoute>
+                <Layout>
                   <SettingsPage />
                 </Layout>
+              </ProtectedRoute>
             }
           />
 
           {/* ========== GAME ROUTES (Protected, No Layout - Full Screen) ========== */}
           <Route
-            path="/games/playpage" 
+            path="/games/playpage"
             element={
+              <ProtectedRoute>
                 <PlayPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/games/tictactoe"
             element={
+              <ProtectedRoute>
                 <TicTacToePage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/games/pong"
             element={
+              <ProtectedRoute>
                 <PongPage />
+              </ProtectedRoute>
             }
           />
 

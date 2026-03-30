@@ -51,6 +51,8 @@ export interface RecoveryLoginResponse extends AuthResponse {
 // Re-export for convenience
 export type { ApiError };
 
+const AUTH = "/api/accounts";
+
 /** POST /api/accounts/register/ */
 export async function register(data: {
   username: string;
@@ -59,7 +61,7 @@ export async function register(data: {
   password2: string;
   display_name?: string;
 }): Promise<AuthResponse> {
-  const res = await apiFetch<AuthResponse>("/register/", {
+  const res = await apiFetch<AuthResponse>(`${AUTH}/register/`, {
     method: "POST",
     body: data,
     auth: false,
@@ -73,7 +75,7 @@ export async function login(data: {
   username: string;
   password: string;
 }): Promise<LoginResponse> {
-  const res = await apiFetch<LoginResponse>("/login/", {
+  const res = await apiFetch<LoginResponse>(`${AUTH}/login/`, {
     method: "POST",
     body: data,
     auth: false,
@@ -88,7 +90,7 @@ export async function login(data: {
 export async function logout(): Promise<void> {
   const refresh = getRefreshToken();
   try {
-    await apiFetch("/logout/", {
+    await apiFetch(`${AUTH}/logout/`, {
       method: "POST",
       body: { refresh },
     });
@@ -100,7 +102,7 @@ export async function logout(): Promise<void> {
 
 /** GET /api/accounts/me/ — fetch current user profile */
 export async function getProfile(): Promise<User> {
-  return apiFetch<User>("/me/");
+  return apiFetch<User>(`${AUTH}/me/`);
 }
 
 /** PATCH /api/accounts/me/update/ */
@@ -109,7 +111,7 @@ export async function updateProfile(data: {
   avatar_url?: string;
   preferred_language?: string;
 }): Promise<User> {
-  return apiFetch<User>("/me/update/", {
+  return apiFetch<User>(`${AUTH}/me/update/`, {
     method: "PATCH",
     body: data,
   });
@@ -121,7 +123,7 @@ export async function changePassword(data: {
   new_password: string;
   new_password2: string;
 }): Promise<{ detail: string }> {
-  return apiFetch("/me/change-password/", {
+  return apiFetch(`${AUTH}/me/change-password/`, {
     method: "POST",
     body: data,
   });
@@ -129,19 +131,18 @@ export async function changePassword(data: {
 
 /** POST /api/accounts/token/refresh/ */
 export async function refreshToken(refresh: string): Promise<Tokens> {
-  return apiFetch<Tokens>("/token/refresh/", {
+  return apiFetch<Tokens>(`${AUTH}/token/refresh/`, {
     method: "POST",
     body: { refresh },
     auth: false,
   });
 }
 
-
 /** GET /api/accounts/oauth/<provider>/initiate/ */
 export async function oauthInitiate(
   provider: string,
 ): Promise<{ authorize_url: string }> {
-  return apiFetch(`/oauth/${provider}/initiate/`, { auth: false });
+  return apiFetch(`${AUTH}/oauth/${provider}/initiate/`, { auth: false });
 }
 
 /** POST /api/accounts/oauth/<provider>/callback/ */
@@ -149,7 +150,7 @@ export async function oauthCallback(
   provider: string,
   data: { code: string; state: string },
 ): Promise<AuthResponse> {
-  const res = await apiFetch<AuthResponse>(`/oauth/${provider}/callback/`, {
+  const res = await apiFetch<AuthResponse>(`${AUTH}/oauth/${provider}/callback/`, {
     method: "POST",
     body: data,
     auth: false,
@@ -160,12 +161,12 @@ export async function oauthCallback(
 
 /** POST /api/accounts/2fa/setup/ — (authenticated) */
 export async function twoFASetup(): Promise<TwoFASetupResponse> {
-  return apiFetch("/2fa/setup/", { method: "POST" });
+  return apiFetch(`${AUTH}/2fa/setup/`, { method: "POST" });
 }
 
 /** POST /api/accounts/2fa/confirm/ — (authenticated) */
 export async function twoFAConfirm(code: string): Promise<{ detail: string }> {
-  return apiFetch("/2fa/confirm/", {
+  return apiFetch(`${AUTH}/2fa/confirm/`, {
     method: "POST",
     body: { code },
   });
@@ -176,7 +177,7 @@ export async function twoFAVerify(data: {
   temp_token: string;
   code: string;
 }): Promise<AuthResponse> {
-  const res = await apiFetch<AuthResponse>("/2fa/verify/", {
+  const res = await apiFetch<AuthResponse>(`${AUTH}/2fa/verify/`, {
     method: "POST",
     body: data,
     auth: false,
@@ -187,7 +188,7 @@ export async function twoFAVerify(data: {
 
 /** POST /api/accounts/2fa/disable/ — (authenticated) */
 export async function twoFADisable(code: string): Promise<{ detail: string }> {
-  return apiFetch("/2fa/disable/", {
+  return apiFetch(`${AUTH}/2fa/disable/`, {
     method: "POST",
     body: { code },
   });
@@ -198,7 +199,7 @@ export async function twoFARecovery(data: {
   temp_token: string;
   code: string;
 }): Promise<RecoveryLoginResponse> {
-  const res = await apiFetch<RecoveryLoginResponse>("/2fa/recovery/", {
+  const res = await apiFetch<RecoveryLoginResponse>(`${AUTH}/2fa/recovery/`, {
     method: "POST",
     body: data,
     auth: false,
@@ -214,5 +215,5 @@ export async function twoFAStatus(): Promise<{
   remaining_recovery_codes: number;
   created_at: string | null;
 }> {
-  return apiFetch("/2fa/status/");
+  return apiFetch(`${AUTH}/2fa/status/`);
 }

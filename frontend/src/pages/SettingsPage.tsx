@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/utils';
 import { exportActivityData, importActivityData, type ExportFormat, type ImportResult } from '../services/analytics';
+import { useAuth } from '../context/AuthContext';
+import { updateProfile } from '../services/auth';
 
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance' | 'audio' | 'privacy';
 
@@ -29,13 +31,18 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const { user, setUser } = useAuth();
   const [tab, setTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Profile state
-  const [username, setUsername] = useState('ProGamer42');
-  const [email, setEmail] = useState('pro@gamer.com');
-  const [bio, setBio] = useState('Competitive player since 2024');
+  // Profile state — read-only fields from server
+  const username = user?.username ?? '';
+  const email = user?.email ?? '';
+
+  // Editable profile fields
+  const [displayName, setDisplayName] = useState(user?.display_name ?? '');
+  const [bio, setBio] = useState('');
 
   // Notification prefs
   const [notifs, setNotifs] = useState({
@@ -52,8 +59,8 @@ export default function SettingsPage() {
     return saved !== null ? saved === "true" : true;
   });
 
-  // Language - synced with i18n
-  const [language, setLanguage] = useState(() => i18n.language || 'en');
+  // Language - synced with i18n and user preferred_language
+  const [language, setLanguage] = useState(() => user?.preferred_language || i18n.language || 'en');
 
   // Apply dark mode changes
   useEffect(() => {
@@ -109,9 +116,18 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => setSaving(false), 1000);
+    setSaveError(null);
+    try {
+      const updated = await updateProfile({ display_name: displayName, preferred_language: language });
+      setUser(updated);
+    } catch (err: unknown) {
+      const e = err as { detail?: string };
+      setSaveError(e?.detail ?? 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabs: { key: SettingsTab; label: string }[] = [
@@ -183,7 +199,7 @@ export default function SettingsPage() {
                 </h2>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative group">
-                    <Avatar name={username} size="lg" />
+                    <Avatar name={displayName || username} size="lg" />
                     <button
                       className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white font-bold"
                       style={{ backgroundColor: 'var(--color-primary)' }}
@@ -192,7 +208,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{username}</p>
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{displayName || username}</p>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{email}</p>
                     <button className="text-xs mt-1 hover:underline" style={{ color: 'var(--color-primary)' }}>
                       {t('settings.profile.change_avatar')}
@@ -200,8 +216,9 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <InputField label={t('settings.profile.username')} value={username} onChange={setUsername} />
-                  <InputField label={t('settings.profile.email')} type="email" value={email} onChange={setEmail} />
+                  <InputField label={t('settings.profile.username')} value={username} readOnly />
+                  <InputField label={t('settings.profile.email')} type="email" value={email} readOnly />
+                  <InputField label={t('settings.profile.display_name', { defaultValue: 'Display Name' })} value={displayName} onChange={setDisplayName} />
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
                       {t('settings.profile.bio')}
@@ -229,12 +246,15 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+              {saveError && (
+                <p className="text-sm text-right" style={{ color: 'var(--color-error)' }}>{saveError}</p>
+              )}
               <div className="flex justify-end">
                 <button
                   onClick={handleSave}
                   disabled={saving}
                   className="px-6 py-2 rounded-lg font-medium text-white flex items-center gap-2 transition-all duration-200"
-                  style={{ 
+                  style={{
                     background: saving ? 'var(--color-primary-disabled)' : 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
                     cursor: saving ? 'not-allowed' : 'pointer',
                   }}
@@ -573,18 +593,20 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function InputField({ 
+function InputField({
   label,
   type = 'text',
   value,
   onChange,
   placeholder,
+  readOnly,
 }: {
   label?: string;
   type?: string;
   value?: string;
   onChange?: (val: string) => void;
   placeholder?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div>
@@ -599,13 +621,16 @@ function InputField({
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           placeholder={placeholder}
+          readOnly={readOnly}
           className="w-full rounded-lg px-4 py-2 text-sm outline-none transition-all"
           style={{
-            backgroundColor: 'var(--color-bg-input)',
+            backgroundColor: readOnly ? 'var(--color-bg)' : 'var(--color-bg-input)',
             border: '1px solid var(--color-border)',
-            color: 'var(--color-text-primary)',
+            color: readOnly ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+            cursor: readOnly ? 'default' : undefined,
           }}
           onFocus={(e) => {
+            if (readOnly) return;
             e.currentTarget.style.borderColor = 'var(--color-primary)';
             e.currentTarget.style.boxShadow = '0 0 0 2px rgba(168, 85, 247, 0.2)';
           }}
