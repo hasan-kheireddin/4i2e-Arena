@@ -1,3 +1,4 @@
+import random
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -178,3 +179,80 @@ class TOTPDevice(models.Model):
     @property
     def remaining_recovery_codes(self) -> int:
         return len(self.recovery_codes)
+
+
+class EmailVerificationToken(models.Model):
+    """
+    Single-use token for:
+      - email_verify : 6-digit OTP sent after registration (15 min TTL)
+      - password_reset : UUID token sent for password reset (30 min TTL)
+    """
+
+    TYPE_EMAIL_VERIFY = "email_verify"
+    TYPE_PASSWORD_RESET = "password_reset"
+    TOKEN_TYPE_CHOICES = [
+        (TYPE_EMAIL_VERIFY, "Email Verification"),
+        (TYPE_PASSWORD_RESET, "Password Reset"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="verification_tokens",
+    )
+    token_type = models.CharField(max_length=20, choices=TOKEN_TYPE_CHOICES)
+    code = models.CharField(max_length=100)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "email_verification_tokens"
+        verbose_name = "Email Verification Token"
+        verbose_name_plural = "Email Verification Tokens"
+        indexes = [
+            models.Index(fields=["user", "token_type", "used"]),
+        ]
+
+    def __str__(self):
+        return f"{self.token_type} – {self.user.username}"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() > self.expires_at
+
+    @classmethod
+    def create_otp(cls, user) -> "EmailVerificationToken":
+        """Create a 6-digit OTP for email verification (15-min TTL)."""
+        # Invalidate any existing unused tokens for this user/type
+        cls.objects.filter(
+            user=user,
+            token_type=cls.TYPE_EMAIL_VERIFY,
+            used=False,
+        ).update(used=True)
+
+        code = str(random.randint(100000, 999999))
+        return cls.objects.create(
+            user=user,
+            token_type=cls.TYPE_EMAIL_VERIFY,
+            code=code,
+            expires_at=timezone.now() + timezone.timedelta(minutes=15),
+        )
+
+    @classmethod
+    def create_reset_token(cls, user) -> "EmailVerificationToken":
+        """Create a UUID reset token for password reset (30-min TTL)."""
+        cls.objects.filter(
+            user=user,
+            token_type=cls.TYPE_PASSWORD_RESET,
+            used=False,
+        ).update(used=True)
+
+        code = uuid.uuid4().hex
+        return cls.objects.create(
+            user=user,
+            token_type=cls.TYPE_PASSWORD_RESET,
+            code=code,
+            expires_at=timezone.now() + timezone.timedelta(minutes=30),
+        )

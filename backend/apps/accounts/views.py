@@ -5,14 +5,22 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+from django.contrib.auth import get_user_model
+from .models import EmailVerificationToken
+from .email_service import send_otp_email, send_password_reset_email
 from .serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     RegisterSerializer,
     UserProfileSerializer,
     UserUpdateSerializer,
+    VerifyEmailSerializer,
     get_tokens_for_user,
 )
+
+User = get_user_model()
 from apps.analytics.tracking_service import (
     get_client_ip,
     get_user_agent,
@@ -36,8 +44,18 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        tokens = get_tokens_for_user(user)
-        profile = UserProfileSerializer(user).data
+
+        # Mark account inactive until email is verified
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+
+        # Create OTP and send verification email
+        token = EmailVerificationToken.create_otp(user)
+        try:
+            send_otp_email(user, token.code)
+        except Exception:
+            pass  # Email failure should not block registration response
+
         # Track registration event
         track_registration(
             user.pk,
@@ -46,8 +64,9 @@ class RegisterView(APIView):
         )
         return Response(
             {
-                "user": profile,
-                "tokens": tokens,
+                "requires_verification": True,
+                "email": user.email,
+                "detail": "A verification code has been sent to your email.",
             },
             status=status.HTTP_201_CREATED,
         )
@@ -207,5 +226,161 @@ class ChangePasswordView(APIView):
 
         return Response(
             {"detail": "Password changed successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class VerifyEmailView(APIView):
+    """
+    Verify a user's email address using the 6-digit OTP.
+    Activates the account and returns JWT tokens.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        code = serializer.validated_data["code"]
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Invalid verification code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token = (
+            EmailVerificationToken.objects.filter(
+                user=user,
+                token_type=EmailVerificationToken.TYPE_EMAIL_VERIFY,
+                used=False,
+                code=code,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not token:
+            return Response(
+                {"detail": "Invalid verification code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if token.is_expired:
+            return Response(
+                {"detail": "Verification code has expired. Please request a new one."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Mark token used, activate user
+        token.used = True
+        token.save(update_fields=["used"])
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+
+        tokens = get_tokens_for_user(user)
+        profile = UserProfileSerializer(user).data
+        return Response(
+            {"user": profile, "tokens": tokens},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ResendOTPView(APIView):
+    """Resend OTP to the given email (if account is inactive/unverified)."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        try:
+            user = User.objects.get(email__iexact=email, is_active=False)
+        except User.DoesNotExist:
+            # Don't reveal whether the email exists
+            return Response(
+                {"detail": "If that email exists, a new code has been sent."},
+                status=status.HTTP_200_OK,
+            )
+
+        token = EmailVerificationToken.create_otp(user)
+        try:
+            send_otp_email(user, token.code)
+        except Exception:
+            pass
+
+        return Response(
+            {"detail": "If that email exists, a new code has been sent."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetRequestView(APIView):
+    """Send a password-reset email with a unique token link."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+            token = EmailVerificationToken.create_reset_token(user)
+            send_password_reset_email(user, token.code)
+        except User.DoesNotExist:
+            pass  # Don't reveal whether the email exists
+        except Exception:
+            pass
+
+        return Response(
+            {"detail": "If that email exists, a reset link has been sent."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """Validate the reset token and set the new password."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        raw_token = serializer.validated_data["token"]
+        new_password = serializer.validated_data["password"]
+
+        token = (
+            EmailVerificationToken.objects.filter(
+                token_type=EmailVerificationToken.TYPE_PASSWORD_RESET,
+                code=raw_token,
+                used=False,
+            )
+            .select_related("user")
+            .first()
+        )
+
+        if not token:
+            return Response(
+                {"detail": "Invalid or expired reset link."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if token.is_expired:
+            return Response(
+                {"detail": "This reset link has expired. Please request a new one."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token.used = True
+        token.save(update_fields=["used"])
+        token.user.set_password(new_password)
+        token.user.save(update_fields=["password"])
+
+        return Response(
+            {"detail": "Password reset successfully."},
             status=status.HTTP_200_OK,
         )

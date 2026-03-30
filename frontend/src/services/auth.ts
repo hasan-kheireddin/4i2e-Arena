@@ -25,6 +25,12 @@ export interface AuthResponse {
   tokens: Tokens;
 }
 
+export interface RegisterResponse {
+  requires_verification: true;
+  email: string;
+  detail: string;
+}
+
 export interface TwoFARequired {
   requires_2fa: true;
   temp_token: string;
@@ -60,14 +66,57 @@ export async function register(data: {
   password: string;
   password2: string;
   display_name?: string;
+}): Promise<RegisterResponse> {
+  return apiFetch<RegisterResponse>(`${AUTH}/register/`, {
+    method: "POST",
+    body: data,
+    auth: false,
+  });
+}
+
+/** POST /api/accounts/verify-email/ */
+export async function verifyEmail(data: {
+  email: string;
+  code: string;
 }): Promise<AuthResponse> {
-  const res = await apiFetch<AuthResponse>(`${AUTH}/register/`, {
+  const res = await apiFetch<AuthResponse>(`${AUTH}/verify-email/`, {
     method: "POST",
     body: data,
     auth: false,
   });
   setTokens(res.tokens.access, res.tokens.refresh);
   return res;
+}
+
+/** POST /api/accounts/resend-otp/ */
+export async function resendOTP(email: string): Promise<{ detail: string }> {
+  return apiFetch(`${AUTH}/resend-otp/`, {
+    method: "POST",
+    body: { email },
+    auth: false,
+  });
+}
+
+/** POST /api/accounts/password-reset/ */
+export async function requestPasswordReset(email: string): Promise<{ detail: string }> {
+  return apiFetch(`${AUTH}/password-reset/`, {
+    method: "POST",
+    body: { email },
+    auth: false,
+  });
+}
+
+/** POST /api/accounts/password-reset/confirm/ */
+export async function confirmPasswordReset(data: {
+  token: string;
+  password: string;
+  password2: string;
+}): Promise<{ detail: string }> {
+  return apiFetch(`${AUTH}/password-reset/confirm/`, {
+    method: "POST",
+    body: data,
+    auth: false,
+  });
 }
 
 /** POST /api/accounts/login/ */
@@ -142,7 +191,7 @@ export async function refreshToken(refresh: string): Promise<Tokens> {
 export async function oauthInitiate(
   provider: string,
 ): Promise<{ authorize_url: string }> {
-  return apiFetch(`${AUTH}/oauth/${provider}/initiate/`, { auth: false });
+  return apiFetch(`${AUTH}/oauth/${provider}/initiate/`, { auth: false, withCredentials: true });
 }
 
 /** POST /api/accounts/oauth/<provider>/callback/ */
@@ -154,6 +203,7 @@ export async function oauthCallback(
     method: "POST",
     body: data,
     auth: false,
+    withCredentials: true,
   });
   setTokens(res.tokens.access, res.tokens.refresh);
   return res;

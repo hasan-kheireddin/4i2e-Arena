@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import reset from "../images/loginimg.png";
 import resetDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
-import { apiFetch } from "../services/api";
+import { confirmPasswordReset } from "../services/auth";
 import type { ApiError } from "../services/api";
 
 export default function ResetPasswordPage() {
@@ -93,16 +93,10 @@ export default function ResetPasswordPage() {
     setServerError("");
 
     try {
-      // Backend endpoint for password reset confirmation
-      // POST /api/accounts/password-reset/confirm/ — validates token + sets new password
-      await apiFetch("/password-reset/confirm/", {
-        method: "POST",
-        body: {
-          token,
-          password: formData.password,
-          password2: formData.confirmPassword,
-        },
-        auth: false,
+      await confirmPasswordReset({
+        token: token!,
+        password: formData.password,
+        password2: formData.confirmPassword,
       });
       navigate("/login");
     } catch (err: unknown) {

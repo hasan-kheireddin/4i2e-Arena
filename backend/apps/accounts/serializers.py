@@ -179,6 +179,38 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
 
+class VerifyEmailSerializer(serializers.Serializer):
+    """Validates an OTP code for email verification."""
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=6, min_length=6)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Accepts an email and triggers a password-reset email."""
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Validates the reset token and sets the new password."""
+    token = serializers.CharField()
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password_strength],
+    )
+    password2 = serializers.CharField(write_only=True)
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password2"]:
+            raise serializers.ValidationError(
+                {"password2": "Passwords do not match."}
+            )
+        return attrs
+
+
 def get_tokens_for_user(user):
     """
     Generate JWT access + refresh tokens for a user.

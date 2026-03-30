@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import registerImg from "../images/registerimg.png";
 import registerImgDark from "../images/registerimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { register as apiRegister } from "../services/auth";
 import type { ApiError } from "../services/api";
+import type { RegisterResponse } from "../services/auth";
 
 export default function RegisterPage() {
-  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -118,14 +117,16 @@ export default function RegisterPage() {
     setServerError("");
 
     try {
-      const res = await apiRegister({
+      const res: RegisterResponse = await apiRegister({
         username: formData.username,
         email: formData.email,
         password: formData.password,
         password2: formData.confirmPassword,
       });
-      setUser(res.user);
-      navigate("/home");
+      if (res.requires_verification) {
+        navigate(`/verify-email?email=${encodeURIComponent(res.email)}`);
+        return;
+      }
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       if (apiErr.detail) {

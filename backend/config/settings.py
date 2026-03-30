@@ -197,13 +197,19 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django.core.cache.backends.redis.RedisCacheClient",
-        },
         "TIMEOUT": 300,
         "KEY_PREFIX": "ftt",
     }
 }
+
+# ---------------------------------------------------------------------------
+# Sessions (Redis-backed for reliability across OAuth redirects)
+# ---------------------------------------------------------------------------
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
 
 # ---------------------------------------------------------------------------
 # OAuth — 42 School
@@ -214,6 +220,21 @@ OAUTH_42_REDIRECT_URI = config(
     "OAUTH_42_REDIRECT_URI",
     default="https://localhost/api/accounts/oauth/42/callback/",
 )
+
+# ---------------------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------------------
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@4i2e-arena.com")
+FRONTEND_URL = config("FRONTEND_URL", default="https://localhost:8443")
 
 # ---------------------------------------------------------------------------
 # Logging

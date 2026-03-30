@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { oauthCallback, isTwoFARequired } from "../services/auth";
+import { oauthCallback } from "../services/auth";
 import type { ApiError } from "../services/api";
 
 export default function OAuthCallbackPage() {
@@ -9,15 +9,21 @@ export default function OAuthCallbackPage() {
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  // Capture provider once at render time before any effect can remove it
+  const providerRef = useRef(sessionStorage.getItem("oauth_provider"));
+  const hasRun = useRef(false);
 
   useEffect(() => {
+    // Guard against React StrictMode double-invocation
+    if (hasRun.current) return;
+    hasRun.current = true;
+
+    sessionStorage.removeItem("oauth_provider");
+
     const handleCallback = async () => {
       const code = searchParams.get("code");
       const state = searchParams.get("state");
-
-      // Retrieve the provider stored before the OAuth redirect
-      const provider = sessionStorage.getItem("oauth_provider");
-      sessionStorage.removeItem("oauth_provider");
+      const provider = providerRef.current;
 
       if (!code || !state) {
         setError("Invalid callback parameters. Missing authorization code or state.");

@@ -103,6 +103,8 @@ interface FetchOptions {
   body?: unknown;
   /** If true, attach the JWT Authorization header. Default true. */
   auth?: boolean;
+  /** If true, include cookies (needed for session-based state in OAuth flow). */
+  withCredentials?: boolean;
 }
 
 /**
@@ -116,7 +118,7 @@ export async function apiFetch<T = unknown>(
   path: string,
   opts: FetchOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, auth = true } = opts;
+  const { method = "GET", body, auth = true, withCredentials = false } = opts;
 
   const buildHeaders = (): HeadersInit => {
     const headers: Record<string, string> = {
@@ -132,6 +134,7 @@ export async function apiFetch<T = unknown>(
   let res = await fetch(path, {
     method,
     headers: buildHeaders(),
+    credentials: withCredentials ? "include" : "same-origin",
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
@@ -142,6 +145,7 @@ export async function apiFetch<T = unknown>(
       res = await fetch(path, {
         method,
         headers: buildHeaders(),
+        credentials: withCredentials ? "include" : "same-origin",
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
     }

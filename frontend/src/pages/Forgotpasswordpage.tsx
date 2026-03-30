@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { apiFetch } from "../services/api";
+import { requestPasswordReset } from "../services/auth";
 import type { ApiError } from "../services/api";
 import forgetPass from "../images/loginimg.png";
 import forgetPassDark from "../images/loginimgDark.png";
@@ -50,23 +50,11 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      // Backend endpoint for password reset request
-      // POST /api/accounts/password-reset/ — sends email with reset link
-      await apiFetch("/password-reset/", {
-        method: "POST",
-        body: { email },
-        auth: false,
-      });
+      await requestPasswordReset(email);
       setSubmitted(true);
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      // Even if user not found, some backends still return 200 for security
-      if (apiErr.status === 404) {
-        // Show success anyway to prevent email enumeration
-        setSubmitted(true);
-      } else {
-        setError(apiErr.detail ?? "Failed to send reset email. Please try again.");
-      }
+      setError(apiErr.detail ?? "Failed to send reset email. Please try again.");
     } finally {
       setLoading(false);
     }
