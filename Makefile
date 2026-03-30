@@ -32,6 +32,7 @@ status:
 	docker compose ps
 
 migrate: ## Run Django database migrations
+	docker compose exec backend python manage.py makemigrations --noinput
 	docker compose exec backend python manage.py migrate
 
 makemigrations: ## Create new Django migration files

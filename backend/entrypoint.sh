@@ -18,6 +18,8 @@ except Exception:
 done
 echo "Database is ready!"
 
+echo "Creating migrations..."
+python manage.py makemigrations --noinput
 echo "Applying migrations..."
 python manage.py migrate --noinput
 echo "Migrations applied."

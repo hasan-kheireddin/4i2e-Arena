@@ -193,8 +193,8 @@ class MatchPlayer(models.Model):
         ordering = ["slot"]
         indexes = [
             models.Index(
-                fields=["user", "-match__finished_at"],
-                name="idx_mp_user_finished",
+                fields=["user", "match"],
+                name="idx_mp_user_match",
             ),
         ]
         verbose_name = "Match Player"
