@@ -1,3 +1,5 @@
+import logging
+
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -7,6 +9,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.contrib.auth import get_user_model
 from .models import EmailVerificationToken
+
+logger = logging.getLogger(__name__)
 from .email_service import send_otp_email, send_password_reset_email
 from .serializers import (
     ChangePasswordSerializer,
@@ -54,7 +58,7 @@ class RegisterView(APIView):
         try:
             send_otp_email(user, token.code)
         except Exception:
-            pass  # Email failure should not block registration response
+            logger.exception("Failed to send OTP email to %s during registration", user.email)
 
         # Track registration event
         track_registration(
@@ -324,7 +328,7 @@ class ResendOTPView(APIView):
         try:
             send_otp_email(user, token.code)
         except Exception:
-            pass
+            logger.exception("Failed to resend OTP email to %s", user.email)
 
         return Response(
             {"detail": "If that email exists, a new code has been sent."},
@@ -349,7 +353,7 @@ class PasswordResetRequestView(APIView):
         except User.DoesNotExist:
             pass  # Don't reveal whether the email exists
         except Exception:
-            pass
+            logger.exception("Failed to send password reset email to %s", email)
 
         return Response(
             {"detail": "If that email exists, a reset link has been sent."},

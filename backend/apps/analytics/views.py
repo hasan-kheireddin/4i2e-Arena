@@ -19,8 +19,8 @@
 #   GET  /api/analytics/activity/heatmap/        → Hourly heatmap
 #   GET  /api/analytics/activity/recent/         → Recent activity feed
 #   POST /api/analytics/activity/track/          → Frontend page-view tracking
-#   GET  /api/analytics/activity/export/         → Export user data (JSON/CSV/XML)
-#   POST /api/analytics/activity/import/         → Import user data (JSON/CSV/XML)
+#   GET  /api/analytics/activity/export/         → Export user data (JSON/CSV)
+#   POST /api/analytics/activity/import/         → Import user data (JSON/CSV)
 #   POST /api/analytics/activity/anonymise/      → Anonymise user data
 #   GET  /api/analytics/activity/global/         → Platform-wide summary (admin)
 # =============================================================================
@@ -441,7 +441,6 @@ from .privacy_service import (
     anonymise_user_events,
     export_user_events,
     export_user_events_csv,
-    export_user_events_xml,
     import_user_events,
     parse_import_file,
 )
@@ -575,8 +574,8 @@ class TrackEventView(APIView):
 
 
 # ---------------------------------------------------------------------------
-# GET  /api/analytics/activity/export/  — Data portability (JSON / CSV / XML)
-# POST /api/analytics/activity/import/  — Data import (JSON / CSV / XML)
+# GET  /api/analytics/activity/export/  — Data portability (JSON / CSV)
+# POST /api/analytics/activity/import/  — Data import (JSON / CSV)
 # ---------------------------------------------------------------------------
 
 class ExportActivityView(APIView):
@@ -584,7 +583,7 @@ class ExportActivityView(APIView):
     Export all activity events for the authenticated user.
 
     Query parameter:
-      - ``format`` — ``json`` (default) | ``csv`` | ``xml``
+      - ``export_format`` — ``json`` (default) | ``csv``
 
     All formats trigger a file download via Content-Disposition header.
     """
@@ -592,7 +591,8 @@ class ExportActivityView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        fmt = request.query_params.get("format", "json").lower()
+        # Use 'export_format' to avoid conflict with DRF's reserved 'format' param
+        fmt = request.query_params.get("export_format", "json").lower()
         user_id = request.user.pk
 
         if fmt == "csv":
@@ -604,20 +604,11 @@ class ExportActivityView(APIView):
             )
             return response
 
-        if fmt == "xml":
-            from django.http import HttpResponse
-            content = export_user_events_xml(user_id)
-            response = HttpResponse(content, content_type="application/xml; charset=utf-8")
-            response["Content-Disposition"] = (
-                'attachment; filename="activity_export.xml"'
-            )
-            return response
-
-        # Default: JSON
+        # Default: Pretty JSON (indent=2)
         from django.http import HttpResponse
         import json as _json
         data = export_user_events(user_id)
-        payload = _json.dumps({"events": data, "total": len(data)}, ensure_ascii=False)
+        payload = _json.dumps({"events": data, "total": len(data)}, ensure_ascii=False, indent=2)
         response = HttpResponse(payload, content_type="application/json; charset=utf-8")
         response["Content-Disposition"] = (
             'attachment; filename="activity_export.json"'
@@ -633,7 +624,6 @@ class ImportActivityView(APIView):
     Supported formats (detected from Content-Type or file extension):
       - JSON: list of event objects, or ``{"events": [...]}``
       - CSV:  exported CSV with header row
-      - XML:  exported XML document
 
     Rules:
       - Events whose ``id`` already exists in the DB are skipped (idempotent).
@@ -655,8 +645,6 @@ class ImportActivityView(APIView):
             if "octet-stream" in ct or not ct:
                 if name.endswith(".csv"):
                     ct = "text/csv"
-                elif name.endswith(".xml"):
-                    ct = "application/xml"
                 else:
                     ct = "application/json"
         else:

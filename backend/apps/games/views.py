@@ -422,3 +422,114 @@ class LeaderboardView(APIView):
             limit=limit,
         )
         return Response(data, status=status.HTTP_200_OK)
+
+
+class CreateLocalMatchView(APIView):
+    """
+    Create a match record for a local (frontend-only) game.
+    
+    Used when playing locally or vs AI without WebSocket connection.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from datetime import datetime, timezone as tz
+        from apps.games.models import Match, MatchPlayer, GameType, GameMode, FinishReason, MatchOutcome
+        from django.utils import timezone as dj_tz
+        import uuid
+
+        data = request.data
+        user = request.user
+
+        # Validate required fields
+        game_type = data.get("game_type")
+        if game_type not in ("pong", "tictactoe"):
+            return Response({"error": "Invalid game_type"}, status=status.HTTP_400_BAD_REQUEST)
+
+        game_mode_str = data.get("game_mode", "pvp")
+        if game_mode_str not in ("pvp", "pve"):
+            return Response({"error": "Invalid game_mode"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Extract result
+        winner = data.get("winner")  # "X", "O", or None for draw
+        duration_seconds = float(data.get("duration_seconds", 0))
+        ai_difficulty = data.get("ai_difficulty", "")
+        player1_score = int(data.get("player1_score", 0))
+        player2_score = int(data.get("player2_score", 0))
+
+        # Determine finish reason
+        if winner is None:
+            finish_reason = FinishReason.DRAW
+        else:
+            finish_reason = FinishReason.SCORE
+
+        # Determine winner
+        winner_user = None
+        player_outcome = MatchOutcome.DRAW
+        
+        if game_mode_str == "pve":
+            # Player is always slot 1 (X), AI is slot 2 (O)
+            if winner == "X":
+                winner_user = user
+                player_outcome = MatchOutcome.WIN
+            elif winner == "O":
+                player_outcome = MatchOutcome.LOSS
+        else:
+            # Local PvP: both slots are human, winner is determined
+            if winner == "X":
+                winner_user = user
+                player_outcome = MatchOutcome.WIN
+            elif winner == "O":
+                # In local PvP, we can't track second player
+                player_outcome = MatchOutcome.LOSS
+
+        # Create match
+        now = dj_tz.now()
+        started_at = now - dj_tz.timedelta(seconds=duration_seconds)
+
+        match = Match.objects.create(
+            game_session_id=f"local-{uuid.uuid4().hex[:16]}",
+            game_type=game_type,
+            game_mode=game_mode_str,
+            finish_reason=finish_reason,
+            winner=winner_user,
+            started_at=started_at,
+            finished_at=now,
+            duration_seconds=round(duration_seconds, 2),
+            player1_score=player1_score,
+            player2_score=player2_score,
+            ai_difficulty=ai_difficulty,
+            metadata=data.get("metadata", {}),
+        )
+
+        # Create player record
+        MatchPlayer.objects.create(
+            match=match,
+            user=user,
+            slot=1,  # User is always slot 1
+            outcome=player_outcome,
+            score=player1_score,
+            xp_earned=0,
+        )
+
+        # Track activity
+        from apps.analytics.tracking_service import track_match_completed
+        track_match_completed(
+            user.pk,
+            match_id=str(match.id),
+            game_type=game_type,
+            game_mode=game_mode_str,
+            outcome=player_outcome,
+            duration_seconds=round(duration_seconds, 2),
+            score=player1_score,
+        )
+
+        # Invalidate stats cache
+        from apps.games.stats_service import invalidate_user_stats
+        invalidate_user_stats(user.pk)
+
+        return Response({
+            "match_id": str(match.id),
+            "status": "created"
+        }, status=status.HTTP_201_CREATED)

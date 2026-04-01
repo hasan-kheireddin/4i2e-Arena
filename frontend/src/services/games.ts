@@ -166,3 +166,20 @@ export function getLeaderboard(
 export function getMatchSummary(): Promise<Record<string, unknown>> {
   return apiFetch<Record<string, unknown>>(`${G}/matches/summary/`);
 }
+
+/** POST /api/games/matches/create/ - Create local match record */
+export async function createLocalMatch(data: {
+  game_type: 'pong' | 'tictactoe';
+  game_mode: 'pvp' | 'pve';
+  winner: string | null;
+  duration_seconds: number;
+  player1_score: number;
+  player2_score: number;
+  ai_difficulty?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<{ match_id: string; status: string }> {
+  return apiFetch<{ match_id: string; status: string }>(`${G}/matches/create/`, {
+    method: 'POST',
+    body: data,  // apiFetch will stringify it
+  });
+}

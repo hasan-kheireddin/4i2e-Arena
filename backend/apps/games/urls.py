@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.games.views import (
+    CreateLocalMatchView,
     HeadToHeadView,
     LeaderboardView,
     MatchDetailView,
@@ -18,6 +19,11 @@ urlpatterns = [
         "matches/",
         MatchListView.as_view(),
         name="match-list",
+    ),
+    path(
+        "matches/create/",
+        CreateLocalMatchView.as_view(),
+        name="match-create-local",
     ),
     path(
         "matches/me/",

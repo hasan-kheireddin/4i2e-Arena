@@ -90,7 +90,7 @@ export interface ActivitySummary {
   latest_event: string | null;
 }
 
-export type ExportFormat = 'json' | 'csv' | 'xml';
+export type ExportFormat = 'json' | 'csv';
 
 export interface ImportResult {
   imported: number;
@@ -171,7 +171,13 @@ function authHeaders(): HeadersInit {
  * Triggers a browser file-save dialog.
  */
 export async function exportActivityData(format: ExportFormat = 'json'): Promise<void> {
-  const res = await fetch(`${A}/activity/export/?format=${format}`, {
+  const mimeTypes: Record<ExportFormat, string> = {
+    json: 'application/json',
+    csv: 'text/csv',
+  };
+
+  // Use 'export_format' to avoid conflict with DRF's reserved 'format' param
+  const res = await fetch(`${A}/activity/export/?export_format=${format}`, {
     method: 'GET',
     headers: authHeaders(),
   });
@@ -180,7 +186,10 @@ export async function exportActivityData(format: ExportFormat = 'json'): Promise
     throw new Error(`Export failed: ${res.status} ${res.statusText}`);
   }
 
-  const blob = await res.blob();
+  // Read as text first to ensure proper encoding, then create blob with correct MIME type
+  const text = await res.text();
+  const blob = new Blob([text], { type: mimeTypes[format] });
+
   const contentDisposition = res.headers.get('Content-Disposition') ?? '';
   const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
   const filename = filenameMatch ? filenameMatch[1] : `activity_export.${format}`;
@@ -197,7 +206,7 @@ export async function exportActivityData(format: ExportFormat = 'json'): Promise
 }
 
 /**
- * Upload a previously exported activity file (JSON, CSV, or XML).
+ * Upload a previously exported activity file (JSON, CSV).
  * The server will skip events that already exist (idempotent).
  */
 export async function importActivityData(file: File): Promise<ImportResult> {

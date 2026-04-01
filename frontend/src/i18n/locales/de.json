@@ -109,9 +109,9 @@
       "profile": "Profil",
       "security": "Sicherheit",
       "notifications": "Benachrichtigungen",
-      "appearance": "Erscheinungsbild",
+      "appearance": "Sprache",
       "audio": "Audio",
-      "privacy": "Datenschutz"
+      "privacy": "Datenexport/-import"
     },
     "profile": {
       "title": "Profilinformationen",
@@ -172,7 +172,7 @@
       "export_btn": "{{format}} herunterladen",
       "exporting": "Exportiere...",
       "import_title": "Daten importieren",
-      "import_desc": "Stellen Sie Ereignisse aus einer exportierten Datei wieder her (JSON, CSV oder XML). Duplikate werden automatisch übersprungen.",
+      "import_desc": "Stellen Sie Ereignisse aus einer exportierten Datei wieder her (JSON oder CSV). Duplikate werden automatisch übersprungen.",
       "import_btn": "Datei auswählen und importieren",
       "importing": "Importiere...",
       "import_imported": "{{count}} Ereignisse importiert.",
@@ -260,9 +260,7 @@
     "diff_medium": "Mittel",
     "diff_medium_desc": "Ausgewogene Herausforderung",
     "diff_hard": "Schwer",
-    "diff_hard_desc": "Aggressive und schnelle Reaktionen",
-    "diff_impossible": "Unmöglich",
-    "diff_impossible_desc": "Fast perfekte KI — viel Glück!"
+    "diff_hard_desc": "Aggressive und schnelle Reaktionen"
   },
   "landing": {
     "nav_features": "Funktionen",

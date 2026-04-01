@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Avatar } from '../components/ui/Avatar';
 import { useGameSocket } from '../hooks/useGameSocket';
+import { createLocalMatch } from '../services/games';
 
 interface PaddleState { y: number }
 interface BallState { x: number; y: number; vx: number; vy: number }
 
 type Mode = 'local' | 'online' | 'ai';
-type Difficulty = 'easy' | 'medium' | 'hard' | 'impossible';
+type Difficulty = 'easy' | 'medium' | 'hard';
 type OnlinePhase = 'idle' | 'matchmaking' | 'waiting' | 'playing' | 'over';
 
 interface OnlineGameState {
@@ -17,7 +18,13 @@ interface OnlineGameState {
 
 const WIN_SCORE = 7;
 const PADDLE_SPEED = 6;
-const AI_SPEED: Record<Difficulty, number> = { easy: 0.028, medium: 0.055, hard: 0.12, impossible: 0.22 };
+// AI difficulty - higher = faster/harder
+const AI_SPEED: Record<Difficulty, number> = { easy: 0.06, medium: 0.10, hard: 0.18 };
+// Ball speed multipliers based on difficulty
+const BALL_SPEED: Record<Difficulty, number> = { easy: 0.7, medium: 1.0, hard: 1.4 };
+// Base ball speeds (medium difficulty / local / online)
+const BASE_BALL_VX = 4;
+const BASE_BALL_VY = 3;
 
 // ── canvas draw helper ──────────────────────────────────────────────────────
 function drawFrame(
@@ -87,17 +94,26 @@ export default function PongPage() {
   const mode: Mode = rawMode === 'online' ? 'online' : rawMode === 'ai' ? 'ai' : 'local';
   // Difficulty is locked at start — read once from URL, never changes
   const rawDiff = searchParams.get('difficulty') ?? 'medium';
-  const difficulty: Difficulty = (['easy','medium','hard','impossible'] as Difficulty[]).includes(rawDiff as Difficulty)
+  const difficulty: Difficulty = (['easy','medium','hard'] as Difficulty[]).includes(rawDiff as Difficulty)
     ? rawDiff as Difficulty : 'medium';
+
+  // Helper: Get ball speed based on mode and difficulty
+  const getBallSpeed = (vx: number, vy: number) => {
+    // AI mode uses difficulty-based speed, local/online use normal (medium) speed
+    const multiplier = mode === 'ai' ? BALL_SPEED[difficulty] : 1.0;
+    return { vx: vx * multiplier, vy: vy * multiplier };
+  };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState(false);
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null);
 
+  const initialBall = getBallSpeed(BASE_BALL_VX, BASE_BALL_VY);
   const gameState = useRef({
     p1: { y: 250 } as PaddleState,
     p2: { y: 250 } as PaddleState,
-    ball: { x: 400, y: 250, vx: 4, vy: 3 } as BallState,
+    ball: { x: 400, y: 250, vx: initialBall.vx, vy: initialBall.vy } as BallState,
   });
 
   const keysRef = useRef<Record<string, boolean>>({});
@@ -126,6 +142,8 @@ export default function PongPage() {
   const [opponentLeft, setOpponentLeft] = useState(false);
   const [onlineReason, setOnlineReason] = useState<string | null>(null);
   const [onlineWinnerSlot, setOnlineWinnerSlot] = useState<number | null>(null);
+  const [iReady, setIReady] = useState(false);
+  const [opponentReady, setOpponentReady] = useState(false);
 
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
@@ -144,9 +162,9 @@ export default function PongPage() {
     const keys = keysRef.current;
 
     if (!gameOver) {
-      // Player 1 (left / blue): W / S  — all modes
-      if (keys['w'] || keys['W']) gs.p1.y = Math.max(40, gs.p1.y - PADDLE_SPEED);
-      if (keys['s'] || keys['S']) gs.p1.y = Math.min(canvas.height - 40, gs.p1.y + PADDLE_SPEED);
+      // Player 1 (left / blue): W / S or Arrow keys in AI mode
+      if (keys['w'] || keys['W'] || (mode === 'ai' && keys['ArrowUp'])) gs.p1.y = Math.max(40, gs.p1.y - PADDLE_SPEED);
+      if (keys['s'] || keys['S'] || (mode === 'ai' && keys['ArrowDown'])) gs.p1.y = Math.min(canvas.height - 40, gs.p1.y + PADDLE_SPEED);
 
       if (mode === 'ai') {
         // AI controls right paddle — speed locked by difficulty
@@ -173,23 +191,61 @@ export default function PongPage() {
 
       if (gs.ball.x < 0) {
         setScore((prev) => { const next = { ...prev, p2: prev.p2 + 1 }; if (next.p2 >= WIN_SCORE) setGameOver(true); return next; });
-        gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: -4, vy: 3 };
+        const resetSpeed = getBallSpeed(-BASE_BALL_VX, BASE_BALL_VY);
+        gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
       }
       if (gs.ball.x > canvas.width) {
         setScore((prev) => { const next = { ...prev, p1: prev.p1 + 1 }; if (next.p1 >= WIN_SCORE) setGameOver(true); return next; });
-        gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: 4, vy: -3 };
+        const resetSpeed = getBallSpeed(BASE_BALL_VX, -BASE_BALL_VY);
+        gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
       }
     }
 
     drawFrame(ctx, canvas, gs.p1.y, gs.p2.y, gs.ball);
-    requestAnimationFrame(animate);
+    
+    // Only continue loop if game is not over
+    if (!gameOver) {
+      requestAnimationFrame(animate);
+    }
   }, [mode, gameOver, difficulty]);
 
   useEffect(() => {
-    if (mode === 'online') return;
+    // Don't start loop if game is over or in online mode
+    if (mode === 'online' || gameOver) return;
+    // Set start time on first frame for local/AI modes
+    if (!gameStartTime && (mode === 'local' || mode === 'ai')) {
+      setGameStartTime(Date.now());
+    }
     const id = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(id);
-  }, [mode, animate]);
+  }, [mode, animate, gameOver, gameStartTime]);
+
+  // ── Save match history when game ends (local/AI modes) ──
+  useEffect(() => {
+    if (!gameOver || mode === 'online' || !gameStartTime) return;
+    
+    const saveMatch = async () => {
+      const durationSeconds = Math.round((Date.now() - gameStartTime) / 1000);
+      const winner = score.p1 >= WIN_SCORE ? 'X' : 'O';
+      
+      try {
+        await createLocalMatch({
+          game_type: 'pong',
+          game_mode: mode === 'ai' ? 'pve' : 'pvp',
+          winner: winner,
+          duration_seconds: durationSeconds,
+          player1_score: score.p1,
+          player2_score: score.p2,
+          ai_difficulty: mode === 'ai' ? difficulty : undefined,
+          metadata: { mode, final_score: score },
+        });
+      } catch (error) {
+        console.error('Failed to save Pong match:', error);
+      }
+    };
+    
+    saveMatch();
+  }, [gameOver, mode, gameStartTime, score, difficulty]);
 
   // ── online game state → canvas ────────────────────────────────────────────
   useEffect(() => {
@@ -297,6 +353,13 @@ export default function PongPage() {
           setOnlineScore({ p1: fs.player1.score, p2: fs.player2.score });
         }
         setOnlinePhase('over');
+      } else if (type === 'both_connected') {
+        // Both players joined the lobby — ready to accept Ready clicks
+      } else if (type === 'player_ready') {
+        const slot = data.slot as number;
+        // If the slot that went ready is NOT mine, it's the opponent
+        setOpponentReady(true);
+        void slot; // suppress unused warning
       } else if (type === 'player_left') {
         setOpponentLeft(true);
       }
@@ -313,9 +376,11 @@ export default function PongPage() {
   const resetGame = () => {
     setScore({ p1: 0, p2: 0 });
     setGameOver(false);
+    setGameStartTime(null); // Reset timer for new game
     const gs = gameState.current;
     gs.p1.y = 250; gs.p2.y = 250;
-    gs.ball = { x: 400, y: 250, vx: 4, vy: 3 };
+    const resetSpeed = getBallSpeed(BASE_BALL_VX, BASE_BALL_VY);
+    gs.ball = { x: 400, y: 250, vx: resetSpeed.vx, vy: resetSpeed.vy };
   };
 
   // ── online helpers ────────────────────────────────────────────────────────
@@ -330,14 +395,23 @@ export default function PongPage() {
     setOpponentName('Opponent');
     setGameId(null);
     setGamePath(null);
+    setIReady(false);
+    setOpponentReady(false);
     prevDirectionRef.current = 'stop';
     setMmPath('/ws/matchmaking/');
+  };
+
+  const handleReady = () => {
+    if (iReady) return;
+    setIReady(true);
+    gameSend({ type: 'ready' });
   };
 
   const handleCancelOnline = () => {
     setMmPath(null);
     setGamePath(null);
     setOnlinePhase('idle');
+    navigate('/games/playpage');
   };
 
   const handleForfeit = () => gameSend({ type: 'forfeit' });
@@ -378,7 +452,7 @@ export default function PongPage() {
 
         {/* Arena */}
         <div className="relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-          <canvas ref={canvasRef} width={800} height={500} className="w-full aspect-[16/10]" style={{ backgroundColor: '#0a0e1a' }} />
+          <canvas ref={canvasRef} width={800} height={387} className="w-full" style={{ backgroundColor: '#0a0e1a', aspectRatio: '800/387' }} />
 
           {/* Online — idle */}
           {mode === 'online' && onlinePhase === 'idle' && (
@@ -400,13 +474,39 @@ export default function PongPage() {
             </div>
           )}
 
-          {/* Online — waiting for game to start */}
+          {/* Online — ready lobby */}
           {mode === 'online' && onlinePhase === 'waiting' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
-              <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: '#a855f7', borderTopColor: 'transparent' }} />
-              <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Waiting for opponent…</p>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>vs {opponentName}</p>
-              <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
+              <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>vs {opponentName}</p>
+
+              {/* Ready status indicators */}
+              <div className="flex gap-8 text-sm">
+                <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                  {iReady ? '✓ You are ready' : '◌ You'}
+                </span>
+                <span style={{ color: opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                  {opponentReady ? `✓ ${opponentName} is ready` : `◌ ${opponentName}`}
+                </span>
+              </div>
+
+              {!iReady ? (
+                <button
+                  onClick={handleReady}
+                  className="px-10 py-3 rounded-lg font-bold text-white text-lg"
+                  style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}
+                >
+                  Ready!
+                </button>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: '#a855f7', borderTopColor: 'transparent' }} />
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    {opponentReady ? 'Starting…' : 'Waiting for opponent…'}
+                  </p>
+                </div>
+              )}
+
+              <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Exit</button>
             </div>
           )}
 
@@ -426,6 +526,21 @@ export default function PongPage() {
                 {playerWon ? 'Player 1 Wins!' : 'Player 2 Wins!'}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
+              <div className="flex gap-3 mt-2">
+                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>Play Again</button>
+                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back to Games</button>
+              </div>
+            </div>
+          )}
+
+          {/* AI — game over */}
+          {mode === 'ai' && gameOver && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
+              <h2 className="text-5xl font-extrabold" style={{ color: playerWon ? '#3B82F6' : '#EF4444' }}>
+                {playerWon ? 'You Win!' : 'AI Wins!'}
+              </h2>
+              <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</p>
               <div className="flex gap-3 mt-2">
                 <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>Play Again</button>
                 <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back to Games</button>

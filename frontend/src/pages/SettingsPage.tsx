@@ -6,7 +6,7 @@ import { exportActivityData, importActivityData, type ExportFormat, type ImportR
 import { useAuth } from '../context/AuthContext';
 import { updateProfile } from '../services/auth';
 
-type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance' | 'audio' | 'privacy';
+type SettingsTab = 'profile' | 'security' | 'appearance' | 'privacy';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -43,15 +43,6 @@ export default function SettingsPage() {
   // Editable profile fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [bio, setBio] = useState('');
-
-  // Notification prefs
-  const [notifs, setNotifs] = useState({
-    matchInvites: true,
-    friendRequests: true,
-    achievements: true,
-    marketing: false,
-    sound: true,
-  });
 
   // Dark Mode - synced with localStorage
   const [isDark, setIsDark] = useState(() => {
@@ -121,6 +112,14 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
+    
+    // Validate display name is not empty
+    if (!displayName.trim()) {
+      setSaveError('Display name cannot be empty');
+      setSaving(false);
+      return;
+    }
+    
     try {
       const updated = await updateProfile({ display_name: displayName, preferred_language: language });
       setUser(updated);
@@ -135,10 +134,8 @@ export default function SettingsPage() {
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: t('settings.tabs.profile') },
     { key: 'security', label: t('settings.tabs.security') },
-    { key: 'notifications', label: t('settings.tabs.notifications') },
-    { key: 'appearance', label: t('settings.tabs.appearance') },
-    { key: 'audio', label: t('settings.tabs.audio') },
-    { key: 'privacy', label: t('settings.tabs.privacy') },
+    { key: 'appearance', label: t('settings.tabs.language', { defaultValue: 'Language' }) },
+    { key: 'privacy', label: t('settings.tabs.data_export_import', { defaultValue: 'Data Export/Import' }) },
   ];
 
   return (
@@ -345,44 +342,6 @@ export default function SettingsPage() {
             </>
           )}
 
-          {/* Notifications Tab */}
-          {tab === 'notifications' && (
-            <Card>
-              <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                {t('settings.notifications.title')}
-              </h2>
-              <div className="space-y-4">
-                {[
-                  { key: 'matchInvites' as const, label: t('settings.notifications.match_invites'), desc: t('settings.notifications.match_invites_desc') },
-                  { key: 'friendRequests' as const, label: t('settings.notifications.friend_requests'), desc: t('settings.notifications.friend_requests_desc') },
-                  { key: 'achievements' as const, label: t('settings.notifications.achievements'), desc: t('settings.notifications.achievements_desc') },
-                  { key: 'marketing' as const, label: t('settings.notifications.marketing'), desc: t('settings.notifications.marketing_desc') },
-                  { key: 'sound' as const, label: t('settings.notifications.sound'), desc: t('settings.notifications.sound_desc') },
-                ].map((item) => (
-                  <div 
-                    key={item.key} 
-                    className="flex items-center justify-between p-3 rounded-lg"
-                    style={{
-                      backgroundColor: 'var(--color-bg-input)',
-                      border: '1px solid var(--color-border)',
-                    }}
-                  >
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                        {item.label}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{item.desc}</p>
-                    </div>
-                    <Toggle
-                      checked={notifs[item.key]}
-                      onChange={(v) => setNotifs({ ...notifs, [item.key]: v })}
-                    />
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
           {/* Appearance Tab */}
           {tab === 'appearance' && (
             <>
@@ -454,7 +413,7 @@ export default function SettingsPage() {
                   {t('settings.privacy.export_desc')}
                 </p>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {(['json', 'csv', 'xml'] as ExportFormat[]).map((fmt) => (
+                  {(['json', 'csv'] as ExportFormat[]).map((fmt) => (
                     <button
                       key={fmt}
                       onClick={() => setExportFormat(fmt)}
@@ -493,7 +452,7 @@ export default function SettingsPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".json,.csv,.xml"
+                  accept=".json,.csv"
                   className="hidden"
                   onChange={handleImportFile}
                 />
@@ -545,37 +504,6 @@ export default function SettingsPage() {
                 )}
               </Card>
             </>
-          )}
-
-          {/* Audio Tab */}
-          {tab === 'audio' && (
-            <Card>
-              <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                {t('settings.audio.title')}
-              </h2>
-              <div className="space-y-6">
-                {[
-                  t('settings.audio.master_volume'),
-                  t('settings.audio.game_effects'),
-                  t('settings.audio.music'),
-                  t('settings.audio.notifications'),
-                ].map((label) => (
-                  <div key={label}>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{label}</span>
-                      <span className="font-mono text-xs" style={{ color: 'var(--color-text-muted)' }}>75%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      defaultValue={75}
-                      className="w-full appearance-none cursor-pointer"
-                    />
-                  </div>
-                ))}
-              </div>
-            </Card>
           )}
         </div>
       </div>

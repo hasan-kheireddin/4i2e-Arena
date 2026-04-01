@@ -70,14 +70,15 @@ class TicTacToeConsumer(BaseConsumer):
             await record_match(session)
 
         elif session.status == SessionStatus.WAITING:
+            left_username: str = "Opponent"
+            if slot is not None and slot in session.players:
+                left_username = session.players[slot].username
             session.mark_abandoned(reason=FinishReason.CANCELED)
-            if slot is not None:
-                await self.broadcast(
-                    session.group_name,
-                    {"slot": slot},
-                    handler="player.left",
-                )
-            await self._broadcast_game_over(session, reason="canceled")
+            await self.broadcast(
+                session.group_name,
+                {"username": left_username},
+                handler="opponent.left.lobby",
+            )
 
         remove_session(session.game_id)
         await self.leave_group(session.group_name)
@@ -87,6 +88,8 @@ class TicTacToeConsumer(BaseConsumer):
 
         if msg_type == "join":
             await self._handle_join(content)
+        elif msg_type == "ready":
+            await self._handle_ready()
         elif msg_type == "move":
             await self._handle_move(content)
         elif msg_type == "forfeit":
@@ -148,7 +151,27 @@ class TicTacToeConsumer(BaseConsumer):
             "game_info": session.to_info(),
         })
 
-        if session.is_full and session.status == SessionStatus.WAITING:
+        if session.is_full and session.status == SessionStatus.WAITING and not session.both_connected_sent:
+            session.both_connected_sent = True
+            await self.broadcast(session.group_name, {
+                "game_info": session.to_info(),
+            }, handler="both.connected")
+
+    async def _handle_ready(self) -> None:
+        session = self._session
+        if session is None or self._slot is None:
+            await self.send_error("not_joined", "Not in a game session")
+            return
+        if session.status != SessionStatus.WAITING:
+            return
+
+        session.ready_slots.add(self._slot)
+
+        await self.broadcast(session.group_name, {
+            "slot": self._slot,
+        }, handler="player.ready")
+
+        if session.ready_slots.issuperset({1, 2}) and session.is_full:
             await self._start_game(session)
 
     async def _start_game(self, session: GameSession) -> None:
@@ -274,4 +297,22 @@ class TicTacToeConsumer(BaseConsumer):
         await self.send_json({
             "type": "player_left",
             "slot": event.get("slot"),
+        })
+
+    async def both_connected(self, event: dict[str, Any]) -> None:
+        await self.send_json({
+            "type": "both_connected",
+            "game_info": event.get("game_info"),
+        })
+
+    async def player_ready(self, event: dict[str, Any]) -> None:
+        await self.send_json({
+            "type": "player_ready",
+            "slot": event.get("slot"),
+        })
+
+    async def opponent_left_lobby(self, event: dict[str, Any]) -> None:
+        await self.send_json({
+            "type": "opponent_left_lobby",
+            "username": event.get("username", "Opponent"),
         })

@@ -118,8 +118,8 @@ class MatchmakingService:
                 await self._redis.rpush(queue_key, popped[0])
             return None
 
-        p1_id = int(popped[0])
-        p2_id = int(popped[1])
+        p1_id = popped[0].decode() if isinstance(popped[0], bytes) else str(popped[0])
+        p2_id = popped[1].decode() if isinstance(popped[1], bytes) else str(popped[1])
 
         # Fetch metadata
         p1_meta = await self._get_player_meta(p1_id)
@@ -214,7 +214,8 @@ class MatchmakingService:
             # Pipeline all EXISTS checks in one round-trip.
             pipe = self._redis.pipeline(transaction=False)
             for raw_uid in entries:
-                pipe.exists(_player_key(int(raw_uid)))
+                uid_str = raw_uid.decode() if isinstance(raw_uid, bytes) else str(raw_uid)
+                pipe.exists(_player_key(uid_str))
             results = await pipe.execute()
 
             # Collect stale entries, then pipeline all removals.

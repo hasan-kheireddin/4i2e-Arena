@@ -251,20 +251,15 @@ class TicTacToeEngine:
 
     def get_state(self) -> dict:
         """Return the full game state as a JSON-serialisable dict."""
-        # Convert board to 2D for the frontend (matches design spec)
-        board_2d: list[list[Optional[str]]] = []
-        for row in range(BOARD_SIZE):
-            board_2d.append([
-                self.board[row * BOARD_SIZE + col].value
-                if self.board[row * BOARD_SIZE + col] is not None
-                else None
-                for col in range(BOARD_SIZE)
-            ])
+        board_flat: list[Optional[str]] = [
+            cell.value if cell is not None else None
+            for cell in self.board
+        ]
 
         state: dict = {
             "status": self.status.value,
-            "board": board_2d,
-            "current_player": self.current_turn.value,
+            "board": board_flat,
+            "current_turn": self.current_turn.value,
             "move_count": self.move_count,
             "winner": self.winner.value if self.winner else None,
             "is_draw": self.is_draw,

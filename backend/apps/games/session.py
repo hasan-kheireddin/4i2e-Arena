@@ -66,6 +66,8 @@ class GameSession:
     ai_slot: int | None = None
     ai_difficulty: str | None = None
     players: dict[int, PlayerSlot] = field(default_factory=dict)
+    ready_slots: set = field(default_factory=set)
+    both_connected_sent: bool = False
     status: SessionStatus = SessionStatus.WAITING
     group_name: str = ""
     created_at: float = field(default_factory=time.time)
@@ -146,7 +148,7 @@ class GameSession:
             "status": self.status.value,
             "players": {
                 str(slot): {
-                    "user_id": ps.user_id,
+                    "user_id": str(ps.user_id),
                     "username": ps.username,
                     "connected": ps.connected,
                 }

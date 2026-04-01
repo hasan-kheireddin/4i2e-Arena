@@ -109,9 +109,9 @@
       "profile": "الملف الشخصي",
       "security": "الأمان",
       "notifications": "الإشعارات",
-      "appearance": "المظهر",
+      "appearance": "اللغة",
       "audio": "الصوت",
-      "privacy": "الخصوصية"
+      "privacy": "تصدير/استيراد البيانات"
     },
     "profile": {
       "title": "معلومات الملف الشخصي",
@@ -172,7 +172,7 @@
       "export_btn": "تنزيل {{format}}",
       "exporting": "جارٍ التصدير...",
       "import_title": "استيراد البيانات",
-      "import_desc": "استعادة أحداث النشاط من ملف مُصدَّر سابقاً (JSON أو CSV أو XML). يتم تخطي المكررات تلقائياً.",
+      "import_desc": "استعادة أحداث النشاط من ملف مُصدَّر سابقاً (JSON أو CSV). يتم تخطي المكررات تلقائياً.",
       "import_btn": "اختر ملفاً واستورد",
       "importing": "جارٍ الاستيراد...",
       "import_imported": "تم استيراد {{count}} حدث.",
@@ -260,9 +260,7 @@
     "diff_medium": "متوسط",
     "diff_medium_desc": "تحدٍّ متوازن",
     "diff_hard": "صعب",
-    "diff_hard_desc": "ردود فعل عدوانية وسريعة",
-    "diff_impossible": "مستحيل",
-    "diff_impossible_desc": "ذكاء اصطناعي شبه مثالي — حظاً سعيداً!"
+    "diff_hard_desc": "ردود فعل عدوانية وسريعة"
   },
   "landing": {
     "nav_features": "المميزات",

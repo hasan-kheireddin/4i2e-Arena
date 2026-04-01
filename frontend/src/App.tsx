@@ -103,16 +103,19 @@ function App() {
             }
           />
 
-          {/* ========== GAME ROUTES (Protected, No Layout - Full Screen) ========== */}
+          {/* ========== GAME SELECTION (Protected, With Layout) ========== */}
           <Route
             path="/games/playpage"
             element={
               <ProtectedRoute>
-                <PlayPage />
+                <Layout>
+                  <PlayPage />
+                </Layout>
               </ProtectedRoute>
             }
           />
 
+          {/* ========== GAME ROUTES (Protected, No Layout - Full Screen) ========== */}
           <Route
             path="/games/tictactoe"
             element={

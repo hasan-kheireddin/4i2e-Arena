@@ -174,9 +174,9 @@ def _map_finish_reason(reason: FinishReason | None) -> str:
 
 
 def _determine_game_mode(session: GameSession) -> str:
-    """Determine the game mode (PvP / PvE)."""
+    """Determine the game mode (PvP / PvA)."""
     if session.ai is not None:
-        return GameMode.PVE
+        return GameMode.PVA
     return GameMode.PVP
 
 

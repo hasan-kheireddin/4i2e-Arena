@@ -109,9 +109,9 @@
       "profile": "Profil",
       "security": "Sécurité",
       "notifications": "Notifications",
-      "appearance": "Apparence",
+      "appearance": "Langue",
       "audio": "Audio",
-      "privacy": "Confidentialité"
+      "privacy": "Export/Import de données"
     },
     "profile": {
       "title": "Informations du profil",
@@ -172,7 +172,7 @@
       "export_btn": "Télécharger {{format}}",
       "exporting": "Exportation...",
       "import_title": "Importer des données",
-      "import_desc": "Restaurez des événements à partir d'un fichier exporté (JSON, CSV ou XML). Les doublons sont ignorés automatiquement.",
+      "import_desc": "Restaurez des événements à partir d'un fichier exporté (JSON ou CSV). Les doublons sont ignorés automatiquement.",
       "import_btn": "Choisir un fichier et importer",
       "importing": "Importation...",
       "import_imported": "{{count}} événements importés.",
@@ -260,9 +260,7 @@
     "diff_medium": "Moyen",
     "diff_medium_desc": "Défi équilibré",
     "diff_hard": "Difficile",
-    "diff_hard_desc": "Réactions agressives et rapides",
-    "diff_impossible": "Impossible",
-    "diff_impossible_desc": "IA quasi parfaite — bonne chance !"
+    "diff_hard_desc": "Réactions agressives et rapides"
   },
   "landing": {
     "nav_features": "Fonctionnalités",

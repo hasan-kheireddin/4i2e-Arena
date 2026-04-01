@@ -109,9 +109,9 @@
       "profile": "Profile",
       "security": "Security",
       "notifications": "Notifications",
-      "appearance": "Appearance",
+      "appearance": "Language",
       "audio": "Audio",
-      "privacy": "Privacy"
+      "privacy": "Data Export/Import"
     },
     "profile": {
       "title": "Profile Information",
@@ -172,7 +172,7 @@
       "export_btn": "Download {{format}}",
       "exporting": "Exporting...",
       "import_title": "Import Data",
-      "import_desc": "Restore activity events from a previously exported file (JSON, CSV, or XML). Duplicate events are skipped automatically.",
+      "import_desc": "Restore activity events from a previously exported file (JSON or CSV). Duplicate events are skipped automatically.",
       "import_btn": "Choose File & Import",
       "importing": "Importing...",
       "import_imported": "Imported {{count}} events.",
@@ -260,9 +260,7 @@
     "diff_medium": "Medium",
     "diff_medium_desc": "Balanced challenge",
     "diff_hard": "Hard",
-    "diff_hard_desc": "Aggressive and fast reactions",
-    "diff_impossible": "Impossible",
-    "diff_impossible_desc": "Near-perfect AI — good luck!"
+    "diff_hard_desc": "Aggressive and fast reactions"
   },
   "landing": {
     "nav_features": "Features",

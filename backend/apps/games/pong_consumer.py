@@ -111,6 +111,8 @@ class PongConsumer(BaseConsumer):
 
         if msg_type == "join":
             await self._handle_join(content)
+        elif msg_type == "ready":
+            await self._handle_ready()
         elif msg_type == "input":
             await self._handle_input(content)
         elif msg_type == "forfeit":
@@ -187,11 +189,35 @@ class PongConsumer(BaseConsumer):
             "game_info": session.to_info(),
         })
 
-        # If session is now full → start the game (only if no one else has)
-        if (
-            session.is_full
-            and session.status == SessionStatus.WAITING
-        ):
+        # If session is now full → start immediately for AI, else wait for ready
+        if session.is_full and session.status == SessionStatus.WAITING and not session.both_connected_sent:
+            session.both_connected_sent = True
+            if session.ai is not None:
+                await self._start_game(session)
+            else:
+                await self.broadcast(session.group_name, {
+                    "game_info": session.to_info(),
+                }, handler="both.connected")
+
+    async def _handle_ready(self) -> None:
+        session = self._session
+        if session is None or self._slot is None:
+            await self.send_error("not_joined", "Not in a game session")
+            return
+        if session.status != SessionStatus.WAITING:
+            return  # already started or over
+        if session.ai is not None:
+            return  # no ready step for AI games
+
+        session.ready_slots.add(self._slot)
+
+        # Tell the other player this slot is ready
+        await self.broadcast(session.group_name, {
+            "slot": self._slot,
+        }, handler="player.ready")
+
+        # Start once both human slots have confirmed ready
+        if session.ready_slots.issuperset({1, 2}) and session.is_full:
             await self._start_game(session)
 
     def _create_ai_session(
@@ -432,5 +458,19 @@ class PongConsumer(BaseConsumer):
         """Forward player_left events."""
         await self.send_json({
             "type": "player_left",
+            "slot": event.get("slot"),
+        })
+
+    async def both_connected(self, event: dict[str, Any]) -> None:
+        """Notify both players that the lobby is full and ready to start."""
+        await self.send_json({
+            "type": "both_connected",
+            "game_info": event.get("game_info"),
+        })
+
+    async def player_ready(self, event: dict[str, Any]) -> None:
+        """Notify players when one side has clicked Ready."""
+        await self.send_json({
+            "type": "player_ready",
             "slot": event.get("slot"),
         })

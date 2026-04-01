@@ -211,7 +211,7 @@ class MatchmakingConsumer(BaseConsumer):
             "game_id": game_id,
             "game_type": game_type,
             "opponent": {
-                "user_id": int(p2["user_id"]),
+                "user_id": p2["user_id"],
                 "username": p2["username"],
             },
         })
@@ -223,7 +223,7 @@ class MatchmakingConsumer(BaseConsumer):
             "game_id": game_id,
             "game_type": game_type,
             "opponent": {
-                "user_id": int(p1["user_id"]),
+                "user_id": p1["user_id"],
                 "username": p1["username"],
             },
         })

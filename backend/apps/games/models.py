@@ -27,7 +27,7 @@ class MatchOutcome(models.TextChoices):
 
 class GameMode(models.TextChoices):
     PVP = "pvp", "Player vs Player"
-    PVE = "pve", "Player vs AI"
+    PVA = "pva", "Player vs AI"
 
 
 class Match(models.Model):

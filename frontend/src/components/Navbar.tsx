@@ -1,5 +1,5 @@
 import {
-  Bell, ChevronDown, LogOut, User, Settings,
+  ChevronDown, LogOut, User, Settings,
   Sun, Gamepad2, Home, BarChart3, History, Menu, X,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -83,18 +83,6 @@ export function Navbar() {
 
         {/* ── Right Zone ── */}
         <div className="flex items-center gap-2 shrink-0">
-
-          {/* Notifications */}
-          <Link
-            to="/notifications"
-            className="relative p-2 rounded-lg transition-colors text-secondary hover:text-primary hover:bg-surface-hover"
-            aria-label={t("navbar.notifications")}
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center bg-error notification-badge">
-              3
-            </span>
-          </Link>
 
           {/* User Menu */}
           <div ref={menuRef} className="relative">

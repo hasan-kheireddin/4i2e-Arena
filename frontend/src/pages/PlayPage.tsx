@@ -6,10 +6,10 @@ import { cn } from '../lib/utils';
 
 type GameChoice = 'pong' | 'tictactoe' | null;
 type ModeChoice = 'online' | 'ai' | 'local' | null;
-type DiffChoice = 'easy' | 'medium' | 'hard' | 'impossible';
+type DiffChoice = 'easy' | 'medium' | 'hard';
 type Step = 1 | 2 | 3;
 
-const DIFFICULTIES: DiffChoice[] = ['easy', 'medium', 'hard', 'impossible'];
+const DIFFICULTIES: DiffChoice[] = ['easy', 'medium', 'hard'];
 
 export default function PlayPage() {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ export default function PlayPage() {
   ];
 
   const TTT_MODES = [
+    { id: 'online' as ModeChoice, icon: <Globe className="w-7 h-7" />, label: t('play.mode_online'), desc: t('play.mode_online_desc') },
     { id: 'local' as ModeChoice, icon: <Monitor className="w-7 h-7" />, label: t('play.mode_local'), desc: t('play.mode_local_desc') },
   ];
 
@@ -29,7 +30,6 @@ export default function PlayPage() {
     easy:       { label: t('play.diff_easy'),       desc: t('play.diff_easy_desc'),       color: '#22c55e' },
     medium:     { label: t('play.diff_medium'),     desc: t('play.diff_medium_desc'),     color: '#f59e0b' },
     hard:       { label: t('play.diff_hard'),       desc: t('play.diff_hard_desc'),       color: '#ef4444' },
-    impossible: { label: t('play.diff_impossible'), desc: t('play.diff_impossible_desc'), color: '#a855f7' },
   };
   const [step,       setStep]       = useState<Step>(1);
   const [game,       setGame]       = useState<GameChoice>(null);
@@ -60,7 +60,9 @@ export default function PlayPage() {
       else if (mode === 'ai')     navigate(`/games/pong?mode=ai&difficulty=${difficulty}`);
       else                        navigate('/games/pong?mode=local');
     } else {
-      navigate('/games/tictactoe');
+      // TicTacToe
+      if (mode === 'online') navigate('/games/tictactoe?mode=online');
+      else                   navigate('/games/tictactoe?mode=local');
     }
   };
 
@@ -229,13 +231,6 @@ export default function PlayPage() {
               ))}
             </div>
 
-            {/* Local info for TicTacToe auto-selects and shows launch */}
-            {game === 'tictactoe' && (
-              <p className="text-center text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>
-                {t('play.ttt_local_info')}
-              </p>
-            )}
-
             {/* Launch button for non-AI modes */}
             {mode && mode !== 'ai' && (
               <div className="flex justify-center mt-8 gap-4">
@@ -302,7 +297,7 @@ export default function PlayPage() {
                     onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = 'var(--color-border)'; }}
                   >
                     <div className="text-2xl mb-2">
-                      {d === 'easy' ? '😊' : d === 'medium' ? '😐' : d === 'hard' ? '😤' : '💀'}
+                      {d === 'easy' ? '😊' : d === 'medium' ? '😐' : '😤'}
                     </div>
                     <h3 className="text-sm font-bold mb-1" style={{ color: meta.color }}>{meta.label}</h3>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{meta.desc}</p>

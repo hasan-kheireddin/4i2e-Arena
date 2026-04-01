@@ -3,7 +3,6 @@ import csv
 import io
 import json
 import logging
-import xml.etree.ElementTree as ET
 from typing import Any
 from uuid import UUID
 from django.utils import timezone
@@ -116,50 +115,6 @@ def export_user_events_csv(user_id: UUID | int) -> str:
     return output.getvalue()
 
 
-def export_user_events_xml(user_id: UUID | int) -> str:
-    """
-    Export all activity events for a user as an XML string.
-
-    Structure:
-      <activity_export user_id="..." exported_at="...">
-        <event id="..." category="..." event_type="..."
-               ip_address="..." user_agent="..."
-               is_anonymised="..." created_at="...">
-          <metadata>{"key": "value"}</metadata>
-        </event>
-        ...
-      </activity_export>
-    """
-    rows = export_user_events(user_id)
-    root = ET.Element(
-        "activity_export",
-        attrib={
-            "user_id": str(user_id),
-            "exported_at": timezone.now().isoformat(),
-            "total": str(len(rows)),
-        },
-    )
-    for row in rows:
-        event_el = ET.SubElement(
-            root,
-            "event",
-            attrib={
-                "id": row["id"],
-                "category": row["category"],
-                "event_type": row["event_type"],
-                "ip_address": row["ip_address"] or "",
-                "user_agent": row["user_agent"] or "",
-                "is_anonymised": str(row["is_anonymised"]).lower(),
-                "created_at": row["created_at"],
-            },
-        )
-        metadata_el = ET.SubElement(event_el, "metadata")
-        metadata_el.text = json.dumps(row["metadata"])
-
-    ET.indent(root, space="  ")
-    return ET.tostring(root, encoding="unicode", xml_declaration=False)
-
-
 # ---------------------------------------------------------------------------
 # Import helpers
 # ---------------------------------------------------------------------------
@@ -269,26 +224,15 @@ def parse_import_file(
     Supports:
       - JSON: ``[{...}, ...]`` or ``{"events": [{...}, ...]}``
       - CSV:  header row + data rows
-      - XML:  <activity_export><event .../></activity_export>
 
     Returns (rows, error_message).  error_message is None on success.
     """
     ct = content_type.lower()
 
-    # ---- JSON ---------------------------------------------------------------
-    if "json" in ct or ct == "application/octet-stream":
-        try:
-            payload = json.loads(content.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            return [], f"Invalid JSON: {exc}"
-        if isinstance(payload, list):
-            return payload, None
-        if isinstance(payload, dict) and "events" in payload:
-            return payload["events"], None
-        return [], "JSON must be a list or {\"events\": [...]}"
-
     # ---- CSV ----------------------------------------------------------------
-    if "csv" in ct or "text/plain" in ct:
+    # Check CSV first since some browsers send various content types for CSV files
+    # Common CSV content types: text/csv, application/vnd.ms-excel, text/plain
+    if "csv" in ct or "excel" in ct or ct == "text/plain":
         try:
             text = content.decode("utf-8-sig")  # strip BOM if present
             reader = csv.DictReader(io.StringIO(text))
@@ -307,29 +251,16 @@ def parse_import_file(
         except Exception as exc:
             return [], f"Invalid CSV: {exc}"
 
-    # ---- XML ----------------------------------------------------------------
-    if "xml" in ct:
+    # ---- JSON ---------------------------------------------------------------
+    if "json" in ct or ct == "application/octet-stream" or not ct:
         try:
-            root = ET.fromstring(content.decode("utf-8"))
-            rows = []
-            for event_el in root.findall("event"):
-                meta_el = event_el.find("metadata")
-                try:
-                    metadata = json.loads(meta_el.text or "{}") if meta_el is not None else {}
-                except json.JSONDecodeError:
-                    metadata = {}
-                rows.append({
-                    "id": event_el.get("id"),
-                    "category": event_el.get("category", ""),
-                    "event_type": event_el.get("event_type", ""),
-                    "metadata": metadata,
-                    "ip_address": event_el.get("ip_address") or None,
-                    "user_agent": event_el.get("user_agent") or "",
-                    "is_anonymised": event_el.get("is_anonymised", "false") == "true",
-                    "created_at": event_el.get("created_at"),
-                })
-            return rows, None
-        except ET.ParseError as exc:
-            return [], f"Invalid XML: {exc}"
+            payload = json.loads(content.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            return [], f"Invalid JSON: {exc}"
+        if isinstance(payload, list):
+            return payload, None
+        if isinstance(payload, dict) and "events" in payload:
+            return payload["events"], None
+        return [], "JSON must be a list or {\"events\": [...]}"
 
     return [], f"Unsupported content type: {content_type}"
