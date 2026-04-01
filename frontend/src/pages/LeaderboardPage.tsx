@@ -3,7 +3,6 @@ import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { getLeaderboard, getMyStats, type LeaderboardEntry } from '../services/games';
 
-type GameFilter = 'all' | 'pong' | 'tictactoe';
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-xl">👑</span>;
@@ -14,7 +13,6 @@ function RankBadge({ rank }: { rank: number }) {
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
-  const [gameFilter, setGameFilter] = useState<GameFilter>('all');
   const [search, setSearch] = useState('');
   const [players, setPlayers] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<{ rank: number | null; wins: number; winRate: number }>({ rank: null, wins: 0, winRate: 0 });
@@ -22,12 +20,9 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     setLoading(true);
-    const params: { game_type?: string; metric: string; limit: number } = { metric: 'wins', limit: 50 };
-    if (gameFilter !== 'all') params.game_type = gameFilter;
-
     Promise.all([
-      getLeaderboard(params),
-      getMyStats(gameFilter !== 'all' ? gameFilter : undefined),
+      getLeaderboard({ game_type: 'pong', metric: 'wins', limit: 50 }),
+      getMyStats('pong'),
     ]).then(([lb, stats]) => {
       setPlayers(lb);
       const myEntry = lb.find((p) => p.user_id === user?.id);
@@ -37,7 +32,7 @@ export default function LeaderboardPage() {
         winRate: Math.round(stats.overview.win_rate * 100),
       });
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [gameFilter, user?.id]);
+  }, [user?.id]);
 
   const filtered = players.filter((p) =>
     (p.display_name || p.username).toLowerCase().includes(search.toLowerCase())
@@ -49,8 +44,8 @@ export default function LeaderboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Leaderboard</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>Top players ranked by wins and XP</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>🏓 Pong Leaderboard</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>Top Pong players ranked by wins</p>
       </div>
 
       {/* Your Rank */}
@@ -70,17 +65,8 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      {/* Filter & Search */}
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          {([{ key: 'all', label: 'All Games' }, { key: 'pong', label: 'Pong' }, { key: 'tictactoe', label: 'Tic-Tac-Toe' }] as { key: GameFilter; label: string }[]).map((f) => (
-            <button key={f.key} onClick={() => setGameFilter(f.key)}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
-              style={{ backgroundColor: gameFilter === f.key ? 'var(--color-primary)' : 'transparent', color: gameFilter === f.key ? '#ffffff' : 'var(--color-text-secondary)' }}>
-              {f.label}
-            </button>
-          ))}
-        </div>
         <div className="flex-1 relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2">🔍</span>
           <input placeholder="Search players..." value={search} onChange={(e) => setSearch(e.target.value)}

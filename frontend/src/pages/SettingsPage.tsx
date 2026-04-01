@@ -73,11 +73,13 @@ export default function SettingsPage() {
   }, [isDark]);
 
   // Apply language changes
+  const RTL_LANGUAGES = ['ar'];
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     i18n.changeLanguage(lang);
     localStorage.setItem('i18nextLng', lang);
     document.documentElement.setAttribute('lang', lang);
+    document.documentElement.setAttribute('dir', RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr');
   };
 
   // Privacy / data export-import state
@@ -418,6 +420,7 @@ export default function SettingsPage() {
                     { code: 'en', label: 'English', flag: '🇬🇧' },
                     { code: 'fr', label: 'Français', flag: '🇫🇷' },
                     { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+                    { code: 'ar', label: 'العربية', flag: '🇸🇦' },
                   ].map((lang) => (
                     <button
                       key={lang.code}
@@ -427,6 +430,7 @@ export default function SettingsPage() {
                         border: language === lang.code ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                         backgroundColor: language === lang.code ? 'rgba(168, 85, 247, 0.1)' : 'var(--color-bg-input)',
                         color: language === lang.code ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                        direction: lang.code === 'ar' ? 'rtl' : 'ltr',
                       }}
                     >
                       <span className="text-xl">{lang.flag}</span>

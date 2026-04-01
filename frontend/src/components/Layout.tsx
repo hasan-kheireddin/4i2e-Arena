@@ -1,30 +1,16 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { Navbar } from "./Navbar";
-import { Sidebar } from "./Sidebar";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  const sidebarWidth = sidebarCollapsed ? '64px' : '240px';
-
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
+    <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
       <Navbar />
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <main
-        className="pt-16 transition-all duration-250"
-        style={{
-          marginLeft: sidebarWidth,
-        }}
-      >
-        <div className="p-6">
+      <main className="pt-16">
+        <div className="p-6 max-w-screen-2xl mx-auto">
           {children}
         </div>
       </main>

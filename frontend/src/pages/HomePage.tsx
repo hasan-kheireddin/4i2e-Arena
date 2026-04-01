@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
-import { getMyMatches, getMyStats, getLeaderboard, type Match, type LeaderboardEntry, type UserStats } from '../services/games';
+import {
+  getMyMatches, getMyStats, getLeaderboard,
+  type Match, type LeaderboardEntry, type UserStats,
+} from "../services/games";
+import {
+  Gamepad2, Trophy, Zap, TrendingUp, Sword,
+  Flame, ArrowRight, Clock,
+} from "lucide-react";
 
-function timeAgo(iso: string): string {
+// ── Helper ────────────────────────────────────────────────────────────────────
+function timeAgo(iso: string, t: (key: string, opts?: object) => string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
+  if (diffHours < 1) return t("home.time_just_now");
+  if (diffHours < 24) return t("home.time_hours_ago", { count: diffHours });
+  return t("home.time_days_ago", { count: Math.floor(diffHours / 24) });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -23,12 +32,11 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function fetchAll() {
       try {
         const [statsData, matchesData, lbData] = await Promise.all([
           getMyStats(),
-          getMyMatches({ page_size: 3 }),
+          getMyMatches({ page_size: 5 }),
           getLeaderboard({ limit: 5 }),
         ]);
         if (!cancelled) {
@@ -36,13 +44,9 @@ export default function HomePage() {
           setRecentMatches(matchesData.results);
           setLeaderboard(lbData);
         }
-      } catch {
-        // fallback to zeros / empty arrays
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      } catch { /* fallback to defaults */ }
+      finally { if (!cancelled) setLoading(false); }
     }
-
     fetchAll();
     return () => { cancelled = true; };
   }, []);
@@ -51,282 +55,387 @@ export default function HomePage() {
   const level      = Math.floor(totalXp / 200) + 1;
   const xpToNext   = 200 - (totalXp % 200);
   const xpProgress = ((200 - xpToNext) / 200) * 100;
-
   const totalWins  = stats?.overview.wins ?? 0;
-  const winRatePct = stats ? (stats.overview.win_rate * 100).toFixed(1) + '%' : '0.0%';
+  const totalGames = stats?.overview.total_games ?? 0;
+  const winRatePct = stats ? (stats.overview.win_rate * 100).toFixed(1) + "%" : "0.0%";
   const streak     = stats?.streaks.current.count ?? 0;
-
-  const myLeaderboardEntry = leaderboard.find((e) => e.username === user?.username);
-  const myRank = myLeaderboardEntry ? `#${myLeaderboardEntry.rank}` : '#–';
+  const myEntry    = leaderboard.find((e) => e.username === user?.username);
+  const myRank     = myEntry ? `#${myEntry.rank}` : "#–";
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div
           className="w-10 h-10 rounded-full border-4 animate-spin"
-          style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
+          style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }}
         />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
+    <div className="space-y-8 animate-fadeIn">
+
+      {/* ── Welcome Banner ─────────────────────────────────────────────────── */}
       <div
-        className="relative overflow-hidden rounded-2xl p-6 md:p-8"
-        style={{
-          background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(236, 72, 153, 0.06) 50%, rgba(249, 115, 22, 0.04) 100%)',
-        }}
+        className="relative overflow-hidden rounded-2xl p-7 md:p-10"
+        style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12) 0%, rgba(236,72,153,0.08) 60%, rgba(249,115,22,0.05) 100%)", border: "1px solid rgba(168,85,247,0.2)" }}
       >
-        <div className="absolute top-0 left-0 w-64 h-64 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)' }} />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-              {t('home.welcome_back')} <span style={{
-                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}>{user?.username || 'Player'}</span>
+        {/* BG blobs */}
+        <div className="absolute top-0 left-0 w-64 h-64 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ backgroundColor: "rgba(168,85,247,0.12)" }} />
+        <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"
+          style={{ backgroundColor: "rgba(236,72,153,0.08)" }} />
+
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold mb-1" style={{ color: "#a855f7" }}>
+              {t("home.welcome_back")} 👋
+            </p>
+            <h1 className="text-2xl md:text-4xl font-extrabold mb-2" style={{ color: "var(--color-text-primary)" }}>
+              <span style={{
+                background: "linear-gradient(135deg,#a855f7,#ec4899)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+              }}>
+                {user?.display_name || user?.username || t("home.anonymous_player")}
+              </span>
             </h1>
-            <p className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>{t('home.level')} {level} • {totalXp.toLocaleString()} XP</p>
-            <div className="mt-3 max-w-xs">
-              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-input)' }}>
+
+            {/* XP bar */}
+            <div className="mt-2">
+              <div className="flex items-center gap-3 mb-1.5">
+                <span className="text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+                  {t("home.level")} {level}
+                </span>
+                <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                  {totalXp.toLocaleString()} XP — {xpToNext} {t("home.xp_to_next_level")} {level + 1}
+                </span>
+              </div>
+              <div className="w-full max-w-xs h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
                 <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${xpProgress}%`,
-                    background: 'linear-gradient(90deg, #a855f7 0%, #ec4899 100%)',
-                  }}
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${xpProgress}%`, background: "linear-gradient(90deg,#a855f7,#ec4899)" }}
                 />
               </div>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{xpToNext.toLocaleString()} {t('home.xp_to_next')} {level + 1}</p>
             </div>
           </div>
-          <Link
-            to="/games/playpage"
-            className="px-6 py-3 rounded-lg font-semibold text-white flex items-center gap-2 transition-all duration-200"
-            style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            Quick Play
-          </Link>
+
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <Link
+              to="/games/playpage"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
+              style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", boxShadow: "0 4px 20px rgba(168,85,247,0.35)" }}
+            >
+              <Gamepad2 className="w-4 h-4" />
+              {t("home.quick_play")}
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Stat Cards */}
+      {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label={t('home.stat.total_wins')} value={String(totalWins)} />
-        <StatCard label={t('home.stat.win_rate')} value={winRatePct} />
-        <StatCard label={t('home.stat.streak')} value={String(streak)} />
-        <StatCard label={t('home.stat.rank')} value={myRank} />
+        <StatCard
+          icon={<Trophy className="w-5 h-5" />}
+          label={t("home.stat.total_wins")}
+          value={String(totalWins)}
+          sub={t("home.stat.of_games", { total: totalGames })}
+          color="#a855f7"
+        />
+        <StatCard
+          icon={<TrendingUp className="w-5 h-5" />}
+          label={t("home.stat.win_rate")}
+          value={winRatePct}
+          sub={t("home.stat.win_percentage")}
+          color="#ec4899"
+        />
+        <StatCard
+          icon={<Flame className="w-5 h-5" />}
+          label={t("home.stat.streak")}
+          value={String(streak)}
+          sub={t("home.stat.game_streak")}
+          color="#f97316"
+        />
+        <StatCard
+          icon={<Sword className="w-5 h-5" />}
+          label={t("home.stat.rank")}
+          value={myRank}
+          sub={t("home.stat.global_ranking")}
+          color="#06b6d4"
+        />
       </div>
 
-      {/* Main Grid */}
+      {/* ── Main Grid ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2/3) */}
+
+        {/* ── Left (2/3) ── */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick Play Games */}
-          <div>
-            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>{t('home.quick_play')}</h2>
+
+          {/* Quick Play */}
+          <Section title={t("home.quick_play")} icon={<Gamepad2 className="w-4 h-4" />}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <GameCard
-                title="Pong"
+                title={t("home.game_pong")}
+                desc={t("home.game_pong_desc")}
                 players={24}
-                playersLabel={t('home.players_online')}
                 to="/games/pong"
-                gradient="linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.1) 100%)"
+                c1="#a855f7" c2="#ec4899"
               />
               <GameCard
-                title="Tic-Tac-Toe"
+                title={t("home.game_ttt")}
+                desc={t("home.game_ttt_desc")}
                 players={18}
-                playersLabel={t('home.players_online')}
                 to="/games/tictactoe"
-                gradient="linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)"
+                c1="#06b6d4" c2="#3b82f6"
               />
             </div>
-          </div>
+          </Section>
 
           {/* Recent Matches */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t('home.recent_matches')}</h2>
-              <Link
-                to="/history"
-                className="text-sm flex items-center gap-1 transition-colors"
-                style={{ color: 'var(--color-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              >
-                {t('home.view_all')} →
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {recentMatches.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('home.no_matches')}</p>
-              )}
-              {recentMatches.map((match) => {
-                const myPlayer = match.players.find((p) => p.username === user?.username);
-                const opponent = match.players.find((p) => p.username !== user?.username);
-                const result: 'win' | 'loss' | 'draw' = myPlayer?.outcome ?? 'loss';
-                const score = `${match.player1_score}-${match.player2_score}`;
-                const xpEarned = myPlayer?.xp_earned ?? 0;
-                const gameIcon = match.game_type === 'pong' ? 'Pong' : 'TTT';
-                const timeLabel = match.finished_at ? timeAgo(match.finished_at) : '';
+          <Section
+            title={t("home.recent_matches")}
+            icon={<Clock className="w-4 h-4" />}
+            action={{ label: t("home.view_all"), to: "/history" }}
+          >
+            {recentMatches.length === 0 ? (
+              <p className="text-sm py-4" style={{ color: "var(--color-text-muted)" }}>
+                {t("home.no_matches")}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {recentMatches.map((match) => {
+                  const me = match.players.find((p) => p.username === user?.username);
+                  const opp = match.players.find((p) => p.username !== user?.username);
+                  const result: "win" | "loss" | "draw" = me?.outcome ?? "loss";
+                  const score = `${match.player1_score}-${match.player2_score}`;
+                  const xpEarned = me?.xp_earned ?? 0;
+                  const gameLabel = match.game_type === "pong" ? t("home.game_pong") : t("home.game_ttt_short");
+                  const timeLabel = match.finished_at ? timeAgo(match.finished_at, t) : "";
 
-                return (
-                  <div
-                    key={match.id}
-                    className="flex items-center gap-4 p-4 rounded-lg transition-all duration-200"
-                    style={{
-                      backgroundColor: 'var(--color-bg-card)',
-                      border: '1px solid var(--color-border)',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'}
-                  >
-                    <span
-                      className="px-3 py-1 rounded-md text-xs font-bold text-white"
-                      style={{
-                        backgroundColor:
-                          result === 'win' ? 'var(--color-success)' :
-                          result === 'draw' ? '#f59e0b' :
-                          'var(--color-error)',
-                      }}
+                  const resultColors: Record<string, string> = {
+                    win: "var(--color-success)",
+                    draw: "#f59e0b",
+                    loss: "var(--color-error)",
+                  };
+
+                  return (
+                    <div
+                      key={match.id}
+                      className="flex items-center gap-3 p-3.5 rounded-xl transition-all duration-150 cursor-default"
+                      style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-bg-hover)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-bg-card)"; }}
                     >
-                      {result.toUpperCase()}
-                    </span>
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="text-xs">{gameIcon}</span>
-                      <span className="text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
-                        vs {opponent?.username ?? 'Unknown'}
+                      {/* Result badge */}
+                      <span
+                        className="px-2.5 py-1 rounded-md text-xs font-bold text-white uppercase shrink-0"
+                        style={{ backgroundColor: resultColors[result] }}
+                      >
+                        {result}
+                      </span>
+
+                      {/* Game + opponent */}
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-muted)" }}>
+                          {gameLabel}
+                        </span>
+                        <span className="text-sm truncate" style={{ color: "var(--color-text-primary)" }}>
+                          vs <strong>{opp?.username ?? t("home.unknown_opponent")}</strong>
+                        </span>
+                      </div>
+
+                      {/* Score */}
+                      <span className="text-sm font-bold font-mono shrink-0" style={{ color: "var(--color-text-primary)" }}>
+                        {score}
+                      </span>
+
+                      {/* XP */}
+                      <span className="text-xs font-semibold shrink-0" style={{ color: "var(--color-success)" }}>
+                        +{xpEarned} XP
+                      </span>
+
+                      {/* Time */}
+                      <span className="text-xs shrink-0 hidden sm:block" style={{ color: "var(--color-text-muted)" }}>
+                        {timeLabel}
                       </span>
                     </div>
-                    <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text-primary)' }}>{score}</span>
-                    <span className="text-xs font-medium" style={{ color: 'var(--color-success)' }}>+{xpEarned} XP</span>
-                    <span className="text-xs hidden sm:block" style={{ color: 'var(--color-text-muted)' }}>{timeLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
         </div>
 
-        {/* Right Column (1/3) */}
+        {/* ── Right (1/3) ── */}
         <div className="space-y-6">
-          <Card title={t('home.leaderboard')} link="/leaderboard">
-            <div className="space-y-2">
-              {leaderboard.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{t('home.no_leaderboard')}</p>
-              )}
-              {leaderboard.map((player) => (
-                <div key={player.rank} className="flex items-center gap-3 py-1.5">
-                  <span
-                    className="text-xs font-bold w-5 text-center"
-                    style={{
-                      color: player.rank === 1 ? '#fbbf24' :
-                             player.rank === 2 ? '#94a3b8' :
-                             player.rank === 3 ? '#fb923c' :
-                             'var(--color-text-muted)',
-                    }}
-                  >
-                    #{player.rank}
-                  </span>
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  >
-                    {player.username.charAt(0).toUpperCase()}
+          <Section
+            title={t("home.leaderboard")}
+            icon={<Trophy className="w-4 h-4" />}
+            action={{ label: t("home.view_all"), to: "/leaderboard" }}
+          >
+            {leaderboard.length === 0 ? (
+              <p className="text-sm py-4" style={{ color: "var(--color-text-muted)" }}>
+                {t("home.no_leaderboard")}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {leaderboard.map((player) => {
+                  const rankColor =
+                    player.rank === 1 ? "#fbbf24" :
+                    player.rank === 2 ? "#94a3b8" :
+                    player.rank === 3 ? "#fb923c" :
+                    "var(--color-text-muted)";
+                  const isMe = player.username === user?.username;
+
+                  return (
+                    <div
+                      key={player.rank}
+                      className="flex items-center gap-3 px-2 py-2 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: isMe ? "rgba(168,85,247,0.08)" : "transparent",
+                        border: isMe ? "1px solid rgba(168,85,247,0.2)" : "1px solid transparent",
+                      }}
+                    >
+                      <span className="text-xs font-bold w-6 text-center shrink-0" style={{ color: rankColor }}>
+                        #{player.rank}
+                      </span>
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                        style={{ backgroundColor: "var(--color-primary)" }}
+                      >
+                        {player.username.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm truncate flex-1 font-medium" style={{ color: "var(--color-text-primary)" }}>
+                        {player.username}
+                        {isMe && <span className="ml-1 text-xs" style={{ color: "#a855f7" }}>{t("home.you")}</span>}
+                      </span>
+                      <span className="text-xs font-mono shrink-0" style={{ color: "var(--color-primary)" }}>
+                        {player.total_xp.toLocaleString()} XP
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+
+          {/* XP breakdown */}
+          <Section title={t("home.xp_breakdown")} icon={<Zap className="w-4 h-4" />}>
+            <div className="space-y-3">
+              {[
+                { label: t("home.xp_this_week"), value: stats?.overview.total_xp ?? 0, max: 1000, color: "#a855f7" },
+                { label: t("home.xp_win_bonus"), value: totalWins * 50, max: Math.max(totalWins * 50, 500), color: "#ec4899" },
+                { label: t("home.xp_streak_bonus"), value: streak * 25, max: Math.max(streak * 25, 250), color: "#f97316" },
+              ].map(({ label, value, max, color }) => (
+                <div key={label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>{label}</span>
+                    <span className="text-xs font-mono" style={{ color }}>{value.toLocaleString()}</span>
                   </div>
-                  <span className="text-sm truncate flex-1" style={{ color: 'var(--color-text-primary)' }}>{player.username}</span>
-                  <span className="text-xs font-mono" style={{ color: 'var(--color-primary)' }}>{player.total_xp.toLocaleString()}</span>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min((value / max) * 100, 100)}%`, backgroundColor: color }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </Section>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, trend }: { label: string; value: string; trend?: string }) {
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatCard({
+  icon, label, value, sub, color,
+}: { icon: React.ReactNode; label: string; value: string; sub?: string; color: string }) {
   return (
     <div
-      className="p-4 rounded-lg"
-      style={{
-        backgroundColor: 'var(--color-bg-card)',
-        border: '1px solid var(--color-border)',
-      }}
+      className="p-5 rounded-xl group transition-all duration-200 hover:-translate-y-1"
+      style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = color; e.currentTarget.style.boxShadow = `0 4px 20px ${color}20`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.boxShadow = "none"; }}
     >
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}20`, color }}>
+          {icon}
+        </div>
+        <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>{label}</span>
       </div>
-      <div className="flex items-end gap-2">
-        <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{value}</span>
-        {trend && (
-          <span className="text-sm font-medium mb-1" style={{ color: 'var(--color-success)' }}>
-            {trend}
-          </span>
-        )}
-      </div>
+      <div className="text-2xl font-extrabold mb-0.5" style={{ color: "var(--color-text-primary)" }}>{value}</div>
+      {sub && <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>{sub}</div>}
     </div>
   );
 }
 
-function GameCard({ title, players, playersLabel, to, gradient }: { title: string; players: number; playersLabel: string; to: string; gradient: string }) {
-  return (
-    <Link to={to}>
-      <div
-        className="h-40 flex flex-col items-center justify-center gap-3 rounded-lg transition-all duration-200"
-        style={{
-          background: gradient,
-          border: '1px solid transparent',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.borderColor = 'var(--color-primary)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.borderColor = 'transparent';
-        }}
-      >
-        <h3 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
-        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{players} {playersLabel}</p>
-      </div>
-    </Link>
-  );
-}
-
-function Card({ title, subtitle, link, children }: { title: string; subtitle?: string; link?: string; children: React.ReactNode }) {
-  const { t } = useTranslation();
+function Section({
+  title, icon, action, children,
+}: { title: string; icon?: React.ReactNode; action?: { label: string; to: string }; children: React.ReactNode }) {
   return (
     <div
-      className="p-4 rounded-lg"
-      style={{
-        backgroundColor: 'var(--color-bg-card)',
-        border: '1px solid var(--color-border)',
-      }}
+      className="p-5 rounded-xl"
+      style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
-        {subtitle && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{subtitle}</span>}
-        {link && (
+        <div className="flex items-center gap-2">
+          {icon && <span style={{ color: "var(--color-primary)" }}>{icon}</span>}
+          <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: "var(--color-text-primary)" }}>{title}</h2>
+        </div>
+        {action && (
           <Link
-            to={link}
-            className="text-xs transition-opacity"
-            style={{ color: 'var(--color-primary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            to={action.to}
+            className="text-xs font-medium flex items-center gap-1 transition-opacity hover:opacity-70"
+            style={{ color: "var(--color-primary)" }}
           >
-            {t('home.view_all')}
+            {action.label} <ArrowRight className="w-3 h-3" />
           </Link>
         )}
       </div>
       {children}
     </div>
+  );
+}
+
+function GameCard({
+  title, desc, players, to, c1, c2,
+}: { title: string; desc: string; players: number; to: string; c1: string; c2: string }) {
+  return (
+    <Link to={to} className="block group">
+      <div
+        className="relative h-44 flex flex-col justify-end p-5 rounded-xl overflow-hidden transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl"
+        style={{ background: `linear-gradient(135deg, ${c1}25 0%, ${c2}15 100%)`, border: `1px solid ${c1}35` }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = c1; e.currentTarget.style.boxShadow = `0 8px 30px ${c1}25`; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${c1}35`; e.currentTarget.style.boxShadow = "none"; }}
+      >
+        {/* Subtle icon in background */}
+        <div className="absolute top-4 right-4 opacity-20 transition-opacity duration-300 group-hover:opacity-40">
+          <Gamepad2 className="w-12 h-12" style={{ color: c1 }} />
+        </div>
+
+        <div>
+          <h3 className="text-lg font-extrabold mb-0.5" style={{ color: "var(--color-text-primary)" }}>{title}</h3>
+          <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>{desc}</p>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
+              {players} {t("home.players_online")}
+            </span>
+          </div>
+        </div>
+
+        {/* Play button overlay on hover */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="px-5 py-2 rounded-lg font-bold text-sm text-white flex items-center gap-2"
+            style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
+            {t("home.play_now")} <ArrowRight className="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
