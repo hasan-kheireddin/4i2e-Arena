@@ -75,7 +75,12 @@ async function doRefresh(): Promise<boolean> {
     });
 
     if (!res.ok) {
-      clearTokens();
+      // Only wipe tokens on 401 — a 5xx means the server failed, not that
+      // the token itself is invalid. Clearing tokens on 500 would log the
+      // user out during a temporary backend hiccup.
+      if (res.status === 401) {
+        clearTokens();
+      }
       return false;
     }
 
@@ -83,7 +88,7 @@ async function doRefresh(): Promise<boolean> {
     setTokens(data.access, data.refresh ?? refresh);
     return true;
   } catch {
-    clearTokens();
+    // Network error — token may still be valid; don't wipe it
     return false;
   }
 }

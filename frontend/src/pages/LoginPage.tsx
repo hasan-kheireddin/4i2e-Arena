@@ -204,6 +204,17 @@ function FormContent({
 }: FormProps) {
   return (
     <>
+      {/* Back to landing */}
+      <div className="mb-6">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          ← {t("login.back_home", "Back to Home")}
+        </Link>
+      </div>
+
       {/* Title */}
       <div className="mb-8 text-center">
         <h1

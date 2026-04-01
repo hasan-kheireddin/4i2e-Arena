@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ft_transcendence</title>
+    <!-- Apply dark mode before first paint to prevent white flash -->
+    <script>
+      (function() {
+        var saved = localStorage.getItem('darkMode');
+        if (saved === null || saved === 'true') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     <!-- Arabic font: Cairo (used when dir="rtl") -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -10,7 +10,8 @@
     "sign_up": "S'inscrire",
     "or": "ou",
     "42": "Se connecter avec 42",
-    "forgot": "Mot de passe oublié ?"
+    "forgot": "Mot de passe oublié ?",
+    "back_home": "Retour à l'accueil"
   },
   "register": {
     "title": "Créer un compte",

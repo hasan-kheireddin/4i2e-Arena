@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { oauthCallback } from "../services/auth";
@@ -9,32 +9,24 @@ export default function OAuthCallbackPage() {
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  // Capture provider once at render time before any effect can remove it
-  const providerRef = useRef(sessionStorage.getItem("oauth_provider"));
-  const hasRun = useRef(false);
 
   useEffect(() => {
-    // Guard against React StrictMode double-invocation
-    if (hasRun.current) return;
-    hasRun.current = true;
-
+    // Read and immediately consume the provider from sessionStorage.
+    // Using sessionStorage as the idempotency guard: if it's already gone
+    // (e.g. React StrictMode remount), return silently instead of erroring.
+    const provider = sessionStorage.getItem("oauth_provider");
+    if (!provider) return;
     sessionStorage.removeItem("oauth_provider");
 
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
+
+    if (!code || !state) {
+      setError("Invalid callback parameters. Missing authorization code or state.");
+      return;
+    }
+
     const handleCallback = async () => {
-      const code = searchParams.get("code");
-      const state = searchParams.get("state");
-      const provider = providerRef.current;
-
-      if (!code || !state) {
-        setError("Invalid callback parameters. Missing authorization code or state.");
-        return;
-      }
-
-      if (!provider) {
-        setError("Could not determine OAuth provider. Please try logging in again.");
-        return;
-      }
-
       try {
         const res = await oauthCallback(provider, { code, state });
         setUser(res.user);

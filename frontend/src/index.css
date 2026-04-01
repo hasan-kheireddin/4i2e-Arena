@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent white flash before React hydrates */
+html,
+body {
+  background-color: var(--color-bg, #09090b);
+  color: var(--color-text-primary, #fafafa);
+}
+
+#root {
+  min-height: 100vh;
+  background-color: var(--color-bg, #09090b);
+}
+
 @layer base {
   :root {
     /* ── Brand ── */

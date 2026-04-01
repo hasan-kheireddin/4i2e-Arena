@@ -10,7 +10,8 @@
     "sign_up": "Registrieren",
     "or": "oder",
     "42": "Mit 42 anmelden",
-    "forgot": "Passwort vergessen?"
+    "forgot": "Passwort vergessen?",
+    "back_home": "Zurück zur Startseite"
   },
   "register": {
     "title": "Konto erstellen",

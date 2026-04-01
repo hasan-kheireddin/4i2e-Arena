@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Gamepad2, ArrowRight, Users, Trophy, Zap,
-  Shield, Star, ChevronDown, Menu, X,
+  Shield, Star, ChevronDown,
 } from "lucide-react";
 
 // ── Scroll-reveal hook ────────────────────────────────────────────────────────
@@ -35,116 +35,80 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
+// ── Format a raw count into a readable label ──────────────────────────────────
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M+`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k+`;
+  return String(n);
+}
+
+interface PlatformStats {
+  total_users: number;
+  total_games: number;
+  game_modes: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const { t } = useTranslation();
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 30);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    fetch("/api/analytics/public-stats/")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setPlatformStats(data); })
+      .catch(() => {});
   }, []);
 
   const scrollTo = (id: string) => {
-    setMobileMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const navLinks = [
-    { label: t("landing.nav_features"), id: "features" },
-    { label: t("landing.nav_games"),    id: "games" },
-    { label: t("landing.nav_stats"),    id: "stats" },
-  ];
+  const users      = platformStats ? formatCount(platformStats.total_users) : "—";
+  const games      = platformStats ? formatCount(platformStats.total_games) : "—";
+  const gameModes  = platformStats ? String(platformStats.game_modes) : "2";
 
   return (
     <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--color-bg)" }}>
 
-      {/* ── TOP NAV ──────────────────────────────────────────────────────────── */}
+      {/* ── NAVBAR ───────────────────────────────────────────────────────────── */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 h-16 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 h-14"
         style={{
-          backgroundColor: scrolled ? "var(--color-bg-card)" : "transparent",
-          borderBottom: scrolled ? "1px solid var(--color-border)" : "none",
-          backdropFilter: scrolled ? "blur(16px)" : "none",
+          backgroundColor: "var(--color-bg)",
+          borderBottom: "1px solid var(--color-border)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
         }}
       >
-        <div className="container mx-auto px-6 flex items-center justify-between h-full">
-          {/* Logo */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)" }}>
-              <span className="text-white font-bold text-sm">FT</span>
+        <div className="container mx-auto px-6 h-full flex items-center">
+          <div className="flex items-center gap-2.5">
+            {/* 42 logo in purple box */}
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{ backgroundColor: "#a855f7" }}
+            >
+              <span className="text-white font-bold text-sm leading-none">42</span>
             </div>
-            <span className="text-xl font-extrabold"
-              style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+            {/* Arena wordmark */}
+            <span
+              className="text-xl font-extrabold tracking-tight"
+              style={{
+                background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
               Arena
             </span>
           </div>
-
-          {/* Desktop nav links */}
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map(({ label, id }) => (
-              <button key={id} onClick={() => scrollTo(id)}
-                className="text-sm font-medium transition-all duration-200 hover:opacity-100 opacity-60 cursor-pointer"
-                style={{ color: "var(--color-text-primary)", background: "none", border: "none" }}>
-                {label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Desktop auth buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/login"
-              className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:-translate-y-0.5"
-              style={{ color: "var(--color-text-primary)", border: "1px solid var(--color-border)" }}>
-              {t("landing.sign_in")}
-            </Link>
-            <Link to="/register"
-              className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-              style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)", boxShadow: "0 4px 15px rgba(168,85,247,0.35)" }}>
-              {t("landing.get_started")}
-            </Link>
-          </div>
-
-          {/* Mobile hamburger */}
-          <button className="md:hidden p-2 rounded-lg" style={{ color: "var(--color-text-primary)" }}
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
-
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t" style={{ backgroundColor: "var(--color-bg-card)", borderColor: "var(--color-border)" }}>
-            <div className="container mx-auto px-6 py-4 flex flex-col gap-3">
-              {navLinks.map(({ label, id }) => (
-                <button key={id} onClick={() => scrollTo(id)}
-                  className="text-left py-2 text-sm font-medium transition-colors"
-                  style={{ color: "var(--color-text-primary)", background: "none", border: "none" }}>
-                  {label}
-                </button>
-              ))}
-              <div className="flex gap-3 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium text-center transition-all"
-                  style={{ border: "1px solid var(--color-border)", color: "var(--color-text-primary)" }}>
-                  {t("landing.sign_in")}
-                </Link>
-                <Link to="/register" onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-white text-center"
-                  style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)" }}>
-                  {t("landing.get_started")}
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-16">
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-14">
         {/* Animated background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/5 w-[500px] h-[500px] rounded-full blur-3xl opacity-15 animate-pulse"
@@ -158,7 +122,7 @@ export default function LandingPage() {
             style={{ backgroundImage: "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
         </div>
 
-        <div className="relative container mx-auto px-6 text-center" style={{ animation: "heroIn 0.9s cubic-bezier(0.16,1,0.3,1) both" }}>
+        <div className="relative container mx-auto px-6 text-center" style={{ animation: "heroIn 0.9s cubic-bezier(0.16,1,0.3,1) forwards" }}>
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold mb-8"
             style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.35)" }}>
@@ -203,8 +167,8 @@ export default function LandingPage() {
           {/* Social proof stats */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-16">
             {[
-              { value: "10K+",  labelKey: "landing.stat_active_players" },
-              { value: "500K+", labelKey: "landing.stat_games_played" },
+              { value: users, labelKey: "landing.stat_active_players" },
+              { value: games, labelKey: "landing.stat_games_played" },
               { value: "99.9%", labelKey: "landing.stat_uptime" },
             ].map(({ value, labelKey }) => (
               <div key={labelKey} className="text-center">
@@ -270,7 +234,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── GAMES SHOWCASE ───────────────────────────────────────────────────── */}
+      {/* ── GAMES SHOWCASE ─────────────────────────────────────────────��─────── */}
       <section id="games" className="py-28" style={{ backgroundColor: "var(--color-bg-card)" }}>
         <div className="container mx-auto px-6">
           <Reveal className="text-center mb-16">
@@ -354,10 +318,10 @@ export default function LandingPage() {
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                 {[
-                  { value: "10,000+", labelKey: "landing.stat_active" },
-                  { value: "500K+",   labelKey: "landing.stat_played" },
-                  { value: "2",       labelKey: "landing.stat_modes" },
-                  { value: "99.9%",   labelKey: "landing.stat_sla" },
+                  { value: users,    labelKey: "landing.stat_active" },
+                  { value: games,    labelKey: "landing.stat_played" },
+                  { value: gameModes, labelKey: "landing.stat_modes" },
+                  { value: "99.9%",  labelKey: "landing.stat_sla" },
                 ].map(({ value, labelKey }, i) => (
                   <Reveal key={labelKey} delay={i * 80}>
                     <div className="text-center">
@@ -422,8 +386,8 @@ export default function LandingPage() {
             {/* Logo */}
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)" }}>
-                <span className="text-white font-bold text-xs">FT</span>
+                style={{ backgroundColor: "#a855f7" }}>
+                <span className="text-white font-bold text-xs">42</span>
               </div>
               <span className="font-extrabold"
                 style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>

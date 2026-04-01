@@ -10,7 +10,8 @@
     "sign_up": "Sign up",
     "or": "or",
     "42": "Login with 42",
-    "forgot": "Forgot password?"
+    "forgot": "Forgot password?",
+    "back_home": "Back to Home"
   },
   "register": {
     "title": "Create an account",

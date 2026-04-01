@@ -48,7 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setUser(profile);
       } catch {
         // Token invalid / expired and refresh also failed
-        clearTokens();
+        // Only clear tokens if this effect run is still active (not cancelled by StrictMode)
+        if (!cancelled) clearTokens();
       } finally {
         if (!cancelled) setLoading(false);
       }
