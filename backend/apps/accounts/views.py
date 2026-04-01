@@ -169,7 +169,22 @@ class CustomTokenRefreshView(TokenRefreshView):
     settings.SIMPLE_JWT.ROTATE_REFRESH_TOKENS / BLACKLIST_AFTER_ROTATION).
     """
 
-    pass
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except TokenError as e:
+            # Token is blacklisted, expired, or invalid — return 401 instead of 500
+            return Response(
+                {"detail": str(e), "code": "token_not_valid"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except Exception:
+            # Catch any unexpected error (e.g. DB IntegrityError on blacklist table)
+            # so we never leak a 500 from this endpoint
+            return Response(
+                {"detail": "Token is invalid or expired.", "code": "token_not_valid"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 class ProfileView(generics.RetrieveAPIView):
     """

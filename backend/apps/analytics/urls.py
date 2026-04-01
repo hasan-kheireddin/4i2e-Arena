@@ -10,6 +10,7 @@ from .views import (
     LeaderboardView,
     LevelTableView,
     UserXPDetailView,
+    PublicStatsView,
     # Activity tracking endpoints (Task 10.1)
     ActivityHeatmapView,
     ActivitySummaryView,
@@ -48,6 +49,13 @@ urlpatterns = [
         "achievements/<uuid:pk>/",
         AchievementDetailView.as_view(),
         name="achievement-detail",
+    ),
+
+    # Public stats (no auth — used by landing page)
+    path(
+        "public-stats/",
+        PublicStatsView.as_view(),
+        name="public-stats",
     ),
 
     # XP & Leaderboard endpoints

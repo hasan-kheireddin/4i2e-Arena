@@ -213,13 +213,10 @@ SESSION_COOKIE_HTTPONLY = True
 
 # ---------------------------------------------------------------------------
 # OAuth — 42 School
+# (oauth_providers.py reads these directly from os.environ at runtime)
 # ---------------------------------------------------------------------------
 OAUTH_42_CLIENT_ID = config("OAUTH_42_CLIENT_ID", default="")
 OAUTH_42_CLIENT_SECRET = config("OAUTH_42_CLIENT_SECRET", default="")
-OAUTH_42_REDIRECT_URI = config(
-    "OAUTH_42_REDIRECT_URI",
-    default="https://localhost/api/accounts/oauth/42/callback/",
-)
 
 # ---------------------------------------------------------------------------
 # Email

@@ -406,6 +406,30 @@ class LevelTableView(APIView):
             {"levels": levels, "max_level": MAX_LEVEL},
             status=status.HTTP_200_OK,
         )
+class PublicStatsView(APIView):
+    """
+    GET /api/analytics/public-stats/
+
+    Returns platform-wide counters for the landing page.
+    No authentication required.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from apps.games.models import Match
+        total_users = User.objects.filter(is_active=True).count()
+        total_games = Match.objects.count()
+        return Response(
+            {
+                "total_users": total_users,
+                "total_games": total_games,
+                "game_modes": 2,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 from .aggregation_service import (
     get_activity_heatmap,
     get_activity_timeline,
