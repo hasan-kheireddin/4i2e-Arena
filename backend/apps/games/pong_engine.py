@@ -47,7 +47,7 @@ BALL_MAX_SPEED: float = 12.0
 BALL_SPEED_INCREMENT: float = 0.3  # added after each paddle hit
 
 # Scoring
-WIN_SCORE: int = 11
+WIN_SCORE: int = 7
 
 # Serve
 SERVE_DELAY_TICKS: int = 60  # 1 second at 60 fps
