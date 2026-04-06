@@ -76,6 +76,32 @@ export default function HomePage() {
   return (
     <div className="space-y-8 animate-fadeIn">
 
+      {/* ── Quick Access Game Shortcuts ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-4">
+        <Link
+          to="/games/pong"
+          className="group flex flex-col items-center justify-center gap-2 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+          style={{ background: "linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1))", border: "1px solid rgba(168,85,247,0.25)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#a855f7"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(168,85,247,0.25)"; }}
+        >
+          <Gamepad2 className="w-8 h-8" style={{ color: "#a855f7" }} />
+          <span className="text-sm font-bold" style={{ color: "var(--color-text-primary)" }}>{t("home.game_pong")}</span>
+          <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{t("home.play_now")}</span>
+        </Link>
+        <Link
+          to="/games/tictactoe"
+          className="group flex flex-col items-center justify-center gap-2 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+          style={{ background: "linear-gradient(135deg,rgba(6,182,212,0.15),rgba(59,130,246,0.1))", border: "1px solid rgba(6,182,212,0.25)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#06b6d4"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(6,182,212,0.25)"; }}
+        >
+          <Gamepad2 className="w-8 h-8" style={{ color: "#06b6d4" }} />
+          <span className="text-sm font-bold" style={{ color: "var(--color-text-primary)" }}>{t("home.game_ttt")}</span>
+          <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{t("home.play_now")}</span>
+        </Link>
+      </div>
+
       {/* ── Welcome Banner ─────────────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden rounded-2xl p-7 md:p-10"
@@ -232,7 +258,7 @@ export default function HomePage() {
                         className="px-2.5 py-1 rounded-md text-xs font-bold text-white uppercase shrink-0"
                         style={{ backgroundColor: resultColors[result] }}
                       >
-                        {result}
+                        {t(`profile.result_${result}`)}
                       </span>
 
                       {/* Game + opponent */}
@@ -404,6 +430,7 @@ function Section({
 function GameCard({
   title, desc, players, to, c1, c2,
 }: { title: string; desc: string; players: number; to: string; c1: string; c2: string }) {
+  const { t } = useTranslation();
   return (
     <Link to={to} className="block group">
       <div

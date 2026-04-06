@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { createLocalMatch } from '../services/games';
@@ -87,6 +88,7 @@ function drawFrame(
 }
 
 export default function PongPage() {
+  const { t } = useTranslation();
   // Read mode and difficulty from URL params (set by PlayPage)
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -257,13 +259,15 @@ export default function PongPage() {
     const { ball, paddles } = onlineGameState;
     // Backend field is 800×600, canvas is 800×500 — scale Y coordinates
     const scaleY = canvas.height / 600;
-    drawFrame(
-      ctx, canvas,
-      (paddles[1]?.y ?? 300) * scaleY,
-      (paddles[2]?.y ?? 300) * scaleY,
-      { ...ball, y: ball.y * scaleY },
-    );
-  }, [mode, onlineGameState]);
+    // Mirror the view for slot 2 so "you" are always on the left (blue paddle)
+    const flipped = mySlot === 2;
+    const leftY  = flipped ? (paddles[2]?.y ?? 300) * scaleY : (paddles[1]?.y ?? 300) * scaleY;
+    const rightY = flipped ? (paddles[1]?.y ?? 300) * scaleY : (paddles[2]?.y ?? 300) * scaleY;
+    const displayBall = flipped
+      ? { ...ball, x: canvas.width - ball.x, vx: -ball.vx, y: ball.y * scaleY }
+      : { ...ball, y: ball.y * scaleY };
+    drawFrame(ctx, canvas, leftY, rightY, displayBall);
+  }, [mode, onlineGameState, mySlot]);
 
   // ── online keyboard input → direction-based messages ─────────────────────
   const gameSendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
@@ -419,11 +423,14 @@ export default function PongPage() {
   const playerWon = score.p1 >= WIN_SCORE;
   const iWon = onlineWinnerSlot !== null && onlineWinnerSlot === mySlot;
   const displayScore = mode === 'online' ? onlineScore : score;
+  // For slot 2 players, swap so "my score" is always on the left
+  const myDisplayScore  = mode === 'online' ? (mySlot === 2 ? onlineScore.p2 : onlineScore.p1) : score.p1;
+  const oppDisplayScore = mode === 'online' ? (mySlot === 2 ? onlineScore.p1 : onlineScore.p2) : score.p2;
   const p2Label = mode === 'online' ? opponentName : 'Opponent';
 
   // Mode label for HUD badge
-  const modeLabel = mode === 'online' ? 'Online PvP' : mode === 'ai' ? `AI · ${difficulty}` : 'Local 2P';
-  const p2DisplayLabel = mode === 'online' ? p2Label : mode === 'ai' ? 'AI Bot' : 'Player 2';
+  const modeLabel = mode === 'online' ? t('pong.mode_online') : mode === 'ai' ? t('pong.mode_ai', { difficulty }) : t('pong.mode_local');
+  const p2DisplayLabel = mode === 'online' ? p2Label : mode === 'ai' ? t('pong.ai_bot') : t('pong.player2');
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -433,18 +440,18 @@ export default function PongPage() {
         <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center gap-3">
             <Avatar name="P1" size="sm" />
-            <span className="text-sm font-medium hidden sm:block" style={{ color: '#3B82F6' }}>{mode === 'online' ? 'You' : 'Player 1'}</span>
-            <span className="text-2xl font-bold font-mono" style={{ color: '#3B82F6' }}>{displayScore.p1}</span>
+            <span className="text-sm font-medium hidden sm:block" style={{ color: '#3B82F6' }}>{mode === 'online' ? t('pong.you') : t('pong.player1')}</span>
+            <span className="text-2xl font-bold font-mono" style={{ color: '#3B82F6' }}>{myDisplayScore}</span>
           </div>
           <div className="flex flex-col items-center gap-0.5">
             <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5" style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-              {mode !== 'online' ? 'Live' : onlinePhase === 'playing' ? 'Live' : onlinePhase}
+              {mode !== 'online' ? t('pong.live') : onlinePhase === 'playing' ? t('pong.live') : onlinePhase}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-2xl font-bold font-mono" style={{ color: '#EF4444' }}>{displayScore.p2}</span>
+            <span className="text-2xl font-bold font-mono" style={{ color: '#EF4444' }}>{oppDisplayScore}</span>
             <span className="text-sm font-medium hidden sm:block" style={{ color: '#EF4444' }}>{p2DisplayLabel}</span>
             <Avatar name={p2DisplayLabel} size="sm" />
           </div>
@@ -457,10 +464,10 @@ export default function PongPage() {
           {/* Online — idle */}
           {mode === 'online' && onlinePhase === 'idle' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Online Pong</h2>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Real-time PvP — server authoritative</p>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('pong.title')}</h2>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.subtitle')}</p>
               <button onClick={handleFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-                Find Match
+                {t('pong.find_match')}
               </button>
             </div>
           )}
@@ -469,8 +476,8 @@ export default function PongPage() {
           {mode === 'online' && onlinePhase === 'matchmaking' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
               <div className="w-12 h-12 rounded-full border-4 animate-spin" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
-              <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>Searching for opponent…</p>
-              <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
+              <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t('pong.searching')}</p>
+              <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{t('pong.cancel')}</button>
             </div>
           )}
 
@@ -482,10 +489,10 @@ export default function PongPage() {
               {/* Ready status indicators */}
               <div className="flex gap-8 text-sm">
                 <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                  {iReady ? '✓ You are ready' : '◌ You'}
+                  {iReady ? t('pong.you_ready') : t('pong.you_not_ready')}
                 </span>
                 <span style={{ color: opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                  {opponentReady ? `✓ ${opponentName} is ready` : `◌ ${opponentName}`}
+                  {opponentReady ? t('pong.opponent_ready', { name: opponentName }) : t('pong.opponent_not_ready', { name: opponentName })}
                 </span>
               </div>
 
@@ -495,18 +502,18 @@ export default function PongPage() {
                   className="px-10 py-3 rounded-lg font-bold text-white text-lg"
                   style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}
                 >
-                  Ready!
+                  {t('pong.ready')}
                 </button>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: '#a855f7', borderTopColor: 'transparent' }} />
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    {opponentReady ? 'Starting…' : 'Waiting for opponent…'}
+                    {opponentReady ? t('pong.starting') : t('pong.waiting_opponent')}
                   </p>
                 </div>
               )}
 
-              <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Exit</button>
+              <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{t('pong.exit')}</button>
             </div>
           )}
 
@@ -514,7 +521,7 @@ export default function PongPage() {
           {mode === 'online' && opponentLeft && onlinePhase !== 'over' && (
             <div className="absolute top-4 inset-x-4 flex items-center justify-center">
               <div className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}>
-                Opponent disconnected
+                {t('pong.opponent_disconnected')}
               </div>
             </div>
           )}
@@ -523,12 +530,12 @@ export default function PongPage() {
           {mode === 'local' && gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-5xl font-extrabold" style={{ color: playerWon ? '#3B82F6' : '#EF4444' }}>
-                {playerWon ? 'Player 1 Wins!' : 'Player 2 Wins!'}
+                {playerWon ? t('pong.player1_wins') : t('pong.player2_wins')}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
               <div className="flex gap-3 mt-2">
-                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>Play Again</button>
-                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back to Games</button>
+                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>{t('pong.play_again')}</button>
+                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>{t('pong.back_to_games')}</button>
               </div>
             </div>
           )}
@@ -537,13 +544,13 @@ export default function PongPage() {
           {mode === 'ai' && gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-5xl font-extrabold" style={{ color: playerWon ? '#3B82F6' : '#EF4444' }}>
-                {playerWon ? 'You Win!' : 'AI Wins!'}
+                {playerWon ? t('pong.you_win') : t('pong.ai_wins')}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.difficulty', { level: difficulty.charAt(0).toUpperCase() + difficulty.slice(1) })}</p>
               <div className="flex gap-3 mt-2">
-                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>Play Again</button>
-                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back to Games</button>
+                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>{t('pong.play_again')}</button>
+                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>{t('pong.back_to_games')}</button>
               </div>
             </div>
           )}
@@ -552,18 +559,18 @@ export default function PongPage() {
           {mode === 'online' && onlinePhase === 'over' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-5xl font-extrabold" style={{ color: iWon ? '#3B82F6' : '#EF4444' }}>
-                {iWon ? 'Win' : 'Lose'}
+                {iWon ? t('pong.you_win') : t('pong.you_lose')}
               </h2>
-              <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{onlineScore.p1} — {onlineScore.p2}</p>
+              <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{myDisplayScore} — {oppDisplayScore}</p>
               {(onlineReason === 'disconnect_forfeit' || opponentLeft) && (
-                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Opponent disconnected</p>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_disconnected')}</p>
               )}
               {onlineReason === 'forfeit' && (
-                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Opponent forfeited</p>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_forfeited')}</p>
               )}
               <div className="flex gap-3 mt-2">
-                <button onClick={handleFindMatch} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>Play Again</button>
-                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>Back to Games</button>
+                <button onClick={handleFindMatch} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>{t('pong.play_again')}</button>
+                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>{t('pong.back_to_games')}</button>
               </div>
             </div>
           )}
@@ -591,7 +598,7 @@ export default function PongPage() {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
               >
-                Forfeit
+                {t('pong.forfeit')}
               </button>
             )}
           </div>

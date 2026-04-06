@@ -272,7 +272,7 @@ export default function ProfilePage() {
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}>
                     <span className="px-2 py-0.5 rounded text-xs font-bold text-white uppercase shrink-0"
                       style={{ backgroundColor: resultColor }}>
-                      {result}
+                      {t(`profile.result_${result}`, result)}
                     </span>
                     <span className="text-sm flex-1 truncate" style={{ color: "var(--color-text-primary)" }}>
                       vs <strong>{opp?.username ?? t("profile.unknown")}</strong>
@@ -330,10 +330,10 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
-                      {u.achievement.name}
+                      {t(`achievement.${u.achievement.key}.name`, u.achievement.name)}
                     </p>
                     <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
-                      {u.achievement.description}
+                      {t(`achievement.${u.achievement.key}.description`, u.achievement.description)}
                     </p>
                   </div>
                   <span className="text-xs font-bold shrink-0"

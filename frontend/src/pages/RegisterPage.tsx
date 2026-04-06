@@ -57,10 +57,10 @@ export default function RegisterPage() {
       newErrors.username = t("errors.username_min_length", "Username must be at least 8 characters");
       valid = false;
     } else if (formData.username.length > 30) {
-      newErrors.username = "Username must be at most 30 characters";
+      newErrors.username = t("errors.username_max_length");
       valid = false;
     } else if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(formData.username)) {
-      newErrors.username = "Username must start with a letter and contain only letters, numbers, underscores, and hyphens";
+      newErrors.username = t("errors.username_format");
       valid = false;
     }
 
@@ -79,24 +79,24 @@ export default function RegisterPage() {
       newErrors.password = t("errors.password_min_length", "Password must be at least 10 characters");
       valid = false;
     } else if (!/[A-Z]/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one uppercase letter";
+      newErrors.password = t("errors.password_uppercase");
       valid = false;
     } else if (!/[a-z]/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one lowercase letter";
+      newErrors.password = t("errors.password_lowercase");
       valid = false;
     } else if (!/\d/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one digit";
+      newErrors.password = t("errors.password_digit");
       valid = false;
     } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one special character";
+      newErrors.password = t("errors.password_special");
       valid = false;
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = t("errors.confirm_password_required", "Please confirm your password");
+      newErrors.confirmPassword = t("errors.confirm_password_required");
       valid = false;
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = t("errors.passwords_not_match", "Passwords do not match");
+      newErrors.confirmPassword = t("errors.passwords_not_match");
       valid = false;
     }
 
@@ -139,7 +139,7 @@ export default function RegisterPage() {
         if (apiErr.fieldErrors.password2) newErrors.confirmPassword = apiErr.fieldErrors.password2[0];
         setErrors(newErrors);
       } else {
-        setServerError("An unexpected error occurred. Please try again.");
+        setServerError(t("errors.unexpected"));
       }
     } finally {
       setLoading(false);

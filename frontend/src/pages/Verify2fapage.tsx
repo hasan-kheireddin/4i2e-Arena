@@ -87,11 +87,11 @@ export default function Verify2FAPage() {
     const codeString = code.join("");
 
     if (codeString.length !== 6) {
-      setError("Please enter all 6 digits");
+      setError(t("errors.code_length"));
       return;
     }
     if (!tempToken) {
-      setError("Missing temporary token. Please log in again.");
+      setError(t("2fa.back_to_login"));
       return;
     }
 
@@ -104,7 +104,7 @@ export default function Verify2FAPage() {
       navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setError(apiErr.detail ?? "Invalid code. Please try again.");
+      setError(apiErr.detail ?? t("errors.invalid_code"));
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       } finally {
@@ -115,12 +115,12 @@ export default function Verify2FAPage() {
   const handleRecoverySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recoveryCode.trim()) {
-      setError("Please enter a recovery code");
+      setError(t("errors.enter_recovery_code"));
       return;
     }
 
     if (!tempToken) {
-      setError("Missing temporary token. Please log in again.");
+      setError(t("errors.missing_token"));
       return;
     }
     setLoading(true);
@@ -132,7 +132,7 @@ export default function Verify2FAPage() {
       navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setError(apiErr.detail ?? "Invalid recovery code. Please try again.");
+      setError(apiErr.detail ?? t("errors.invalid_recovery_code"));
     } finally {
       setLoading(false);
     }
@@ -316,7 +316,7 @@ function FormContent({
               color: "#ffffff",
             }}
           >
-            {loading ? "Verifying..." : t("2fa.verify_recovery", "Verify Recovery Code")}
+            {loading ? t("loading.verifying") : t("2fa.verify_recovery", "Verify Recovery Code")}
           </button>
 
           <div className="mt-4 text-center">
@@ -389,7 +389,7 @@ function FormContent({
               e.currentTarget.style.backgroundColor = "var(--color-primary)";
           }}
         >
-          {loading ? "Verifying..." : t("2fa.verify_submit", "Verify")}
+          {loading ? t("loading.verifying") : t("2fa.verify_submit", "Verify")}
         </button>
       </form>
 

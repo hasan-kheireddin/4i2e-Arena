@@ -51,19 +51,19 @@ export default function ResetPasswordPage() {
       newErrors.password = t("errors.password_required", "Password is required");
       valid = false;
     } else if (formData.password.length < 10) {
-      newErrors.password = "Password must be at least 10 characters";
+      newErrors.password = t("errors.password_min_length");
       valid = false;
     } else if (!/[A-Z]/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one uppercase letter";
+      newErrors.password = t("errors.password_uppercase");
       valid = false;
     } else if (!/[a-z]/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one lowercase letter";
+      newErrors.password = t("errors.password_lowercase");
       valid = false;
     } else if (!/\d/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one digit";
+      newErrors.password = t("errors.password_digit");
       valid = false;
     } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one special character";
+      newErrors.password = t("errors.password_special");
       valid = false;
     }
 
@@ -104,7 +104,7 @@ export default function ResetPasswordPage() {
       if (apiErr.fieldErrors?.password) {
         setErrors({ ...errors, password: apiErr.fieldErrors.password[0] });
       } else {
-        setServerError(apiErr.detail ?? "Failed to reset password. The link may have expired.");
+        setServerError(apiErr.detail ?? t("errors.reset_failed"));
       }
     } finally {
       setLoading(false);

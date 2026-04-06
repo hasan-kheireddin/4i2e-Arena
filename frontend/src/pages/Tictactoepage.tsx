@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/utils';
 import { useGameSocket } from '../hooks/useGameSocket';
@@ -31,6 +32,7 @@ function checkWinner(board: CellValue[]): { winner: GameResult; line: number[] |
 }
 
 export default function TicTacToePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode') ?? 'local';
@@ -247,7 +249,7 @@ export default function TicTacToePage() {
 
   const currentTurnSymbol = mode === 'online' ? onlineGameState?.current_turn : (isXTurn ? 'X' : 'O');
 
-  const modeLabel = mode === 'online' ? 'Online PvP' : 'Local 2P';
+  const modeLabel = mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local');
 
   return (
     <>
@@ -259,13 +261,13 @@ export default function TicTacToePage() {
           style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           <p className="text-2xl">🚪</p>
           <p className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-            {opponentLeftMsg} exited the match
+            {t('ttt.opponent_left', { name: opponentLeftMsg })}
           </p>
           <button
             onClick={() => { setOpponentLeftMsg(null); navigate('/games/playpage'); }}
             className="px-6 py-2 rounded-lg font-semibold text-white"
             style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-            Back to Games
+            {t('ttt.back_to_games')}
           </button>
         </div>
       </div>
@@ -277,10 +279,10 @@ export default function TicTacToePage() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--color-text-primary)' }}>
-            ⭕ Tic-Tac-Toe
+            {t('ttt.title')}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            {mode === 'online' ? 'Online PvP — Turn-based multiplayer' : 'Local 2-Player — take turns on the same screen'}
+            {mode === 'online' ? t('ttt.subtitle_online') : t('ttt.subtitle_local')}
           </p>
         </div>
 
@@ -288,9 +290,9 @@ export default function TicTacToePage() {
         {mode === 'local' && (
           <div className="flex items-center justify-center gap-6">
             {[
-              { label: 'Player 1 (X)', val: scores.X, color: 'var(--color-primary)' },
-              { label: 'Draws', val: scores.draw, color: '#f59e0b' },
-              { label: 'Player 2 (O)', val: scores.O, color: '#ec4899' },
+              { label: `${t('ttt.player1')} (X)`, val: scores.X, color: '#3B82F6' },
+              { label: t('ttt.draws'), val: scores.draw, color: '#f59e0b' },
+              { label: `${t('ttt.player2')} (O)`, val: scores.O, color: '#EF4444' },
             ].map(({ label, val, color }) => (
               <div key={label} className="text-center px-5 py-3 rounded-xl"
                 style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
@@ -307,23 +309,23 @@ export default function TicTacToePage() {
           <div className="flex items-center gap-3">
             <Avatar name={mode === 'online' ? 'You' : 'P1'} size="sm" />
             <div>
-              <span className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                {mode === 'online' ? 'You' : 'Player 1'}
+              <span className="text-sm font-semibold" style={{ color: '#3B82F6' }}>
+                {mode === 'online' ? t('ttt.you') : t('ttt.player1')}
               </span>
-              <span className="ml-2 text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
+              <span className="ml-2 text-xs font-bold" style={{ color: '#3B82F6' }}>
                 ({mode === 'online' ? mySymbol ?? '?' : 'X'})
               </span>
             </div>
             {mode === 'local' && isXTurn && !winner && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-primary)' }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-primary)' }} />
-                Your turn
+              <span className="flex items-center gap-1 text-xs" style={{ color: '#3B82F6' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#3B82F6' }} />
+                {t('ttt.your_turn')}
               </span>
             )}
             {mode === 'online' && isMyTurn && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-primary)' }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-primary)' }} />
-                Your turn
+              <span className="flex items-center gap-1 text-xs" style={{ color: '#3B82F6' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#3B82F6' }} />
+                {t('ttt.your_turn')}
               </span>
             )}
           </div>
@@ -332,29 +334,29 @@ export default function TicTacToePage() {
             <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5" 
               style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-              {onlinePhase === 'playing' ? 'Live' : onlinePhase}
+              {onlinePhase === 'playing' ? t('ttt.live') : onlinePhase}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
           </div>
 
           <div className="flex items-center gap-3">
             {mode === 'local' && !isXTurn && !winner && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: '#ec4899' }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#ec4899' }} />
-                Your turn
+              <span className="flex items-center gap-1 text-xs" style={{ color: '#EF4444' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#EF4444' }} />
+                {t('ttt.your_turn')}
               </span>
             )}
             {mode === 'online' && !isMyTurn && onlinePhase === 'playing' && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: '#ec4899' }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#ec4899' }} />
-                Opponent's turn
+              <span className="flex items-center gap-1 text-xs" style={{ color: '#EF4444' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#EF4444' }} />
+                {t('ttt.opponent_turn')}
               </span>
             )}
             <div>
-              <span className="text-sm font-semibold" style={{ color: '#ec4899' }}>
-                {mode === 'online' ? opponentName : 'Player 2'}
+              <span className="text-sm font-semibold" style={{ color: '#EF4444' }}>
+                {mode === 'online' ? opponentName : t('ttt.player2')}
               </span>
-              <span className="ml-2 text-xs font-bold" style={{ color: '#ec4899' }}>
+              <span className="ml-2 text-xs font-bold" style={{ color: '#EF4444' }}>
                 ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
               </span>
             </div>
@@ -376,10 +378,10 @@ export default function TicTacToePage() {
 
                 <div className="flex gap-8 text-sm">
                   <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                    {iReady ? '✓ You are ready' : '◌ You'}
+                    {iReady ? t('ttt.you_ready') : t('ttt.you_not_ready')}
                   </span>
                   <span style={{ color: opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                    {opponentReady ? `✓ ${opponentName} is ready` : `◌ ${opponentName}`}
+                    {opponentReady ? t('ttt.opponent_ready_status', { name: opponentName }) : t('ttt.opponent_not_ready', { name: opponentName })}
                   </span>
                 </div>
 
@@ -389,14 +391,14 @@ export default function TicTacToePage() {
                     className="px-10 py-3 rounded-lg font-bold text-white text-lg"
                     style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}
                   >
-                    Ready!
+                    {t('ttt.ready')}
                   </button>
                 ) : (
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-8 h-8 rounded-full border-4 animate-spin"
                       style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
                     <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                      {opponentReady ? 'Starting…' : 'Waiting for opponent…'}
+                      {opponentReady ? t('ttt.starting') : t('ttt.waiting_opponent')}
                     </p>
                   </div>
                 )}
@@ -404,7 +406,7 @@ export default function TicTacToePage() {
                 <button onClick={handleCancelOnline}
                   className="text-sm px-5 py-2 rounded-lg"
                   style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-                  Exit
+                  {t('ttt.exit')}
                 </button>
               </div>
             )}
@@ -416,17 +418,17 @@ export default function TicTacToePage() {
                 <div className="w-12 h-12 rounded-full border-4 animate-spin" 
                   style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
                 <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                  Searching for opponent…
+                  {t('ttt.searching')}
                 </p>
                 {queuePosition !== null && (
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    Queue position: {queuePosition}
+                    {t('ttt.queue_position', { pos: queuePosition })}
                   </p>
                 )}
-                <button onClick={handleCancelOnline} 
-                  className="text-sm px-5 py-2 rounded-lg" 
+                <button onClick={handleCancelOnline}
+                  className="text-sm px-5 py-2 rounded-lg"
                   style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-                  Cancel
+                  {t('ttt.cancel')}
                 </button>
               </div>
             )}
@@ -468,10 +470,10 @@ export default function TicTacToePage() {
                     }}
                   >
                     {cell === 'X' && (
-                      <span className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>X</span>
+                      <span className="text-4xl font-bold" style={{ color: mode === 'online' ? (mySymbol === 'X' ? '#3B82F6' : '#EF4444') : '#3B82F6' }}>X</span>
                     )}
                     {cell === 'O' && (
-                      <span className="text-4xl font-bold leading-none" style={{ color: '#ec4899' }}>○</span>
+                      <span className="text-4xl font-bold leading-none" style={{ color: mode === 'online' ? (mySymbol === 'O' ? '#3B82F6' : '#EF4444') : '#EF4444' }}>○</span>
                     )}
                   </button>
                 );
@@ -482,20 +484,20 @@ export default function TicTacToePage() {
             {mode === 'local' && displayWinner && (
               <div className="text-center space-y-3">
                 <h2 className="text-2xl font-extrabold"
-                  style={{ color: displayWinner === 'X' ? 'var(--color-primary)' : displayWinner === 'O' ? '#ec4899' : '#fbbf24' }}>
-                  {displayWinner === 'draw' ? "It's a Draw!" : displayWinner === 'X' ? 'Player 1 Wins! 🎉' : 'Player 2 Wins! 🎉'}
+                  style={{ color: displayWinner === 'X' ? '#3B82F6' : displayWinner === 'O' ? '#EF4444' : '#fbbf24' }}>
+                  {displayWinner === 'draw' ? t('ttt.draw_result') : displayWinner === 'X' ? t('ttt.player1_wins') : t('ttt.player2_wins')}
                 </h2>
                 <div className="flex gap-3 justify-center">
                   <button onClick={resetGame}
                     className="px-6 py-2 rounded-lg font-semibold text-white"
                     style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-                    Play Again
+                    {t('ttt.play_again')}
                   </button>
                   <button
                     onClick={() => navigate('/games/playpage')}
                     className="px-6 py-2 rounded-lg font-medium"
                     style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-                    Back to Games
+                    {t('ttt.back_to_games')}
                   </button>
                 </div>
               </div>
@@ -506,23 +508,23 @@ export default function TicTacToePage() {
               <div className="text-center space-y-3">
                 <h2 className="text-2xl font-extrabold"
                   style={{ 
-                    color: onlineWinner === 'draw' ? '#fbbf24' : 
-                           onlineWinner === mySymbol ? 'var(--color-primary)' : '#ec4899' 
+                    color: onlineWinner === 'draw' ? '#fbbf24' :
+                           onlineWinner === mySymbol ? '#3B82F6' : '#EF4444'
                   }}>
-                  {onlineWinner === 'draw' ? "It's a Draw!" : 
-                   onlineWinner === mySymbol ? 'You Win! 🎉' : 'You Lose'}
+                  {onlineWinner === 'draw' ? t('ttt.draw_result') :
+                   onlineWinner === mySymbol ? t('ttt.you_win') : t('ttt.you_lose')}
                 </h2>
                 <div className="flex gap-3 justify-center">
                   <button onClick={handleFindMatch}
                     className="px-6 py-2 rounded-lg font-semibold text-white"
                     style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-                    Play Again
+                    {t('ttt.play_again')}
                   </button>
                   <button
                     onClick={() => navigate('/games/playpage')}
                     className="px-6 py-2 rounded-lg font-medium"
                     style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-                    Back to Games
+                    {t('ttt.back_to_games')}
                   </button>
                 </div>
               </div>
@@ -535,17 +537,17 @@ export default function TicTacToePage() {
             <div className="flex items-center gap-3 p-4 rounded-lg transition-all duration-200"
               style={{
                 backgroundColor: 'var(--color-bg-card)',
-                border: (mode === 'local' ? isXTurn : currentTurnSymbol === 'X') && !displayWinner ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                boxShadow: (mode === 'local' ? isXTurn : currentTurnSymbol === 'X') && !displayWinner ? '0 0 20px rgba(168,85,247,0.25)' : 'none',
-                opacity: (mode === 'local' ? isXTurn : currentTurnSymbol === 'X') && !displayWinner ? 1 : 0.65,
+                border: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? '2px solid #3B82F6' : '1px solid var(--color-border)',
+                boxShadow: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? '0 0 20px rgba(59,130,246,0.25)' : 'none',
+                opacity: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? 1 : 0.65,
               }}>
               <Avatar name={mode === 'online' ? 'You' : 'P1'} size="md" />
               <div>
-                <p className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-                  {mode === 'online' ? 'You' : 'Player 1'} ({mode === 'online' ? mySymbol ?? '?' : 'X'})
+                <p className="text-sm font-bold" style={{ color: '#3B82F6' }}>
+                  {mode === 'online' ? t('ttt.you') : t('ttt.player1')} ({mode === 'online' ? mySymbol ?? '?' : 'X'})
                 </p>
                 {mode === 'local' && (
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{scores.X} wins</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{t('ttt.wins_count', { count: scores.X })}</p>
                 )}
               </div>
             </div>
@@ -553,17 +555,17 @@ export default function TicTacToePage() {
             <div className="flex items-center gap-3 p-4 rounded-lg transition-all duration-200"
               style={{
                 backgroundColor: 'var(--color-bg-card)',
-                border: (mode === 'local' ? !isXTurn : currentTurnSymbol === 'O') && !displayWinner ? '2px solid #ec4899' : '1px solid var(--color-border)',
-                boxShadow: (mode === 'local' ? !isXTurn : currentTurnSymbol === 'O') && !displayWinner ? '0 0 20px rgba(236,72,153,0.25)' : 'none',
-                opacity: (mode === 'local' ? !isXTurn : currentTurnSymbol === 'O') && !displayWinner ? 1 : 0.65,
+                border: (mode === 'local' ? !isXTurn : (!isMyTurn && onlinePhase === 'playing')) && !displayWinner ? '2px solid #EF4444' : '1px solid var(--color-border)',
+                boxShadow: (mode === 'local' ? !isXTurn : (!isMyTurn && onlinePhase === 'playing')) && !displayWinner ? '0 0 20px rgba(239,68,68,0.25)' : 'none',
+                opacity: (mode === 'local' ? !isXTurn : (!isMyTurn && onlinePhase === 'playing')) && !displayWinner ? 1 : 0.65,
               }}>
               <Avatar name={mode === 'online' ? opponentName : 'P2'} size="md" />
               <div>
-                <p className="text-sm font-bold" style={{ color: '#ec4899' }}>
-                  {mode === 'online' ? opponentName : 'Player 2'} ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
+                <p className="text-sm font-bold" style={{ color: '#EF4444' }}>
+                  {mode === 'online' ? opponentName : t('ttt.player2')} ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
                 </p>
                 {mode === 'local' && (
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{scores.O} wins</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{t('ttt.wins_count', { count: scores.O })}</p>
                 )}
               </div>
             </div>
@@ -573,9 +575,9 @@ export default function TicTacToePage() {
               <>
                 <div className="p-4 rounded-lg max-h-52 overflow-y-auto"
                   style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-                  <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text-primary)' }}>Move History</h3>
+                  <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text-primary)' }}>{t('ttt.move_history')}</h3>
                   {moves.length === 0 ? (
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>No moves yet</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{t('ttt.no_moves')}</p>
                   ) : (
                     <div className="space-y-1.5">
                       {moves.map((move, i) => (
@@ -596,7 +598,7 @@ export default function TicTacToePage() {
                   style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                   onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                   onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}>
-                  Reset Game
+                  {t('ttt.reset_game')}
                 </button>
               </>
             )}
@@ -605,9 +607,9 @@ export default function TicTacToePage() {
             {mode === 'online' && onlinePhase === 'playing' && (
               <div className="p-4 rounded-lg"
                 style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-                <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Game Status</h3>
+                <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>{t('ttt.game_status')}</h3>
                 <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  {isMyTurn ? "It's your turn!" : `Waiting for ${opponentName}...`}
+                  {isMyTurn ? t('ttt.your_turn_status') : t('ttt.waiting_for', { name: opponentName })}
                 </p>
               </div>
             )}

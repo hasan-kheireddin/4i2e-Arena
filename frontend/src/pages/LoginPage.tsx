@@ -89,7 +89,7 @@ export default function LoginPage() {
         if (apiErr.fieldErrors.password) newErrors.password = apiErr.fieldErrors.password[0];
         setErrors(newErrors);
       } else {
-        setServerError("An unexpected error occurred. Please try again.");
+        setServerError(t("errors.unexpected"));
       }
     } finally {
       setLoading(false);
@@ -102,7 +102,7 @@ export default function LoginPage() {
       sessionStorage.setItem("oauth_provider", "42");
       window.location.href = authorize_url;
     } catch {
-      setServerError("Failed to initiate 42 login. Please try again.");
+      setServerError(t("errors.login_42_failed"));
     }
   };
 

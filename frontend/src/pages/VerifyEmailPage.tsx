@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { verifyEmail, resendOTP } from "../services/auth";
 import type { ApiError } from "../services/api";
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation();
   const { setUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -57,7 +59,7 @@ export default function VerifyEmailPage() {
 
   const submitCode = async (code: string) => {
     if (!email) {
-      setError("Email not found. Please register again.");
+      setError(t("verify_email.email_not_found"));
       return;
     }
     setLoading(true);
@@ -68,7 +70,7 @@ export default function VerifyEmailPage() {
       navigate("/home");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setError(apiErr.detail ?? "Invalid verification code.");
+      setError(apiErr.detail ?? t("verify_email.invalid_code"));
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ export default function VerifyEmailPage() {
     e.preventDefault();
     const code = digits.join("");
     if (code.length < 6) {
-      setError("Please enter all 6 digits.");
+      setError(t("verify_email.enter_all_digits"));
       return;
     }
     submitCode(code);
@@ -91,7 +93,7 @@ export default function VerifyEmailPage() {
       setResendCooldown(60);
       setError("");
     } catch {
-      setError("Failed to resend code. Please try again.");
+      setError(t("verify_email.resend_failed"));
     }
   };
 
@@ -128,10 +130,10 @@ export default function VerifyEmailPage() {
             className="text-3xl font-bold mb-2"
             style={{ color: "var(--color-text-primary)" }}
           >
-            Check your email
+            {t("verify_email.check_email")}
           </h1>
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-            We sent a 6-digit code to
+            {t("verify_email.sent_code_to")}
           </p>
           <p className="text-sm font-medium mt-1" style={{ color: "var(--color-text-primary)" }}>
             {email}
@@ -199,20 +201,20 @@ export default function VerifyEmailPage() {
                 e.currentTarget.style.backgroundColor = "var(--color-primary)";
             }}
           >
-            {loading ? "Verifying..." : "Verify email"}
+            {loading ? t("loading.verifying") : t("verify_email.verify_btn")}
           </button>
         </form>
 
         {/* Resend */}
         <p className="text-center text-sm mt-6" style={{ color: "var(--color-text-muted)" }}>
-          Didn't receive the code?{" "}
+          {t("forgot.didnt_receive")}{" "}
           <button
             onClick={handleResend}
             disabled={resendCooldown > 0}
             className="font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: "var(--color-text-link)" }}
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Click to resend"}
+            {resendCooldown > 0 ? t("verify_email.resend_in", { count: resendCooldown }) : t("forgot.resend")}
           </button>
         </p>
       </div>

@@ -115,17 +115,17 @@ export default function SettingsPage() {
     
     // Validate display name is not empty
     if (!displayName.trim()) {
-      setSaveError('Display name cannot be empty');
+      setSaveError(t('settings.profile.display_name_empty'));
       setSaving(false);
       return;
     }
-    
+
     try {
       const updated = await updateProfile({ display_name: displayName, preferred_language: language });
       setUser(updated);
     } catch (err: unknown) {
       const e = err as { detail?: string };
-      setSaveError(e?.detail ?? 'Failed to save changes');
+      setSaveError(e?.detail ?? t('settings.profile.save_failed'));
     } finally {
       setSaving(false);
     }
@@ -134,8 +134,8 @@ export default function SettingsPage() {
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: t('settings.tabs.profile') },
     { key: 'security', label: t('settings.tabs.security') },
-    { key: 'appearance', label: t('settings.tabs.language', { defaultValue: 'Language' }) },
-    { key: 'privacy', label: t('settings.tabs.data_export_import', { defaultValue: 'Data Export/Import' }) },
+    { key: 'appearance', label: t('settings.tabs.appearance') },
+    { key: 'privacy', label: t('settings.tabs.privacy') },
   ];
 
   return (
@@ -217,7 +217,7 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <InputField label={t('settings.profile.username')} value={username} readOnly />
                   <InputField label={t('settings.profile.email')} type="email" value={email} readOnly />
-                  <InputField label={t('settings.profile.display_name', { defaultValue: 'Display Name' })} value={displayName} onChange={setDisplayName} />
+                  <InputField label={t('settings.profile.display_name')} value={displayName} onChange={setDisplayName} />
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
                       {t('settings.profile.bio')}

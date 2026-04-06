@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { getLeaderboard, getMyStats, type LeaderboardEntry } from '../services/games';
@@ -12,6 +13,7 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export default function LeaderboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [players, setPlayers] = useState<LeaderboardEntry[]>([]);
@@ -44,8 +46,8 @@ export default function LeaderboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>🏓 Pong Leaderboard</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>Top Pong players ranked by wins</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('lb.title')}</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>{t('lb.subtitle')}</p>
       </div>
 
       {/* Your Rank */}
@@ -56,9 +58,9 @@ export default function LeaderboardPage() {
               {myStats.rank ? `#${myStats.rank}` : '—'}
             </div>
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Your Current Rank</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{t('lb.your_rank')}</p>
               <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                {myStats.winRate}% win rate • {myStats.wins} wins
+                {t('lb.win_rate_stat', { rate: myStats.winRate, wins: myStats.wins })}
               </p>
             </div>
           </div>
@@ -69,7 +71,7 @@ export default function LeaderboardPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2">🔍</span>
-          <input placeholder="Search players..." value={search} onChange={(e) => setSearch(e.target.value)}
+          <input placeholder={t('lb.search_placeholder')} value={search} onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg px-4 py-2 pl-10 text-sm outline-none transition-all"
             style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
             onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
@@ -78,7 +80,7 @@ export default function LeaderboardPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12"><span className="text-4xl block mb-3">⏳</span><p style={{ color: 'var(--color-text-secondary)' }}>Loading leaderboard...</p></div>
+        <div className="text-center py-12"><span className="text-4xl block mb-3">⏳</span><p style={{ color: 'var(--color-text-secondary)' }}>{t('lb.loading')}</p></div>
       ) : (
         <>
           {/* Top 3 Podium */}
@@ -97,7 +99,7 @@ export default function LeaderboardPage() {
                       <RankBadge rank={podiumOrder[index]} />
                       <Avatar name={name} size="lg" />
                       <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{name}</h3>
-                      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{Math.round(player.win_rate * 100)}% WR</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{Math.round(player.win_rate * 100)}% {t('lb.col_win_rate')}</p>
                       <p className="text-lg font-mono font-bold" style={{ color: 'var(--color-primary)' }}>{player.total_xp.toLocaleString()} XP</p>
                     </div>
                   </div>
@@ -111,7 +113,7 @@ export default function LeaderboardPage() {
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {['#', 'Player', 'W/L', 'Win Rate', 'Streak', 'XP'].map((h) => (
+                  {[t('lb.col_rank'), t('lb.col_player'), t('lb.col_wl'), t('lb.col_win_rate'), t('lb.col_streak'), t('lb.col_xp')].map((h) => (
                     <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-3" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
                   ))}
                 </tr>
@@ -128,7 +130,7 @@ export default function LeaderboardPage() {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={name} size="sm" />
-                          <p className="text-sm font-medium" style={{ color: isMe ? 'var(--color-primary)' : 'var(--color-text-primary)' }}>{name} {isMe && '(You)'}</p>
+                          <p className="text-sm font-medium" style={{ color: isMe ? 'var(--color-primary)' : 'var(--color-text-primary)' }}>{name} {isMe && t('lb.you')}</p>
                         </div>
                       </td>
                       <td className="py-3 px-3 text-sm hidden sm:table-cell" style={{ color: 'var(--color-text-secondary)' }}>
