@@ -133,19 +133,20 @@ def _create_match_record(session: GameSession) -> Optional[str]:
     for _slot, player_slot in session.players.items():
         invalidate_user_stats(player_slot.user_id)
 
-    # Track match completion activity events
-    for slot, player_slot in session.players.items():
-        outcome = _determine_outcome(session, player_slot.user_id)
-        score = _get_player_score(session, slot)
-        track_match_completed(
-            player_slot.user_id,
-            match_id=str(match.id),
-            game_type=game_type,
-            game_mode=game_mode,
-            outcome=outcome,
-            duration_seconds=round(max(duration, 0), 2),
-            score=score,
-        )
+    # Track activity analytics only for online Pong matches.
+    if game_type == DBGameType.PONG and game_mode == GameMode.PVP:
+        for slot, player_slot in session.players.items():
+            outcome = _determine_outcome(session, player_slot.user_id)
+            score = _get_player_score(session, slot)
+            track_match_completed(
+                player_slot.user_id,
+                match_id=str(match.id),
+                game_type=game_type,
+                game_mode=game_mode,
+                outcome=outcome,
+                duration_seconds=round(max(duration, 0), 2),
+                score=score,
+            )
 
     return str(match.id)
 
@@ -192,29 +193,34 @@ def _extract_scores(session: GameSession) -> tuple[int, int]:
     """
     Extract player 1 / player 2 scores from the engine state.
 
-    For Pong, scores are in state["scores"].
-    For TTT, scores are effectively 1/0 based on win/loss.
+    For Pong, scores come from state["player1"]["score"] and state["player2"]["score"].
+    On forfeit/disconnect the score is enforced as 7-0 for the winner.
+    For TTT, the winner gets 1 and the loser/draw gets 0.
     """
-    try:
-        state = session.engine.get_state()
-    except Exception:
-        return (0, 0)
+    _forfeit_reasons = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
 
     if session.game_type == GameType.PONG:
-        scores = state.get("scores", {})
-        p1 = scores.get("1", scores.get(1, 0))
-        p2 = scores.get("2", scores.get(2, 0))
-        return (int(p1), int(p2))
-    elif session.game_type == GameType.TICTACTOE:
-        # For TTT: winner gets 1, loser/draw gets 0
-        if session.winner_id is not None:
-            # Figure out which slot won
+        # Forfeit → always 7-0 for the winner
+        if session.finish_reason in _forfeit_reasons and session.winner_id is not None:
             for slot, ps in session.players.items():
                 if ps.user_id == session.winner_id:
-                    if slot == 1:
-                        return (1, 0)
-                    else:
-                        return (0, 1)
+                    return (7, 0) if slot == 1 else (0, 7)
+
+        try:
+            state = session.engine.get_state()
+        except Exception:
+            return (0, 0)
+
+        p1 = state.get("player1", {}).get("score", 0)
+        p2 = state.get("player2", {}).get("score", 0)
+        return (int(p1), int(p2))
+
+    elif session.game_type == GameType.TICTACTOE:
+        # Winner gets 1, loser/draw gets 0
+        if session.winner_id is not None:
+            for slot, ps in session.players.items():
+                if ps.user_id == session.winner_id:
+                    return (1, 0) if slot == 1 else (0, 1)
         return (0, 0)  # draw
 
     return (0, 0)
@@ -222,16 +228,32 @@ def _extract_scores(session: GameSession) -> tuple[int, int]:
 
 def _get_player_score(session: GameSession, slot: int) -> int:
     """Get a specific player's score."""
-    try:
-        state = session.engine.get_state()
-    except Exception:
-        return 0
+    _forfeit_reasons = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
 
     if session.game_type == GameType.PONG:
-        scores = state.get("scores", {})
-        return int(scores.get(str(slot), scores.get(slot, 0)))
+        # Forfeit → winner gets 7, loser gets 0
+        if session.finish_reason in _forfeit_reasons and session.winner_id is not None:
+            ps = session.players.get(slot)
+            if ps is not None:
+                return 7 if ps.user_id == session.winner_id else 0
 
-    return 0  # TTT doesn't have numerical scores
+        try:
+            state = session.engine.get_state()
+        except Exception:
+            return 0
+        player_key = f"player{slot}"
+        return int(state.get(player_key, {}).get("score", 0))
+
+    elif session.game_type == GameType.TICTACTOE:
+        # Winner gets 1, loser/draw gets 0
+        ps = session.players.get(slot)
+        if ps is None:
+            return 0
+        if session.winner_id is not None and ps.user_id == session.winner_id:
+            return 1
+        return 0
+
+    return 0
 
 def _extract_metadata(session: GameSession) -> dict[str, Any]:
     """
@@ -246,7 +268,10 @@ def _extract_metadata(session: GameSession) -> dict[str, Any]:
         return metadata
 
     if session.game_type == GameType.PONG:
-        metadata["final_scores"] = state.get("scores", {})
+        metadata["final_scores"] = {
+            "1": state.get("player1", {}).get("score", 0),
+            "2": state.get("player2", {}).get("score", 0),
+        }
         metadata["ball_speed"] = state.get("ball", {}).get("speed")
 
     elif session.game_type == GameType.TICTACTOE:

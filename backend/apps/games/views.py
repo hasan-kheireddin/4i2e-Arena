@@ -513,18 +513,6 @@ class CreateLocalMatchView(APIView):
             xp_earned=0,
         )
 
-        # Track activity
-        from apps.analytics.tracking_service import track_match_completed
-        track_match_completed(
-            user.pk,
-            match_id=str(match.id),
-            game_type=game_type,
-            game_mode=game_mode_str,
-            outcome=player_outcome,
-            duration_seconds=round(duration_seconds, 2),
-            score=player1_score,
-        )
-
         # Invalidate stats cache
         from apps.games.stats_service import invalidate_user_stats
         invalidate_user_stats(user.pk)
