@@ -15,7 +15,6 @@ function RankBadge({ rank }: { rank: number }) {
 export default function LeaderboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [search, setSearch] = useState('');
   const [period, setPeriod] = useState<LeaderboardPeriod>('weekly');
   const [players, setPlayers] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<{ rank: number | null; wins: number }>({ rank: null, wins: 0 });
@@ -33,13 +32,9 @@ export default function LeaderboardPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [period, user?.id]);
 
-  const filtered = players.filter((p) =>
-    (p.display_name || p.username).toLowerCase().includes(search.toLowerCase())
-  );
-
-  const hasPodium = filtered.length >= 3;
-  const top3 = hasPodium ? filtered.slice(0, 3) : [];
-  const tablePlayers = hasPodium ? filtered.slice(3) : filtered;
+  const hasPodium = players.length >= 3;
+  const top3 = hasPodium ? players.slice(0, 3) : [];
+  const tablePlayers = hasPodium ? players.slice(3) : players;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -90,18 +85,6 @@ export default function LeaderboardPage() {
             </button>
           );
         })}
-      </div>
-
-      {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2">🔍</span>
-          <input placeholder={t('lb.search_placeholder')} value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg px-4 py-2 pl-10 text-sm outline-none transition-all"
-            style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; }} />
-        </div>
       </div>
 
       {loading ? (

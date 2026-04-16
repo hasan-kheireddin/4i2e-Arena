@@ -19,7 +19,8 @@
 # =============================================================================
 
 from __future__ import annotations
-from django.db.models import Q
+from django.db.models import Exists, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce, Greatest
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -29,6 +30,7 @@ from apps.games.serializers import (
     LeaderboardQuerySerializer,
     MatchDetailSerializer,
     MatchListSerializer,
+    MatchQuerySerializer,
     StatsQuerySerializer,
 )
 from apps.games.stats_service import (
@@ -44,30 +46,120 @@ class MatchPagination(PageNumberPagination):
     max_page_size = 100
 
 
-def _apply_match_filters(queryset, params):
+ORDERING_MAP = {
+    "date": ("finished_at", "id"),
+    "-date": ("-finished_at", "-id"),
+    "score": ("sort_score", "-finished_at", "-id"),
+    "-score": ("-sort_score", "-finished_at", "-id"),
+    "duration": ("duration_seconds", "-finished_at", "-id"),
+    "-duration": ("-duration_seconds", "-finished_at", "-id"),
+}
+
+
+def _get_match_query_params(request):
+    serializer = MatchQuerySerializer(data=request.query_params)
+    serializer.is_valid(raise_exception=True)
+
+    params = dict(serializer.validated_data)
+    params["result"] = params.get("result") or params.get("outcome")
+
+    if "mode" not in params and "game_mode" in params:
+        legacy_mode = params["game_mode"]
+        params["mode"] = "pva" if legacy_mode == "pve" else legacy_mode
+
+    return params
+
+
+def _annotate_sort_score(queryset, user=None):
+    if user is None:
+        return queryset.annotate(
+            sort_score=Greatest("player1_score", "player2_score"),
+        )
+
+    user_score = MatchPlayer.objects.filter(
+        match_id=OuterRef("pk"),
+        user_id=user.pk,
+    ).values("score")[:1]
+
+    return queryset.annotate(
+        sort_score=Coalesce(
+            Subquery(user_score, output_field=IntegerField()),
+            Greatest("player1_score", "player2_score"),
+            Value(0),
+        ),
+    )
+
+
+def _apply_ordering(queryset, ordering):
+    fields = ORDERING_MAP.get(ordering or "-date", ORDERING_MAP["-date"])
+    return queryset.order_by(*fields)
+
+
+def _apply_match_filters(queryset, params, user=None):
     """
     Apply query-param filters to a Match queryset.
 
     Supported filters:
-      - ``game_type``   — "pong" or "tictactoe"
-      - ``game_mode``   — "pvp", "pve"
+      - ``game_type``    — "pong" or "tictactoe"
+      - ``mode``         — "pvp", "pva", or "local"
+      - ``search``       — partial name search (case-insensitive)
       - ``finish_reason`` — "score", "draw", "forfeit", etc.
-      - ``opponent``    — filter by opponent user UUID
-      - ``outcome``     — "win", "loss", "draw" (requires user context)
-      - ``from_date``   — matches finished after this ISO date
-      - ``to_date``     — matches finished before this ISO date
+      - ``from_date``    — matches finished after this ISO date
+      - ``to_date``      — matches finished before this ISO date
     """
     game_type = params.get("game_type")
     if game_type:
         queryset = queryset.filter(game_type=game_type)
 
-    game_mode = params.get("game_mode")
-    if game_mode:
-        queryset = queryset.filter(game_mode=game_mode)
+    mode = params.get("mode")
+    if mode == "local":
+        queryset = queryset.filter(
+            game_session_id__startswith="local-",
+        ).filter(
+            Q(ai_difficulty="") | Q(ai_difficulty__isnull=True),
+        )
+    elif mode == "pvp":
+        queryset = queryset.filter(
+            game_mode="pvp",
+        ).exclude(
+            game_session_id__startswith="local-",
+        )
+    elif mode == "pva":
+        queryset = queryset.filter(
+            Q(game_mode__in=["pva", "pve"]) | ~Q(ai_difficulty=""),
+        )
 
     finish_reason = params.get("finish_reason")
     if finish_reason:
         queryset = queryset.filter(finish_reason=finish_reason)
+
+    search = params.get("search")
+    if search:
+        if user is not None:
+            matching_opponent = MatchPlayer.objects.filter(
+                match_id=OuterRef("pk"),
+            ).exclude(
+                user_id=user.pk,
+            ).filter(
+                Q(user__username__icontains=search)
+                | Q(user__display_name__icontains=search),
+            )
+            queryset = queryset.annotate(
+                has_matching_opponent=Exists(matching_opponent),
+            ).filter(
+                Q(has_matching_opponent=True)
+                | Q(metadata__local_players__player1_name__icontains=search)
+                | Q(metadata__local_players__player2_name__icontains=search)
+                | Q(ai_difficulty__icontains=search),
+            )
+        else:
+            queryset = queryset.filter(
+                Q(players__user__username__icontains=search)
+                | Q(players__user__display_name__icontains=search)
+                | Q(metadata__local_players__player1_name__icontains=search)
+                | Q(metadata__local_players__player2_name__icontains=search)
+                | Q(ai_difficulty__icontains=search),
+            )
 
     from_date = params.get("from_date")
     if from_date:
@@ -87,20 +179,15 @@ def _apply_user_filters(queryset, params, user):
     """
     opponent = params.get("opponent")
     if opponent:
-        # Find matches where the given opponent also participated
         queryset = queryset.filter(
             players__user_id=opponent,
-        ).exclude(
-            players__user_id=user.pk,
-            players__user__id=opponent,
         )
 
-    outcome = params.get("outcome")
-    if outcome:
-        # Filter via the MatchPlayer join
+    result = params.get("result")
+    if result:
         queryset = queryset.filter(
             players__user=user,
-            players__outcome=outcome,
+            players__outcome=result,
         )
 
     return queryset
@@ -123,14 +210,17 @@ class MatchListView(generics.ListAPIView):
     pagination_class = MatchPagination
 
     def get_queryset(self):
+        params = _get_match_query_params(self.request)
         qs = (
             Match.objects
             .select_related("winner")
             .prefetch_related("players__user")
-            .order_by("-finished_at")
         )
-        qs = _apply_match_filters(qs, self.request.query_params)
-        return qs
+        qs = _apply_match_filters(qs, params, user=self.request.user)
+        qs = _apply_user_filters(qs, params, self.request.user)
+        qs = _annotate_sort_score(qs, user=self.request.user)
+        qs = _apply_ordering(qs, params.get("ordering"))
+        return qs.distinct()
 
 
 class UserMatchListView(generics.ListAPIView):
@@ -148,17 +238,18 @@ class UserMatchListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        params = _get_match_query_params(self.request)
         qs = (
             Match.objects
             .filter(players__user=user)
             .select_related("winner")
             .prefetch_related("players__user")
-            .order_by("-finished_at")
-            .distinct()
         )
-        qs = _apply_match_filters(qs, self.request.query_params)
-        qs = _apply_user_filters(qs, self.request.query_params, user)
-        return qs
+        qs = _apply_match_filters(qs, params, user=user)
+        qs = _apply_user_filters(qs, params, user)
+        qs = _annotate_sort_score(qs, user=user)
+        qs = _apply_ordering(qs, params.get("ordering"))
+        return qs.distinct()
 
 
 class MatchDetailView(generics.RetrieveAPIView):
@@ -189,6 +280,7 @@ class UserMatchHistoryView(generics.ListAPIView):
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
+        params = _get_match_query_params(self.request)
         qs = (
             Match.objects
             .filter(
@@ -197,11 +289,11 @@ class UserMatchHistoryView(generics.ListAPIView):
             )
             .select_related("winner")
             .prefetch_related("players__user")
-            .order_by("-finished_at")
-            .distinct()
         )
-        qs = _apply_match_filters(qs, self.request.query_params)
-        return qs
+        qs = _apply_match_filters(qs, params)
+        qs = _annotate_sort_score(qs)
+        qs = _apply_ordering(qs, params.get("ordering"))
+        return qs.distinct()
 
 
 class MatchSummaryView(APIView):

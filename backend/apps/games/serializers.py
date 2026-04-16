@@ -38,6 +38,62 @@ class LeaderboardQuerySerializer(serializers.Serializer):
         max_value=100,
     )
 
+
+class MatchQuerySerializer(serializers.Serializer):
+    """Validate query parameters for match list endpoints."""
+
+    game_type = serializers.ChoiceField(
+        choices=["pong", "tictactoe"],
+        required=False,
+        allow_null=True,
+    )
+    finish_reason = serializers.CharField(
+        required=False,
+        allow_blank=False,
+    )
+    opponent = serializers.UUIDField(
+        required=False,
+    )
+    search = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+    )
+    result = serializers.ChoiceField(
+        choices=["win", "loss", "draw"],
+        required=False,
+    )
+    outcome = serializers.ChoiceField(
+        choices=["win", "loss", "draw"],
+        required=False,
+    )
+    mode = serializers.ChoiceField(
+        choices=["pvp", "pva", "local"],
+        required=False,
+    )
+    game_mode = serializers.ChoiceField(
+        choices=["pvp", "pva", "pve"],
+        required=False,
+    )
+    ordering = serializers.ChoiceField(
+        choices=[
+            "date",
+            "-date",
+            "score",
+            "-score",
+            "duration",
+            "-duration",
+        ],
+        required=False,
+        default="-date",
+    )
+    from_date = serializers.DateTimeField(
+        required=False,
+    )
+    to_date = serializers.DateTimeField(
+        required=False,
+    )
+
 class MatchPlayerSerializer(serializers.ModelSerializer):
     """Serializes a single player's participation in a match."""
 
