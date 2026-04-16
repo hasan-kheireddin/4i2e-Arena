@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 import loginImg from "../images/loginimg.png";
 import loginImgDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
-import { login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
+import { clearPendingTwoFA, login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
+import { clearTokens } from "../services/api";
 import type { ApiError } from "../services/api";
 
 export default function LoginPage() {
@@ -65,6 +66,7 @@ export default function LoginPage() {
     if (!validate()) return;
     setLoading(true);
     setServerError("");
+    clearPendingTwoFA();
 
     try {
       const res = await apiLogin({
@@ -73,8 +75,9 @@ export default function LoginPage() {
       });
 
       if (isTwoFARequired(res)) {
-        // Redirect to 2FA verification with temp token
-        navigate(`/verify-2fa?temp=${encodeURIComponent(res.temp_token)}`);
+        clearTokens();
+        setUser(null);
+        navigate("/verify-2fa");
       } else {
         setUser(res.user);
         navigate("/home");
@@ -98,6 +101,7 @@ export default function LoginPage() {
 
   const handle42Login = async () => {
     try {
+      clearPendingTwoFA();
       const { authorize_url } = await oauthInitiate("42");
       sessionStorage.setItem("oauth_provider", "42");
       window.location.href = authorize_url;
@@ -394,4 +398,3 @@ function FormContent({
     </>
   );
 }
-

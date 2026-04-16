@@ -62,19 +62,3 @@ class TwoFactorDisableSerializer(serializers.Serializer):
         if not value.isdigit():
             raise serializers.ValidationError("Code must contain only digits.")
         return value
-
-
-class RecoveryCodeSerializer(serializers.Serializer):
-    """
-    Used when the user has lost access to their authenticator app
-    and needs to log in with a one-time recovery code.
-    """
-
-    temp_token = serializers.CharField(
-        help_text="Temporary token from the login response.",
-    )
-    code = serializers.CharField(
-        min_length=6,
-        max_length=16,
-        help_text="One-time recovery code.",
-    )

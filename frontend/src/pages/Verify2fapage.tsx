@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import verify from "../images/loginimg.png";
 import verifyDark from "../images/loginimgDark.png";
-import { twoFAVerify, twoFARecovery } from "../services/auth";
+import { clearPendingTwoFA, getPendingTwoFA, storePendingTwoFA, twoFAVerify } from "../services/auth";
 import type { ApiError } from "../services/api";
 
 export default function Verify2FAPage() {
@@ -17,9 +17,9 @@ export default function Verify2FAPage() {
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [searchParams] = useSearchParams();
-  const tempToken = searchParams.get("temp") || "";
-  const [useRecovery, setUseRecovery] = useState(false);
-  const [recoveryCode, setRecoveryCode] = useState("");
+  const queryTempToken = searchParams.get("temp");
+  const pendingTwoFA = getPendingTwoFA();
+  const tempToken = pendingTwoFA?.temp_token || queryTempToken || "";
 
   const handleChange = (index: number, value: string) => {
     // Only allow digits
@@ -53,6 +53,18 @@ export default function Verify2FAPage() {
       
       return () => observer.disconnect();
     }, []);
+
+  useEffect(() => {
+    if (queryTempToken) {
+      storePendingTwoFA(queryTempToken, pendingTwoFA?.user_id);
+      navigate("/verify-2fa", { replace: true });
+      return;
+    }
+
+    if (!tempToken) {
+      setError(t("2fa.back_to_login"));
+    }
+  }, [navigate, pendingTwoFA?.user_id, queryTempToken, tempToken, t]);
 
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
     // Backspace - move to previous input
@@ -112,32 +124,6 @@ export default function Verify2FAPage() {
     }
   };
 
-  const handleRecoverySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!recoveryCode.trim()) {
-      setError(t("errors.enter_recovery_code"));
-      return;
-    }
-
-    if (!tempToken) {
-      setError(t("errors.missing_token"));
-      return;
-    }
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await twoFARecovery({ temp_token: tempToken, code: recoveryCode.trim() });
-      setUser(res.user);
-      navigate("/home");
-    } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setError(apiErr.detail ?? t("errors.invalid_recovery_code"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="h-screen w-screen flex overflow-hidden">
       {/* ─────────────────────────────────────────
@@ -169,11 +155,6 @@ export default function Verify2FAPage() {
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
               handleSubmit={handleSubmit}
-              useRecovery={useRecovery}
-              setUseRecovery={setUseRecovery}
-              recoveryCode={recoveryCode}
-              setRecoveryCode={setRecoveryCode}
-              handleRecoverySubmit={handleRecoverySubmit}
               navigate={navigate}
               t={t}
             />
@@ -201,11 +182,6 @@ export default function Verify2FAPage() {
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
               handleSubmit={handleSubmit}
-              useRecovery={useRecovery}
-              setUseRecovery={setUseRecovery}
-              recoveryCode={recoveryCode}
-              setRecoveryCode={setRecoveryCode}
-              handleRecoverySubmit={handleRecoverySubmit}
               navigate={navigate}
               t={t}
             />
@@ -228,11 +204,6 @@ interface FormContentProps {
   handleKeyDown: (index: number, e: KeyboardEvent<HTMLInputElement>) => void;
   handlePaste: (e: ClipboardEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
-  useRecovery: boolean;
-  setUseRecovery: (val: boolean) => void;
-  recoveryCode: string;
-  setRecoveryCode: (val: string) => void;
-  handleRecoverySubmit: (e: React.FormEvent) => void;
   navigate: (path: string) => void;
   t: (key: string, fallback?: string) => string;
 }
@@ -246,14 +217,14 @@ function FormContent({
   handleKeyDown,
   handlePaste,
   handleSubmit,
-  useRecovery,
-  setUseRecovery,
-  recoveryCode,
-  setRecoveryCode,
-  handleRecoverySubmit,
   navigate,
   t,
 }: FormContentProps) {
+  const handleBackToLogin = () => {
+    clearPendingTwoFA();
+    navigate("/login");
+  };
+
   return (
     <>
       {/* Title */}
@@ -265,75 +236,12 @@ function FormContent({
           {t("2fa.verify_title", "Two-Factor Authentication")}
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {useRecovery
-            ? t("2fa.recovery_subtitle", "Enter one of your recovery codes")
-            : t("2fa.verify_subtitle", "Enter the 6-digit code from your authenticator app")}
+          {t("2fa.verify_subtitle", "Enter the 6-digit code from your authenticator app")}
         </p>
       </div>
 
-      {useRecovery ? (
-        /* Recovery code form */
-        <form onSubmit={handleRecoverySubmit} className="space-y-6">
-          <div>
-            <label
-              className="block text-sm font-medium mb-2"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
-              {t("2fa.recovery_code", "Recovery Code")}
-            </label>
-            <input
-              type="text"
-              value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value)}
-              placeholder="XXXX-XXXX-XXXX-XXXX"
-              className="w-full rounded-lg px-4 py-3 text-sm font-mono tracking-wide transition-colors focus:outline-none"
-              style={{
-                border: `1px solid ${error ? "var(--color-border-error)" : "var(--color-border)"}`,
-                backgroundColor: "var(--color-bg-input)",
-                color: "var(--color-text-primary)",
-              }}
-              onFocus={(e) =>
-                (e.currentTarget.style.boxShadow =
-                  "0 0 0 2px var(--color-border-focus)")
-              }
-              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-            />
-            {error && (
-              <p className="text-sm mt-2 text-center" style={{ color: "var(--color-error)" }}>
-                {error}
-              </p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full font-medium py-3.5 rounded-lg transition-colors duration-200"
-            style={{
-              backgroundColor: loading
-                ? "var(--color-primary-disabled)"
-                : "var(--color-primary)",
-              color: "#ffffff",
-            }}
-          >
-            {loading ? t("loading.verifying") : t("2fa.verify_recovery", "Verify Recovery Code")}
-          </button>
-
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setUseRecovery(false)}
-              className="text-sm transition-colors hover:underline"
-              style={{ color: "var(--color-text-link)" }}
-            >
-              {t("2fa.use_totp", "Use authenticator app instead")}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <>
-          {/* TOTP Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+      {/* TOTP Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* 6-digit code input */}
         <div>
           <div className="flex gap-3 justify-center">
@@ -393,24 +301,10 @@ function FormContent({
         </button>
       </form>
 
-      {/* Use recovery code */}
-      <div className="mt-6 text-center">
-        <button
-          onClick={() => setUseRecovery(true)}
-          disabled={loading}
-          className="text-sm transition-colors hover:underline"
-          style={{ color: "var(--color-text-link)" }}
-        >
-          {t("2fa.use_recovery", "Lost your device? Use a recovery code")}
-        </button>
-      </div>
-      </>
-      )}
-
       {/* Back to login */}
       <div className="mt-8 text-center">
         <button
-          onClick={() => navigate("/login")}
+          onClick={handleBackToLogin}
           className="text-sm transition-colors hover:underline"
           style={{ color: "var(--color-text-muted)" }}
         >

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { oauthCallback } from "../services/auth";
+import { clearPendingTwoFA, isTwoFARequired, oauthCallback } from "../services/auth";
+import { clearTokens } from "../services/api";
 import type { ApiError } from "../services/api";
 
 export default function OAuthCallbackPage() {
@@ -17,6 +18,7 @@ export default function OAuthCallbackPage() {
     const provider = sessionStorage.getItem("oauth_provider");
     if (!provider) return;
     sessionStorage.removeItem("oauth_provider");
+    clearPendingTwoFA();
 
     const code = searchParams.get("code");
     const state = searchParams.get("state");
@@ -29,8 +31,14 @@ export default function OAuthCallbackPage() {
     const handleCallback = async () => {
       try {
         const res = await oauthCallback(provider, { code, state });
-        setUser(res.user);
-        navigate("/home");
+        if (isTwoFARequired(res)) {
+          clearTokens();
+          setUser(null);
+          navigate("/verify-2fa", { replace: true });
+        } else {
+          setUser(res.user);
+          navigate("/home", { replace: true });
+        }
       } catch (err: unknown) {
         const apiErr = err as ApiError;
         setError(apiErr.detail ?? "Authentication failed. Please try again.");

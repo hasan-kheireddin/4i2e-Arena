@@ -27,7 +27,7 @@ export interface Match {
   id: string;
   game_session_id: string;
   game_type: 'pong' | 'tictactoe';
-  game_mode: 'pvp' | 'pve';
+  game_mode: 'pvp' | 'pve' | 'pva';
   finish_reason: string;
   winner_id: string | null;
   winner_username: string | null;
@@ -37,6 +37,7 @@ export interface Match {
   finished_at: string;
   duration_seconds: number;
   ai_difficulty: string | null;
+  metadata?: Record<string, unknown>;
   players: MatchPlayer[];
 }
 
@@ -111,9 +112,11 @@ export interface LeaderboardEntry {
   avg_score: number;
 }
 
+export type LeaderboardPeriod = 'all' | 'daily' | 'weekly' | 'monthly';
+
 export interface MatchFilters {
   game_type?: 'pong' | 'tictactoe';
-  game_mode?: 'pvp' | 'pve';
+  game_mode?: 'pvp' | 'pve' | 'pva';
   outcome?: 'win' | 'loss' | 'draw';
   page?: number;
   page_size?: number;
@@ -155,7 +158,7 @@ export function getHeadToHead(opponentId: string): Promise<Record<string, unknow
 
 /** GET /api/games/stats/leaderboard/ */
 export function getLeaderboard(
-  params: { game_type?: string; metric?: string; limit?: number } = {}
+  params: { game_type?: string; metric?: 'wins'; period?: LeaderboardPeriod; limit?: number } = {}
 ): Promise<LeaderboardEntry[]> {
   return apiFetch<LeaderboardEntry[]>(
     `${G}/stats/leaderboard/${buildQuery(params as Record<string, string | number | undefined>)}`

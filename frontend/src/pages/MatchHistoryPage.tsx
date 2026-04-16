@@ -6,6 +6,8 @@ import { getMyMatches, getMyStats, type Match, type MatchFilters } from '../serv
 
 type GameFilter = 'all' | 'pong' | 'tictactoe';
 type ResultFilter = 'all' | 'win' | 'loss' | 'draw';
+type ModeFilter = 'all' | '2p' | 'pvp' | 'pva';
+type OutcomeBadge = 'win' | 'loss' | 'draw';
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -27,6 +29,7 @@ export default function MatchHistoryPage() {
   const { user } = useAuth();
   const [gameFilter, setGameFilter] = useState<GameFilter>('all');
   const [resultFilter, setResultFilter] = useState<ResultFilter>('all');
+  const [modeFilter, setModeFilter] = useState<ModeFilter>('all');
   const [search, setSearch] = useState('');
   const [matches, setMatches] = useState<Match[]>([]);
   const [stats, setStats] = useState({ total: 0, wins: 0, losses: 0, draws: 0 });
@@ -69,7 +72,27 @@ export default function MatchHistoryPage() {
   const getOpponent = (match: Match): string => {
     if (!user) return t('match_history.opponent');
     const opp = match.players.find((p) => p.user_id !== user.id);
-    return opp?.display_name || opp?.username || (match.ai_difficulty ? t('match_history.ai_opponent', { difficulty: match.ai_difficulty }) : t('match_history.opponent'));
+    if (opp?.display_name || opp?.username) {
+      return opp.display_name || opp.username;
+    }
+
+    const metadata = match.metadata as { local_players?: { player1_name?: string; player2_name?: string } } | undefined;
+    const localOpponent = metadata?.local_players?.player2_name?.trim();
+    if (localOpponent) {
+      return localOpponent;
+    }
+
+    return match.ai_difficulty
+      ? t('match_history.ai_opponent', { difficulty: match.ai_difficulty })
+      : t('match_history.opponent');
+  };
+
+  const getLocalPlayerNames = (match: Match): { player1: string; player2: string } | null => {
+    const metadata = match.metadata as { local_players?: { player1_name?: string; player2_name?: string } } | undefined;
+    const player1 = metadata?.local_players?.player1_name?.trim();
+    const player2 = metadata?.local_players?.player2_name?.trim();
+    if (!player1 || !player2) return null;
+    return { player1, player2 };
   };
 
   const getMyOutcome = (match: Match): 'win' | 'loss' | 'draw' => {
@@ -85,9 +108,23 @@ export default function MatchHistoryPage() {
     return `${me.score} – ${opp.score}`;
   };
 
+  const getMatchMode = (match: Match): Exclude<ModeFilter, 'all'> => {
+    const mode = (match.game_mode ?? '').toLowerCase();
+    const isLocal = match.game_session_id.startsWith('local-');
+    const isPva = mode === 'pva' || mode === 'pve' || !!match.ai_difficulty;
+
+    if (isPva) return 'pva';
+    if (isLocal) return '2p';
+    return 'pvp';
+  };
+
   const filtered = matches.filter((m) => {
-    const opp = getOpponent(m);
-    return !search || opp.toLowerCase().includes(search.toLowerCase());
+    const mode = getMatchMode(m);
+    const localNames = mode === '2p' ? getLocalPlayerNames(m) : null;
+    const searchTarget = localNames ? `${localNames.player1} ${localNames.player2}` : getOpponent(m);
+    if (search && !searchTarget.toLowerCase().includes(search.toLowerCase())) return false;
+    if (modeFilter !== 'all' && mode !== modeFilter) return false;
+    return true;
   });
 
   return (
@@ -132,6 +169,21 @@ export default function MatchHistoryPage() {
             </button>
           ))}
         </div>
+        <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
+          {(['all', '2p', 'pvp', 'pva'] as ModeFilter[]).map((f) => (
+            <button key={f} onClick={() => setModeFilter(f)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all uppercase"
+              style={{ backgroundColor: modeFilter === f ? 'var(--color-primary)' : 'transparent', color: modeFilter === f ? '#ffffff' : 'var(--color-text-secondary)' }}>
+              {f === 'all'
+                ? t('match_history.filter_all_modes')
+                : f === '2p'
+                  ? t('match_history.filter_2p')
+                  : f === 'pvp'
+                    ? t('match_history.filter_pvp')
+                    : t('match_history.filter_pva')}
+            </button>
+          ))}
+        </div>
         <div className="flex-1 relative">
           <input placeholder={t('match_history.search_placeholder')} value={search} onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg px-4 py-2 text-sm outline-none transition-all"
@@ -152,30 +204,51 @@ export default function MatchHistoryPage() {
             const outcome = getMyOutcome(match);
             const opponent = getOpponent(match);
             const score = getScore(match);
+            const mode = getMatchMode(match);
+            const localNames = mode === '2p' ? getLocalPlayerNames(match) : null;
+            const winnerName = localNames
+              ? match.player1_score === match.player2_score
+                ? null
+                : match.player1_score > match.player2_score
+                  ? localNames.player1
+                  : localNames.player2
+              : null;
+            const outcomeBadge: OutcomeBadge = localNames ? (winnerName ? 'win' : 'draw') : outcome;
+            const title = localNames ? `${localNames.player1} vs ${localNames.player2}` : `vs ${opponent}`;
+            const outcomeLabel = localNames
+              ? winnerName
+                ? t('match_history.local_winner_text', { name: winnerName })
+                : t('match_history.outcome_draw')
+              : t(`match_history.outcome_${outcome}`);
             return (
               <div key={match.id} className="p-4 rounded-lg transition-all duration-200"
                 style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'; e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-bg-card)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}>
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
-                    style={{ backgroundColor: outcome === 'win' ? 'rgba(34,197,94,0.1)' : outcome === 'loss' ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)', color: outcome === 'win' ? 'var(--color-success)' : outcome === 'loss' ? 'var(--color-error)' : '#fbbf24' }}>
-                    {match.game_type === 'pong' ? 'P' : 'T'}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-base"
+                    style={{
+                      backgroundColor: match.game_type === 'pong' ? 'rgba(168,85,247,0.12)' : 'rgba(6,182,212,0.12)',
+                      border: `1px solid ${match.game_type === 'pong' ? 'rgba(168,85,247,0.3)' : 'rgba(6,182,212,0.3)'}`,
+                    }}>
+                    {match.game_type === 'pong' ? '🏓' : '⭕'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>vs {opponent}</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{title}</span>
                       <span className="px-2 py-0.5 rounded-md text-xs font-semibold"
-                        style={{ backgroundColor: outcome === 'win' ? 'rgba(34,197,94,0.15)' : outcome === 'loss' ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)', color: outcome === 'win' ? 'var(--color-success)' : outcome === 'loss' ? 'var(--color-error)' : '#fbbf24' }}>
-                        {t(`match_history.outcome_${outcome}`)}
+                        style={{ backgroundColor: outcomeBadge === 'win' ? 'rgba(34,197,94,0.15)' : outcomeBadge === 'loss' ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)', color: outcomeBadge === 'win' ? 'var(--color-success)' : outcomeBadge === 'loss' ? 'var(--color-error)' : '#fbbf24' }}>
+                        {outcomeLabel}
                       </span>
                       <span className="px-2 py-0.5 rounded-md text-xs font-medium capitalize" style={{ backgroundColor: 'rgba(168,85,247,0.1)', color: 'var(--color-primary)' }}>
-                        {match.game_mode}
+                        {t(`match_history.mode_${mode}`)}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                       <span>{match.game_type === 'tictactoe' ? t('match_history.game_tictactoe') : t('match_history.game_pong')}</span>
-                      <span>{t('match_history.score_label', { score })}</span>
+                      {match.game_type !== 'tictactoe' && (
+                        <span>{t('match_history.score_label', { score })}</span>
+                      )}
                       <span>{formatDuration(match.duration_seconds)}</span>
                     </div>
                   </div>

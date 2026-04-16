@@ -14,10 +14,10 @@
 #   GET    /api/accounts/oauth/<provider>/initiate/ → Get OAuth redirect URL
 #   POST   /api/accounts/oauth/<provider>/callback/ → Handle OAuth callback
 #   POST   /api/accounts/2fa/setup/                 → Generate TOTP secret + QR code
-#   POST   /api/accounts/2fa/confirm/               → Confirm 2FA setup with code
-#   POST   /api/accounts/2fa/verify/                → Verify TOTP during login
+#   POST   /api/accounts/2fa/verify/                → Verify setup code and enable 2FA
+#   POST   /api/accounts/2fa/login-verify/          → Verify TOTP during login
+#   POST   /api/accounts/2fa/confirm/               → Backward-compatible alias for setup verification
 #   POST   /api/accounts/2fa/disable/               → Disable 2FA
-#   POST   /api/accounts/2fa/recovery/              → Use recovery code during login
 #   GET    /api/accounts/2fa/status/                → Check 2FA status
 # =============================================================================
 
@@ -60,9 +60,9 @@ urlpatterns = [
     ),
     # Two-Factor Authentication
     path("2fa/setup/", twofa_views.TwoFactorSetupView.as_view(), name="2fa-setup"),
+    path("2fa/verify/", twofa_views.TwoFactorConfirmView.as_view(), name="2fa-verify-setup"),
+    path("2fa/login-verify/", twofa_views.TwoFactorVerifyView.as_view(), name="2fa-login-verify"),
     path("2fa/confirm/", twofa_views.TwoFactorConfirmView.as_view(), name="2fa-confirm"),
-    path("2fa/verify/", twofa_views.TwoFactorVerifyView.as_view(), name="2fa-verify"),
     path("2fa/disable/", twofa_views.TwoFactorDisableView.as_view(), name="2fa-disable"),
-    path("2fa/recovery/", twofa_views.RecoveryCodeView.as_view(), name="2fa-recovery"),
     path("2fa/status/", twofa_views.TwoFactorStatusView.as_view(), name="2fa-status"),
 ]

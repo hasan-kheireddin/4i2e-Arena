@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
-import { getLeaderboard, getMyStats, type LeaderboardEntry } from '../services/games';
+import { getLeaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../services/games';
 
 
 function RankBadge({ rank }: { rank: number }) {
@@ -16,32 +16,30 @@ export default function LeaderboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [search, setSearch] = useState('');
+  const [period, setPeriod] = useState<LeaderboardPeriod>('weekly');
   const [players, setPlayers] = useState<LeaderboardEntry[]>([]);
-  const [myStats, setMyStats] = useState<{ rank: number | null; wins: number; winRate: number }>({ rank: null, wins: 0, winRate: 0 });
+  const [myStats, setMyStats] = useState<{ rank: number | null; wins: number }>({ rank: null, wins: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      getLeaderboard({ game_type: 'pong', metric: 'wins', limit: 50 }),
-      getMyStats('pong'),
-    ]).then(([lb, stats]) => {
+    getLeaderboard({ game_type: 'pong', metric: 'wins', period, limit: 50 }).then((lb) => {
       setPlayers(lb);
       const myEntry = lb.find((p) => p.user_id === user?.id);
       setMyStats({
         rank: myEntry?.rank ?? null,
-        wins: stats.overview.wins,
-        winRate: Math.round(stats.overview.win_rate * 100),
+        wins: myEntry?.wins ?? 0,
       });
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [user?.id]);
+  }, [period, user?.id]);
 
   const filtered = players.filter((p) =>
     (p.display_name || p.username).toLowerCase().includes(search.toLowerCase())
   );
 
-  const top3 = filtered.slice(0, 3);
-  const rest = filtered.slice(3);
+  const hasPodium = filtered.length >= 3;
+  const top3 = hasPodium ? filtered.slice(0, 3) : [];
+  const tablePlayers = hasPodium ? filtered.slice(3) : filtered;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -60,11 +58,38 @@ export default function LeaderboardPage() {
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{t('lb.your_rank')}</p>
               <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                {t('lb.win_rate_stat', { rate: myStats.winRate, wins: myStats.wins })}
+                {t('lb.wins_stat', { wins: myStats.wins })}
               </p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Period filters */}
+      <div className="flex gap-2">
+        {(
+          [
+            { key: 'daily', label: t('lb.period_daily') },
+            { key: 'weekly', label: t('lb.period_weekly') },
+            { key: 'monthly', label: t('lb.period_monthly') },
+          ] as const
+        ).map(({ key, label }) => {
+          const selected = period === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: selected ? 'var(--color-primary)' : 'var(--color-bg-card)',
+                color: selected ? '#fff' : 'var(--color-text-secondary)',
+                border: selected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
@@ -84,7 +109,7 @@ export default function LeaderboardPage() {
       ) : (
         <>
           {/* Top 3 Podium */}
-          {top3.length >= 3 && (
+          {hasPodium && (
             <div className="grid grid-cols-3 gap-3">
               {[top3[1], top3[0], top3[2]].map((player, index) => {
                 const podiumOrder = [2, 1, 3];
@@ -99,7 +124,7 @@ export default function LeaderboardPage() {
                       <RankBadge rank={podiumOrder[index]} />
                       <Avatar name={name} size="lg" />
                       <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{name}</h3>
-                      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{Math.round(player.win_rate * 100)}% {t('lb.col_win_rate')}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{player.wins} {t('lb.col_wins')}</p>
                       <p className="text-lg font-mono font-bold" style={{ color: 'var(--color-primary)' }}>{player.total_xp.toLocaleString()} XP</p>
                     </div>
                   </div>
@@ -113,13 +138,13 @@ export default function LeaderboardPage() {
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {[t('lb.col_rank'), t('lb.col_player'), t('lb.col_wl'), t('lb.col_win_rate'), t('lb.col_streak'), t('lb.col_xp')].map((h) => (
+                  {[t('lb.col_rank'), t('lb.col_player'), t('lb.col_wins'), t('lb.col_xp')].map((h) => (
                     <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-3" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {rest.map((player) => {
+                {tablePlayers.map((player) => {
                   const name = player.display_name || player.username;
                   const isMe = player.user_id === user?.id;
                   return (
@@ -133,16 +158,7 @@ export default function LeaderboardPage() {
                           <p className="text-sm font-medium" style={{ color: isMe ? 'var(--color-primary)' : 'var(--color-text-primary)' }}>{name} {isMe && t('lb.you')}</p>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-sm hidden sm:table-cell" style={{ color: 'var(--color-text-secondary)' }}>
-                        <span style={{ color: 'var(--color-success)' }}>{player.wins}</span> / <span style={{ color: 'var(--color-error)' }}>{player.losses}</span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className="text-sm font-semibold"
-                          style={{ color: player.win_rate >= 0.7 ? 'var(--color-success)' : player.win_rate >= 0.5 ? '#fbbf24' : 'var(--color-error)' }}>
-                          {Math.round(player.win_rate * 100)}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center text-sm hidden sm:table-cell" style={{ color: 'var(--color-text-muted)' }}>—</td>
+                      <td className="py-3 px-3 text-sm font-semibold" style={{ color: 'var(--color-success)' }}>{player.wins}</td>
                       <td className="py-3 px-3 text-right text-sm font-mono font-semibold" style={{ color: 'var(--color-primary)' }}>{player.total_xp.toLocaleString()}</td>
                     </tr>
                   );

@@ -111,14 +111,17 @@ def get_xp_to_next_level(xp: int) -> dict[str, int]:
         "xp_needed": xp_needed,
     }
 
-async def award_xp_after_game(session: GameSession) -> None:
+async def award_xp_after_game(session: GameSession) -> dict[Any, int]:
     """
     Calculate and award XP to all human players in the finished session.
 
     Called from game consumers after each match ends.
+    Returns a map of ``user_id -> xp_awarded`` for this session.
     """
     if session.finish_reason in (FinishReason.CANCELED, FinishReason.SERVER_ERROR):
-        return  # no XP for non-games
+        return {}  # no XP for non-games
+
+    awarded_xp: dict[Any, int] = {}
 
     for slot, player_slot in session.players.items():
         user_id = player_slot.user_id
@@ -129,6 +132,7 @@ async def award_xp_after_game(session: GameSession) -> None:
             slot=slot,
             is_winner=is_winner,
         )
+        awarded_xp[user_id] = xp_amount
 
         if xp_amount > 0:
             result = await _apply_xp(user_id, xp_amount)
@@ -149,6 +153,10 @@ async def award_xp_after_game(session: GameSession) -> None:
                         check_level_achievements,
                     )
                     await check_level_achievements(user_id, result["new_level"])
+            else:
+                awarded_xp[user_id] = 0
+
+    return awarded_xp
 
 
 async def award_xp_for_achievement(user_id: int, xp_reward: int) -> None:
@@ -255,8 +263,14 @@ def _get_player_score(session: GameSession, slot: int) -> int:
     """Extract the player's score from the Pong engine state."""
     try:
         state = session.engine.get_state()
+        # Pong engine shape: {"player1": {"score": ...}, "player2": {"score": ...}}
+        player_key = f"player{slot}"
+        if isinstance(state.get(player_key), dict):
+            return int(state[player_key].get("score", 0))
+
+        # Fallback for alternate engine payloads that expose "scores".
         scores = state.get("scores", {})
-        return scores.get(str(slot), scores.get(slot, 0))
+        return int(scores.get(str(slot), scores.get(slot, 0)))
     except Exception:
         return 0
 
@@ -265,9 +279,14 @@ def _is_shutout(session: GameSession, winner_slot: int) -> bool:
     """Check if the winner achieved a shutout (opponent scored 0)."""
     try:
         state = session.engine.get_state()
-        scores = state.get("scores", {})
         loser_slot = 2 if winner_slot == 1 else 1
-        loser_score = scores.get(str(loser_slot), scores.get(loser_slot, -1))
+        loser_key = f"player{loser_slot}"
+        if isinstance(state.get(loser_key), dict):
+            loser_score = int(state[loser_key].get("score", -1))
+            return loser_score == 0
+
+        scores = state.get("scores", {})
+        loser_score = int(scores.get(str(loser_slot), scores.get(loser_slot, -1)))
         return loser_score == 0
     except Exception:
         return False

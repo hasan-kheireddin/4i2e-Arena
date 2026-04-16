@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { BrandLogo } from "../components/BrandLogo";
 import {
   Gamepad2, ArrowRight, Users, Trophy, Zap,
-  Shield, Star, ChevronDown,
+  Shield, Star,
 } from "lucide-react";
 
 // ── Scroll-reveal hook ────────────────────────────────────────────────────────
@@ -82,27 +83,25 @@ export default function LandingPage() {
           WebkitBackdropFilter: "blur(12px)",
         }}
       >
-        <div className="container mx-auto px-6 h-full flex items-center">
-          <div className="flex items-center gap-2.5">
-            {/* 42 logo in purple box */}
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: "#a855f7" }}
+        <div className="container mx-auto px-6 h-full flex items-center justify-between">
+          <BrandLogo />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200"
+              style={{ color: "var(--color-text-primary)", border: "1px solid var(--color-border)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.color = "#f97316"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-text-primary)"; }}
             >
-              <span className="text-white font-bold text-sm leading-none">42</span>
-            </div>
-            {/* Arena wordmark */}
-            <span
-              className="text-xl font-extrabold tracking-tight"
-              style={{
-                background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
+              {t("landing.sign_in")}
+            </Link>
+            <Link
+              to="/register"
+              className="px-4 py-1.5 rounded-lg text-sm font-bold text-white transition-all duration-200"
+              style={{ background: "linear-gradient(135deg, #f97316 0%, #ef4444 100%)" }}
             >
-              Arena
-            </span>
+              {t("landing.footer_register")}
+            </Link>
           </div>
         </div>
       </header>
@@ -112,30 +111,23 @@ export default function LandingPage() {
         {/* Animated background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/5 w-[500px] h-[500px] rounded-full blur-3xl opacity-15 animate-pulse"
-            style={{ background: "radial-gradient(circle, #a855f7, transparent)" }} />
+            style={{ background: "radial-gradient(circle, #f97316, transparent)" }} />
           <div className="absolute bottom-1/4 right-1/5 w-[400px] h-[400px] rounded-full blur-3xl opacity-15 animate-pulse"
-            style={{ background: "radial-gradient(circle, #ec4899, transparent)", animationDelay: "1s" }} />
+            style={{ background: "radial-gradient(circle, #ef4444, transparent)", animationDelay: "1s" }} />
           <div className="absolute top-1/2 left-1/2 w-72 h-72 rounded-full blur-3xl opacity-10 animate-pulse"
-            style={{ background: "radial-gradient(circle, #38bdf8, transparent)", animationDelay: "2s" }} />
+            style={{ background: "radial-gradient(circle, #f59e0b, transparent)", animationDelay: "2s" }} />
           {/* Grid overlay */}
           <div className="absolute inset-0 opacity-5"
             style={{ backgroundImage: "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
         </div>
 
         <div className="relative container mx-auto px-6 text-center" style={{ animation: "heroIn 0.9s cubic-bezier(0.16,1,0.3,1) forwards" }}>
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold mb-8"
-            style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.35)" }}>
-            <Zap className="w-3.5 h-3.5" />
-            {t("landing.platform_badge")}
-          </div>
-
           {/* Headline */}
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold leading-none tracking-tight mb-6">
             <span style={{ color: "var(--color-text-primary)" }}>{t("landing.hero_line1")}</span>
             <br />
             <span style={{
-              background: "linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f97316 100%)",
+              background: "linear-gradient(135deg, #f97316 0%, #ef4444 50%, #f59e0b 100%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
             }}>
               {t("landing.hero_line2")}
@@ -151,14 +143,14 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <Link to="/register"
               className="group px-10 py-4 rounded-xl font-bold text-white text-lg flex items-center gap-3 transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)", boxShadow: "0 8px 32px rgba(168,85,247,0.4)" }}>
+              style={{ background: "linear-gradient(135deg, #f97316 0%, #ef4444 100%)", boxShadow: "0 8px 32px rgba(249,115,22,0.4)" }}>
               {t("landing.cta_start")}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link to="/login"
               className="group px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-300 hover:scale-105 flex items-center gap-2"
               style={{ color: "var(--color-text-primary)", border: "2px solid var(--color-border)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#a855f7"; e.currentTarget.style.color = "#a855f7"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.color = "#f97316"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-text-primary)"; }}>
               {t("landing.sign_in")}
             </Link>
@@ -173,7 +165,7 @@ export default function LandingPage() {
             ].map(({ value, labelKey }) => (
               <div key={labelKey} className="text-center">
                 <div className="text-3xl font-extrabold mb-1"
-                  style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                  style={{ background: "linear-gradient(135deg, #f97316 0%, #ef4444 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   {value}
                 </div>
                 <div className="text-sm font-medium" style={{ color: "var(--color-text-muted)" }}>{t(labelKey)}</div>
@@ -182,19 +174,13 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce"
-          style={{ color: "var(--color-text-muted)" }}>
-          <span className="text-xs font-medium uppercase tracking-widest">{t("landing.scroll")}</span>
-          <ChevronDown className="w-5 h-5" />
-        </div>
       </section>
 
       {/* ── FEATURES ─────────────────────────────────────────────────────────── */}
       <section id="features" className="py-28">
         <div className="container mx-auto px-6">
           <Reveal className="text-center mb-16">
-            <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "#a855f7" }}>
+            <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>
               {t("landing.features_eyebrow")}
             </p>
             <h2 className="text-3xl sm:text-5xl font-extrabold mb-4" style={{ color: "var(--color-text-primary)" }}>
@@ -207,18 +193,18 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: <Gamepad2 className="w-7 h-7 text-white" />, titleKey: "landing.feat_games_title", descKey: "landing.feat_games_desc", grad: "linear-gradient(135deg,#a855f7,#ec4899)" },
-              { icon: <Users   className="w-7 h-7 text-white" />, titleKey: "landing.feat_mp_title",    descKey: "landing.feat_mp_desc",    grad: "linear-gradient(135deg,#ec4899,#f97316)" },
-              { icon: <Trophy  className="w-7 h-7 text-white" />, titleKey: "landing.feat_lb_title",    descKey: "landing.feat_lb_desc",    grad: "linear-gradient(135deg,#8b5cf6,#a855f7)" },
-              { icon: <Zap     className="w-7 h-7 text-white" />, titleKey: "landing.feat_xp_title",    descKey: "landing.feat_xp_desc",    grad: "linear-gradient(135deg,#f59e0b,#ef4444)" },
-              { icon: <Shield  className="w-7 h-7 text-white" />, titleKey: "landing.feat_sec_title",   descKey: "landing.feat_sec_desc",   grad: "linear-gradient(135deg,#06b6d4,#3b82f6)" },
-              { icon: <Star    className="w-7 h-7 text-white" />, titleKey: "landing.feat_ach_title",   descKey: "landing.feat_ach_desc",   grad: "linear-gradient(135deg,#10b981,#06b6d4)" },
+              { icon: <Gamepad2 className="w-7 h-7 text-white" />, titleKey: "landing.feat_games_title", descKey: "landing.feat_games_desc", grad: "linear-gradient(135deg,#f97316,#ef4444)" },
+              { icon: <Users   className="w-7 h-7 text-white" />, titleKey: "landing.feat_mp_title",    descKey: "landing.feat_mp_desc",    grad: "linear-gradient(135deg,#ef4444,#f59e0b)" },
+              { icon: <Trophy  className="w-7 h-7 text-white" />, titleKey: "landing.feat_lb_title",    descKey: "landing.feat_lb_desc",    grad: "linear-gradient(135deg,#f59e0b,#f97316)" },
+              { icon: <Zap     className="w-7 h-7 text-white" />, titleKey: "landing.feat_xp_title",    descKey: "landing.feat_xp_desc",    grad: "linear-gradient(135deg,#fb923c,#ef4444)" },
+              { icon: <Shield  className="w-7 h-7 text-white" />, titleKey: "landing.feat_sec_title",   descKey: "landing.feat_sec_desc",   grad: "linear-gradient(135deg,#f97316,#f59e0b)" },
+              { icon: <Star    className="w-7 h-7 text-white" />, titleKey: "landing.feat_ach_title",   descKey: "landing.feat_ach_desc",   grad: "linear-gradient(135deg,#ef4444,#f97316)" },
             ].map(({ icon, titleKey, descKey, grad }, i) => (
               <Reveal key={titleKey} delay={i * 80}>
                 <div
                   className="p-6 rounded-2xl h-full transition-all duration-300 hover:-translate-y-2 cursor-default group"
                   style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#a855f7"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(168,85,247,0.18)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(249,115,22,0.18)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.boxShadow = "none"; }}
                 >
                   <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110"
@@ -238,7 +224,7 @@ export default function LandingPage() {
       <section id="games" className="py-28" style={{ backgroundColor: "var(--color-bg-card)" }}>
         <div className="container mx-auto px-6">
           <Reveal className="text-center mb-16">
-            <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "#a855f7" }}>
+            <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>
               {t("landing.games_eyebrow")}
             </p>
             <h2 className="text-3xl sm:text-5xl font-extrabold mb-4" style={{ color: "var(--color-text-primary)" }}>
@@ -256,14 +242,14 @@ export default function LandingPage() {
                 descKey: "landing.pong_desc",
                 featKeys: ["landing.pong_feat1", "landing.pong_feat2", "landing.pong_feat3", "landing.pong_feat4"],
                 badgeKey: "landing.pong_badge",
-                c1: "#a855f7", c2: "#ec4899",
+                c1: "#f97316", c2: "#ef4444",
               },
               {
                 titleKey: "home.game_ttt",
                 descKey: "landing.ttt_desc",
                 featKeys: ["landing.ttt_feat1", "landing.ttt_feat2", "landing.ttt_feat3", "landing.ttt_feat4"],
                 badgeKey: "landing.ttt_badge",
-                c1: "#06b6d4", c2: "#3b82f6",
+                c1: "#f59e0b", c2: "#f97316",
               },
             ].map(({ titleKey, descKey, featKeys, badgeKey, c1, c2 }, i) => (
               <Reveal key={titleKey} delay={i * 120}>
@@ -311,8 +297,8 @@ export default function LandingPage() {
       <section id="stats" className="py-28">
         <div className="container mx-auto px-6">
           <Reveal>
-            <div className="rounded-3xl p-10 md:p-16 text-center" style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(236,72,153,0.05) 100%)", border: "1px solid rgba(168,85,247,0.2)" }}>
-              <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "#a855f7" }}>{t("landing.stats_eyebrow")}</p>
+            <div className="rounded-3xl p-10 md:p-16 text-center" style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.08) 0%, rgba(239,68,68,0.05) 100%)", border: "1px solid rgba(249,115,22,0.2)" }}>
+              <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>{t("landing.stats_eyebrow")}</p>
               <h2 className="text-3xl sm:text-4xl font-extrabold mb-12" style={{ color: "var(--color-text-primary)" }}>
                 {t("landing.stats_title")}
               </h2>
@@ -326,7 +312,7 @@ export default function LandingPage() {
                   <Reveal key={labelKey} delay={i * 80}>
                     <div className="text-center">
                       <div className="text-3xl sm:text-4xl font-extrabold mb-2"
-                        style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                        style={{ background: "linear-gradient(135deg,#f97316,#ef4444)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                         {value}
                       </div>
                       <div className="text-sm font-medium" style={{ color: "var(--color-text-muted)" }}>{t(labelKey)}</div>
@@ -344,7 +330,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
           <Reveal>
             <div className="relative rounded-3xl p-12 md:p-20 overflow-hidden text-center"
-              style={{ background: "linear-gradient(135deg, #a855f7 0%, #ec4899 60%, #f97316 100%)" }}>
+              style={{ background: "linear-gradient(135deg, #f97316 0%, #ef4444 55%, #f59e0b 100%)" }}>
               {/* Decorative elements */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
@@ -365,7 +351,7 @@ export default function LandingPage() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link to="/register"
                     className="px-10 py-4 bg-white rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-                    style={{ color: "#a855f7" }}>
+                    style={{ color: "#f97316" }}>
                     {t("landing.cta_create")}
                   </Link>
                   <Link to="/login"
@@ -384,16 +370,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: "#a855f7" }}>
-                <span className="text-white font-bold text-xs">42</span>
-              </div>
-              <span className="font-extrabold"
-                style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                Arena
-              </span>
-            </div>
+            <BrandLogo />
 
             {/* Links */}
             <div className="flex items-center gap-6 text-sm" style={{ color: "var(--color-text-muted)" }}>

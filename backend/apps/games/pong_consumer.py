@@ -5,7 +5,6 @@ import logging
 import time
 from typing import Any
 from apps.games.consumers import BaseConsumer
-from apps.games.pong_ai import AIDifficulty, PongAI
 from apps.games.pong_engine import PongEngine
 from apps.games.pong_engine import GameStatus as PongStatus
 from apps.games.session import (
@@ -88,9 +87,9 @@ class PongConsumer(BaseConsumer):
             # Check achievements for all players
             await check_achievements_after_game(session)
             # Award XP to participants
-            await award_xp_after_game(session)
+            xp_awards = await award_xp_after_game(session)
             # Record match to database
-            await record_match(session)
+            await record_match(session, xp_awards=xp_awards)
         elif session.status == SessionStatus.WAITING:
             # Nobody started yet — abandon
             session.mark_abandoned(reason=FinishReason.CANCELED)
@@ -132,12 +131,7 @@ class PongConsumer(BaseConsumer):
 
         # Look up or create session
         session = get_session(game_id)
-
-        # Check for AI game request
-        ai_difficulty = content.get("ai_difficulty")
-        if session is None and ai_difficulty:
-            session = self._create_ai_session(game_id, ai_difficulty)
-        elif session is None:
+        if session is None:
             # Create a new PvP session
             session = create_session(
                 game_type=GameType.PONG,
@@ -164,13 +158,8 @@ class PongConsumer(BaseConsumer):
             await self.send_error("game_full", "Game is already full")
             return
         else:
-            # Assign to next free human slot (skip AI-occupied slot)
-            if session.ai_slot == 1:
-                slot = 2
-            elif 1 not in session.players:
-                slot = 1
-            else:
-                slot = 2
+            # Assign to next free slot
+            slot = 1 if 1 not in session.players else 2
             session.engine.set_player(str(user_id), slot)
             session.players[slot] = PlayerSlot(
                 user_id=user_id,
@@ -189,15 +178,12 @@ class PongConsumer(BaseConsumer):
             "game_info": session.to_info(),
         })
 
-        # If session is now full → start immediately for AI, else wait for ready
+        # If session is now full, notify both players to get ready.
         if session.is_full and session.status == SessionStatus.WAITING and not session.both_connected_sent:
             session.both_connected_sent = True
-            if session.ai is not None:
-                await self._start_game(session)
-            else:
-                await self.broadcast(session.group_name, {
-                    "game_info": session.to_info(),
-                }, handler="both.connected")
+            await self.broadcast(session.group_name, {
+                "game_info": session.to_info(),
+            }, handler="both.connected")
 
     async def _handle_ready(self) -> None:
         session = self._session
@@ -206,8 +192,6 @@ class PongConsumer(BaseConsumer):
             return
         if session.status != SessionStatus.WAITING:
             return  # already started or over
-        if session.ai is not None:
-            return  # no ready step for AI games
 
         session.ready_slots.add(self._slot)
 
@@ -219,29 +203,6 @@ class PongConsumer(BaseConsumer):
         # Start once both human slots have confirmed ready
         if session.ready_slots.issuperset({1, 2}) and session.is_full:
             await self._start_game(session)
-
-    def _create_ai_session(
-        self, game_id: str, difficulty: str,
-    ) -> GameSession:
-        """Create a single-player session with an AI opponent."""
-        try:
-            diff = AIDifficulty(difficulty)
-        except ValueError:
-            diff = AIDifficulty.MEDIUM
-
-        engine = PongEngine()
-        ai_slot = 2  # AI is always player 2
-        ai = PongAI(difficulty=diff.value, player_slot=ai_slot)
-        engine.set_player("ai", ai_slot)
-
-        return create_session(
-            game_type=GameType.PONG,
-            engine=engine,
-            game_id=game_id,
-            ai=ai,
-            ai_slot=ai_slot,
-            ai_difficulty=diff.value,
-        )
 
     async def _start_game(self, session: GameSession) -> None:
         # Guard: only one consumer should start the game / tick loop.
@@ -327,9 +288,9 @@ class PongConsumer(BaseConsumer):
         # Check achievements for all players
         await check_achievements_after_game(session)
         # Award XP to participants
-        await award_xp_after_game(session)
+        xp_awards = await award_xp_after_game(session)
         # Record match to database
-        await record_match(session)
+        await record_match(session, xp_awards=xp_awards)
 
 
 
@@ -338,11 +299,6 @@ class PongConsumer(BaseConsumer):
         try:
             while session.status == SessionStatus.PLAYING:
                 tick_start = time.monotonic()
-
-                # AI move (if applicable)
-                if session.ai is not None:
-                    direction = session.ai.compute_move(session.engine)
-                    session.engine.handle_input(session.ai_slot, direction)
 
                 # Advance engine
                 state = session.engine.tick()
@@ -354,16 +310,18 @@ class PongConsumer(BaseConsumer):
 
                 # Check for game over
                 if state.get("status") == PongStatus.FINISHED.value:
+                    winner_id = self._resolve_winner_id(session)
                     session.mark_finished(
                         reason=FinishReason.SCORE,
+                        winner_id=winner_id,
                     )
                     await self._broadcast_game_over(session, reason="score")
                     # Check achievements for all players
                     await check_achievements_after_game(session)
                     # Award XP to participants
-                    await award_xp_after_game(session)
+                    xp_awards = await award_xp_after_game(session)
                     # Record match to database
-                    await record_match(session)
+                    await record_match(session, xp_awards=xp_awards)
                     break
 
                 # Sleep until next tick
@@ -381,6 +339,14 @@ class PongConsumer(BaseConsumer):
                 "winner": None,
                 "reason": "server_error",
             }, handler="game.over")
+
+    def _resolve_winner_id(self, session: GameSession) -> int | None:
+        """Resolve winner user_id from Pong engine winner slot (1 or 2)."""
+        winner_slot = session.engine.winner
+        if winner_slot not in (1, 2):
+            return None
+        winner_player = session.players.get(winner_slot)
+        return winner_player.user_id if winner_player is not None else None
 
     async def _broadcast_game_over(
         self, session: GameSession, reason: str,

@@ -7,10 +7,11 @@ from django.contrib.auth import get_user_model
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import OAuthAccount
+from .models import OAuthAccount, TOTPDevice
 from .oauth_serializers import OAuthCallbackSerializer
 from .oauth_providers import get_provider
 from .serializers import UserProfileSerializer, get_tokens_for_user
+from .twofa_views import _issue_temp_token
 from apps.analytics.tracking_service import (
     get_client_ip,
     get_user_agent,
@@ -128,6 +129,33 @@ class OAuthCallbackView(APIView):
         # ---- Find or create User + OAuthAccount -------------------------------
         user = self._get_or_create_user(provider, provider_user_id, mapped, access_token)
 
+        # ---- Enforce 2FA before issuing final JWTs ----------------------------
+        if user.is_2fa_enabled:
+            has_confirmed_device = TOTPDevice.objects.filter(
+                user=user,
+                confirmed=True,
+            ).exists()
+            if has_confirmed_device:
+                return Response(
+                    {
+                        "requires_2fa": True,
+                        "temp_token": _issue_temp_token(
+                            user,
+                            auth_method="oauth",
+                            provider=provider,
+                        ),
+                        "user_id": str(user.id),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            logger.warning(
+                "User %s has is_2fa_enabled=True but no confirmed TOTP device during OAuth login",
+                user.pk,
+            )
+            user.is_2fa_enabled = False
+            user.save(update_fields=["is_2fa_enabled"])
+
         # ---- Issue JWT tokens -------------------------------------------------
         tokens = get_tokens_for_user(user)
         user_data = UserProfileSerializer(user).data
@@ -214,6 +242,7 @@ class OAuthCallbackView(APIView):
             if access_token and oauth.access_token != access_token:
                 oauth.access_token = access_token
                 oauth.save(update_fields=["access_token"])
+            OAuthCallbackView._sync_oauth_user(oauth.user, mapped)
             return oauth.user
         except OAuthAccount.DoesNotExist:
             pass
@@ -230,6 +259,9 @@ class OAuthCallbackView(APIView):
                     provider_user_id=provider_user_id,
                     access_token=access_token,
                 )
+                existing_user.set_unusable_password()
+                existing_user.save(update_fields=["password"])
+                OAuthCallbackView._sync_oauth_user(existing_user, mapped)
                 return existing_user
             except User.DoesNotExist:
                 pass
@@ -239,17 +271,45 @@ class OAuthCallbackView(APIView):
         user = User.objects.create_user(
             username=username,
             email=email,
-            password=None,  # no password — OAuth-only login
             display_name=mapped.get("display_name", username),
             avatar_url=mapped.get("avatar_url", ""),
         )
+        user.set_unusable_password()
+        user.save(update_fields=["password"])
         OAuthAccount.objects.create(
             user=user,
             provider=provider,
             provider_user_id=provider_user_id,
             access_token=access_token,
         )
+        OAuthCallbackView._sync_oauth_user(user, mapped)
         return user
+
+    @staticmethod
+    def _sync_oauth_user(user: User, mapped: dict) -> None:
+        """
+        Keep OAuth-managed fields aligned with provider data on login.
+
+        Email is treated as provider-owned and is only updated from the
+        OAuth profile when the new value does not collide with another user.
+        """
+        update_fields: list[str] = []
+
+        provider_email = mapped.get("email", "").strip().lower()
+        if (
+            provider_email
+            and user.email != provider_email
+            and not User.objects.filter(email__iexact=provider_email).exclude(pk=user.pk).exists()
+        ):
+            user.email = provider_email
+            update_fields.append("email")
+
+        if user.has_usable_password():
+            user.set_unusable_password()
+            update_fields.append("password")
+
+        if update_fields:
+            user.save(update_fields=update_fields)
 
 def _unique_username(base: str) -> str:
     """

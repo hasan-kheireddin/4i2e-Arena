@@ -3,12 +3,12 @@
 # =============================================================================
 # Endpoints:
 #
-#   POST  /api/accounts/2fa/setup/        → Generate TOTP secret + QR code
-#   POST  /api/accounts/2fa/confirm/      → Confirm setup with first code
-#   POST  /api/accounts/2fa/verify/       → Verify TOTP during login
-#   POST  /api/accounts/2fa/disable/      → Disable 2FA
-#   POST  /api/accounts/2fa/recovery/     → Use recovery code during login
-#   GET   /api/accounts/2fa/status/       → Check 2FA status
+#   POST  /api/accounts/2fa/setup/         → Generate TOTP secret + QR code
+#   POST  /api/accounts/2fa/verify/        → Confirm setup with first code
+#   POST  /api/accounts/2fa/login-verify/  → Verify TOTP during login
+#   POST  /api/accounts/2fa/confirm/       → Backward-compatible alias for setup verification
+#   POST  /api/accounts/2fa/disable/       → Disable 2FA
+#   GET   /api/accounts/2fa/status/        → Check 2FA status
 # =============================================================================
 
 import io
@@ -17,6 +17,8 @@ import base64
 import pyotp
 import qrcode
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,7 +30,6 @@ from .twofa_serializers import (
     TwoFactorConfirmSerializer,
     TwoFactorDisableSerializer,
     TwoFactorVerifySerializer,
-    RecoveryCodeSerializer,
 )
 from apps.analytics.tracking_service import (
     get_client_ip,
@@ -40,6 +41,8 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 TOTP_ISSUER = "ft_transcendence"
+TWOFA_ATTEMPT_LIMIT = 5
+TWOFA_ATTEMPT_WINDOW = 300  # seconds
 
 
 # ---------------------------------------------------------------------------
@@ -52,10 +55,45 @@ def _user_from_temp_token(token_str: str) -> User | None:
     """
     try:
         token = AccessToken(token_str)
+        if not token.get("twofa_pending", False):
+            return None
         user_id = token.get("user_id")
         return User.objects.get(id=user_id)
     except (TokenError, User.DoesNotExist, KeyError):
         return None
+
+
+def _issue_temp_token(
+    user: User,
+    *,
+    auth_method: str,
+    provider: str = "",
+) -> str:
+    """Issue a short-lived token that gates final login behind TOTP."""
+    temp_token = AccessToken.for_user(user)
+    temp_token.set_exp(lifetime=timezone.timedelta(minutes=5))
+    temp_token["twofa_pending"] = True
+    temp_token["auth_method"] = auth_method
+    if provider:
+        temp_token["oauth_provider"] = provider
+    return str(temp_token)
+
+
+def _attempt_cache_key(scope: str, user_id) -> str:
+    return f"2fa_attempts:{scope}:{user_id}"
+
+
+def _is_rate_limited(key: str) -> bool:
+    return int(cache.get(key, 0)) >= TWOFA_ATTEMPT_LIMIT
+
+
+def _record_failed_attempt(key: str) -> None:
+    current = int(cache.get(key, 0))
+    cache.set(key, current + 1, timeout=TWOFA_ATTEMPT_WINDOW)
+
+
+def _clear_failed_attempts(key: str) -> None:
+    cache.delete(key)
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +105,6 @@ class TwoFactorSetupView(APIView):
       - secret       : base32-encoded string (for manual entry)
       - otpauth_uri  : URI for QR code scanning
       - qr_code      : base64-encoded PNG image of the QR code
-      - recovery_codes : list of 8 single-use backup codes
 
     If the user already has a *confirmed* device, returns 400 — they
     must disable 2FA first before re-enrolling.
@@ -105,7 +142,6 @@ class TwoFactorSetupView(APIView):
         # Create the device (unconfirmed)
         device = TOTPDevice(user=user)
         device.set_secret(secret)
-        recovery_codes = device.generate_recovery_codes()
         device.save()
 
         return Response(
@@ -113,14 +149,13 @@ class TwoFactorSetupView(APIView):
                 "secret": secret,
                 "otpauth_uri": otpauth_uri,
                 "qr_code": f"data:image/png;base64,{qr_b64}",
-                "recovery_codes": recovery_codes,
             },
             status=status.HTTP_200_OK,
         )
 
 
 # ---------------------------------------------------------------------------
-# 2FA Confirm — POST /api/accounts/2fa/confirm/
+# 2FA Verify Setup — POST /api/accounts/2fa/verify/
 # ---------------------------------------------------------------------------
 class TwoFactorConfirmView(APIView):
     """
@@ -138,6 +173,7 @@ class TwoFactorConfirmView(APIView):
         code = serializer.validated_data["code"]
 
         user = request.user
+        rate_key = _attempt_cache_key("setup", user.pk)
         try:
             device = TOTPDevice.objects.get(user=user)
         except TOTPDevice.DoesNotExist:
@@ -152,16 +188,24 @@ class TwoFactorConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if _is_rate_limited(rate_key):
+            return Response(
+                {"detail": "Too many invalid 2FA attempts. Please wait a few minutes and try again."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         # Verify the TOTP code
         secret = device.get_secret()
         totp = pyotp.TOTP(secret)
         if not totp.verify(code, valid_window=1):
+            _record_failed_attempt(rate_key)
             return Response(
                 {"detail": "Invalid code. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Mark confirmed
+        _clear_failed_attempts(rate_key)
         device.confirmed = True
         device.save(update_fields=["confirmed"])
 
@@ -175,7 +219,7 @@ class TwoFactorConfirmView(APIView):
 
 
 # ---------------------------------------------------------------------------
-# 2FA Verify (login step 2) — POST /api/accounts/2fa/verify/
+# 2FA Verify (login step 2) — POST /api/accounts/2fa/login-verify/
 # ---------------------------------------------------------------------------
 class TwoFactorVerifyView(APIView):
     """
@@ -202,6 +246,13 @@ class TwoFactorVerifyView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+        rate_key = _attempt_cache_key("login", user.pk)
+        if _is_rate_limited(rate_key):
+            return Response(
+                {"detail": "Too many invalid 2FA attempts. Please wait a few minutes and try again."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         # Verify TOTP
         try:
             device = TOTPDevice.objects.get(user=user, confirmed=True)
@@ -214,12 +265,14 @@ class TwoFactorVerifyView(APIView):
         secret = device.get_secret()
         totp = pyotp.TOTP(secret)
         if not totp.verify(code, valid_window=1):
+            _record_failed_attempt(rate_key)
             return Response(
                 {"detail": "Invalid TOTP code."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Issue full JWT tokens
+        _clear_failed_attempts(rate_key)
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
         
@@ -253,6 +306,7 @@ class TwoFactorDisableView(APIView):
         code = serializer.validated_data["code"]
 
         user = request.user
+        rate_key = _attempt_cache_key("disable", user.pk)
         try:
             device = TOTPDevice.objects.get(user=user, confirmed=True)
         except TOTPDevice.DoesNotExist:
@@ -261,15 +315,23 @@ class TwoFactorDisableView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if _is_rate_limited(rate_key):
+            return Response(
+                {"detail": "Too many invalid 2FA attempts. Please wait a few minutes and try again."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         secret = device.get_secret()
         totp = pyotp.TOTP(secret)
         if not totp.verify(code, valid_window=1):
+            _record_failed_attempt(rate_key)
             return Response(
                 {"detail": "Invalid TOTP code."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Remove device and clear flag
+        _clear_failed_attempts(rate_key)
         device.delete()
         user.is_2fa_enabled = False
         user.save(update_fields=["is_2fa_enabled"])
@@ -278,60 +340,6 @@ class TwoFactorDisableView(APIView):
             {"detail": "Two-factor authentication disabled."},
             status=status.HTTP_200_OK,
         )
-
-
-# ---------------------------------------------------------------------------
-# Recovery Code (login step 2 fallback) — POST /api/accounts/2fa/recovery/
-# ---------------------------------------------------------------------------
-class RecoveryCodeView(APIView):
-    """
-    Alternative to TOTP verification when the user has lost access to
-    their authenticator app. Uses a single-use recovery code.
-    """
-
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        serializer = RecoveryCodeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        temp_token = serializer.validated_data["temp_token"]
-        code = serializer.validated_data["code"]
-
-        user = _user_from_temp_token(temp_token)
-        if user is None:
-            return Response(
-                {"detail": "Invalid or expired temporary token."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        try:
-            device = TOTPDevice.objects.get(user=user, confirmed=True)
-        except TOTPDevice.DoesNotExist:
-            return Response(
-                {"detail": "2FA is not set up for this account."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not device.verify_recovery_code(code):
-            return Response(
-                {"detail": "Invalid recovery code."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Issue full JWT tokens
-        tokens = get_tokens_for_user(user)
-        profile = UserProfileSerializer(user).data
-
-        return Response(
-            {
-                "user": profile,
-                "tokens": tokens,
-                "remaining_recovery_codes": device.remaining_recovery_codes,
-            },
-            status=status.HTTP_200_OK,
-        )
-
 
 # ---------------------------------------------------------------------------
 # 2FA Status — GET /api/accounts/2fa/status/
@@ -351,7 +359,6 @@ class TwoFactorStatusView(APIView):
                 {
                     "is_2fa_enabled": user.is_2fa_enabled,
                     "confirmed": device.confirmed,
-                    "remaining_recovery_codes": device.remaining_recovery_codes,
                     "created_at": device.created_at.isoformat(),
                 },
                 status=status.HTTP_200_OK,
@@ -361,7 +368,6 @@ class TwoFactorStatusView(APIView):
                 {
                     "is_2fa_enabled": False,
                     "confirmed": False,
-                    "remaining_recovery_codes": 0,
                     "created_at": None,
                 },
                 status=status.HTTP_200_OK,

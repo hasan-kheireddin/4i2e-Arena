@@ -7,6 +7,19 @@ html,
 body {
   background-color: var(--color-bg, #09090b);
   color: var(--color-text-primary, #fafafa);
+  font-family: "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 12.8px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  line-height: inherit;
 }
 
 #root {
@@ -17,15 +30,15 @@ body {
 @layer base {
   :root {
     /* ── Brand ── */
-    --color-primary: #38bdf8;        /* sky-400 */
-    --color-primary-hover: #0ea5e9;  /* sky-500 */
-    --color-primary-disabled: #7dd3fc; /* sky-300 */
-    --color-brand: #38bdf8;
-    --color-brand-light: #7dd3fc;    /* sky-300 */
+    --color-primary: #f97316;        /* orange-500 */
+    --color-primary-hover: #ea580c;  /* orange-600 */
+    --color-primary-disabled: #fb923c; /* orange-400 */
+    --color-brand: #f97316;
+    --color-brand-light: #fb923c;    /* orange-400 */
 
     /* ── RGB channels (required for Tailwind opacity modifiers: bg-brand/10) ── */
-    --color-primary-rgb: 56 189 248;
-    --color-accent-rgb:  14 165 233;
+    --color-primary-rgb: 249 115 22;
+    --color-accent-rgb:  239 68 68;
     --color-error-rgb:   248 113 113;
     --color-success-rgb: 74 222 128;
     --color-warning-rgb: 251 191 36;
@@ -41,12 +54,12 @@ body {
     --color-text-primary: #111827;   /* gray-900 */
     --color-text-secondary: #374151; /* gray-700 */
     --color-text-muted: #9ca3af;     /* gray-400 */
-    --color-text-link: #38bdf8;      /* sky-400 */
+    --color-text-link: #f97316;      /* orange-500 */
 
     /* ── Border ── */
     --color-border: #e5e7eb;         /* gray-200 */
     --color-border-error: #f87171;   /* red-400 */
-    --color-border-focus: #38bdf8;   /* sky-400 */
+    --color-border-focus: #f97316;   /* orange-500 */
 
     /* ── Status ── */
     --color-error: #f87171;          /* red-400 */
@@ -54,8 +67,8 @@ body {
     --color-warning: #f59e0b;        /* amber-500 */
 
     /* ── Gradients ── */
-    --gradient-gaming:        linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
-    --gradient-gaming-subtle: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(14, 165, 233, 0.15) 100%);
+    --gradient-gaming:        linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+    --gradient-gaming-subtle: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%);
 
     /* ── Shadow ── */
     --color-shadow: rgba(0, 0, 0, 0.08);
@@ -63,16 +76,16 @@ body {
 
   /* Dark mode — just flip the variables, nothing else changes */
   .dark {
-    /* Primary - Purple/Pink gaming gradient */
-    --color-primary: #a855f7;        /* Purple-500 */
-    --color-primary-hover: #c084fc;  /* Purple-400 */
-    --color-primary-disabled: #7c3aed; /* Purple-600 */
-    --color-brand: #a855f7;
-    --color-brand-light: #c084fc;    /* Purple-400 */
+    /* Primary - Fire gaming gradient */
+    --color-primary: #f97316;        /* Orange-500 */
+    --color-primary-hover: #fb923c;  /* Orange-400 */
+    --color-primary-disabled: #ea580c; /* Orange-600 */
+    --color-brand: #f97316;
+    --color-brand-light: #fb923c;    /* Orange-400 */
 
     /* RGB channels (required for Tailwind opacity modifiers: bg-brand/10) */
-    --color-primary-rgb: 168 85 247;
-    --color-accent-rgb:  236 72 153;
+    --color-primary-rgb: 249 115 22;
+    --color-accent-rgb:  239 68 68;
     --color-error-rgb:   244 63 94;
     --color-success-rgb: 34 197 94;
     --color-warning-rgb: 245 158 11;
@@ -89,30 +102,85 @@ body {
     --color-text-primary: #fafafa;   /* Almost white (zinc-50) */
     --color-text-secondary: #d4d4d8; /* Light gray (zinc-300) */
     --color-text-muted: #71717a;     /* Muted gray (zinc-500) */
-    --color-text-link: #a855f7;      /* Purple link */
+    --color-text-link: #f97316;      /* Orange link */
 
-    /* Borders - Subtle with purple accent */
+    /* Borders - Subtle with warm accent */
     --color-border: #27272a;         /* Dark border (zinc-800) */
     --color-border-error: #f43f5e;   /* Rose-500 */
-    --color-border-focus: #a855f7;   /* Purple glow */
+    --color-border-focus: #f97316;   /* Orange glow */
 
     /* Status colors - Gaming vibrant */
     --color-error: #f43f5e;          /* Rose-500 */
     --color-success: #22c55e;        /* Green-500 */
     --color-warning: #f59e0b;        /* Amber-500 */
 
-    /* Gaming accents - Purple/Pink theme */
-    --color-accent: #ec4899;         /* Pink-500 */
+    /* Gaming accents - Fire theme */
+    --color-accent: #ef4444;         /* Red-500 */
 
     /* Shadows & Glows */
     --color-shadow: rgba(0, 0, 0, 0.5);
-    --color-glow-primary: rgba(168, 85, 247, 0.4);
-    --color-glow-accent: rgba(236, 72, 153, 0.3);
+    --color-glow-primary: rgba(249, 115, 22, 0.4);
+    --color-glow-accent: rgba(239, 68, 68, 0.3);
 
     /* Gradients */
-    --gradient-gaming:        linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-    --gradient-gaming-subtle: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
-    --gradient-card:          linear-gradient(180deg, rgba(168, 85, 247, 0.05) 0%, transparent 100%);
+    --gradient-gaming:        linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+    --gradient-gaming-subtle: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%);
+    --gradient-card:          linear-gradient(180deg, rgba(249, 115, 22, 0.05) 0%, transparent 100%);
+  }
+}
+
+.logo-fire-bg {
+  background:
+    radial-gradient(circle at 20% 75%, rgba(254, 215, 170, 0.9) 0%, rgba(254, 215, 170, 0) 38%),
+    radial-gradient(circle at 72% 28%, rgba(251, 146, 60, 0.82) 0%, rgba(251, 146, 60, 0) 44%),
+    linear-gradient(150deg, #f97316 0%, #ef4444 62%, #b91c1c 100%);
+  animation: logoFirePulse 2.6s ease-in-out infinite;
+}
+
+.logo-fire-bg::before,
+.logo-fire-bg::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+}
+
+.logo-fire-bg::before {
+  width: 90%;
+  height: 90%;
+  top: 6%;
+  left: 8%;
+  background: radial-gradient(circle at 50% 65%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+}
+
+.logo-fire-bg::after {
+  width: 52%;
+  height: 52%;
+  top: -10%;
+  left: 32%;
+  background: radial-gradient(circle at 50% 80%, #fde68a 0%, #fb923c 45%, rgba(239, 68, 68, 0) 80%);
+  animation: logoSparkRise 1.8s ease-in-out infinite;
+}
+
+@keyframes logoFirePulse {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.18) brightness(1.08);
+  }
+}
+
+@keyframes logoSparkRise {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translateY(-1px) scale(1.06);
+    opacity: 1;
   }
 }
 

@@ -10,6 +10,7 @@ export interface User {
   xp: number;
   level: number;
   is_2fa_enabled: boolean;
+  is_oauth_user: boolean;
   is_online: boolean;
   last_activity: string | null;
   date_joined: string;
@@ -37,27 +38,61 @@ export interface TwoFARequired {
   user_id: string;
 }
 
+interface PendingTwoFAState {
+  temp_token: string;
+  user_id?: string;
+}
+
 export type LoginResponse = AuthResponse | TwoFARequired;
 
 export function isTwoFARequired(res: LoginResponse): res is TwoFARequired {
   return "requires_2fa" in res && res.requires_2fa === true;
 }
 
+export type OAuthCallbackResponse = AuthResponse | TwoFARequired;
+
 export interface TwoFASetupResponse {
   secret: string;
   otpauth_uri: string;
   qr_code: string;           // base64 data URI
-  recovery_codes: string[];
-}
-
-export interface RecoveryLoginResponse extends AuthResponse {
-  remaining_recovery_codes: number;
 }
 
 // Re-export for convenience
 export type { ApiError };
 
 const AUTH = "/api/accounts";
+const PENDING_TWOFA_STORAGE_KEY = "pending_2fa";
+
+export function storePendingTwoFA(tempToken: string, userId?: string): void {
+  sessionStorage.setItem(
+    PENDING_TWOFA_STORAGE_KEY,
+    JSON.stringify({
+      temp_token: tempToken,
+      user_id: userId,
+    } satisfies PendingTwoFAState),
+  );
+}
+
+export function getPendingTwoFA(): PendingTwoFAState | null {
+  const raw = sessionStorage.getItem(PENDING_TWOFA_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as PendingTwoFAState;
+    if (!parsed.temp_token || typeof parsed.temp_token !== "string") {
+      clearPendingTwoFA();
+      return null;
+    }
+    return parsed;
+  } catch {
+    clearPendingTwoFA();
+    return null;
+  }
+}
+
+export function clearPendingTwoFA(): void {
+  sessionStorage.removeItem(PENDING_TWOFA_STORAGE_KEY);
+}
 
 /** POST /api/accounts/register/ */
 export async function register(data: {
@@ -84,6 +119,7 @@ export async function verifyEmail(data: {
     body: data,
     auth: false,
   });
+  clearPendingTwoFA();
   setTokens(res.tokens.access, res.tokens.refresh);
   return res;
 }
@@ -129,7 +165,11 @@ export async function login(data: {
     body: data,
     auth: false,
   });
-  if (!isTwoFARequired(res)) {
+  if (isTwoFARequired(res)) {
+    clearTokens();
+    storePendingTwoFA(res.temp_token, res.user_id);
+  } else {
+    clearPendingTwoFA();
     setTokens(res.tokens.access, res.tokens.refresh);
   }
   return res;
@@ -146,6 +186,7 @@ export async function logout(): Promise<void> {
   } catch {
     // Even if the server call fails, clear local tokens
   }
+  clearPendingTwoFA();
   clearTokens();
 }
 
@@ -198,14 +239,20 @@ export async function oauthInitiate(
 export async function oauthCallback(
   provider: string,
   data: { code: string; state: string },
-): Promise<AuthResponse> {
-  const res = await apiFetch<AuthResponse>(`${AUTH}/oauth/${provider}/callback/`, {
+): Promise<OAuthCallbackResponse> {
+  const res = await apiFetch<OAuthCallbackResponse>(`${AUTH}/oauth/${provider}/callback/`, {
     method: "POST",
     body: data,
     auth: false,
     withCredentials: true,
   });
-  setTokens(res.tokens.access, res.tokens.refresh);
+  if (isTwoFARequired(res)) {
+    clearTokens();
+    storePendingTwoFA(res.temp_token, res.user_id);
+  } else {
+    clearPendingTwoFA();
+    setTokens(res.tokens.access, res.tokens.refresh);
+  }
   return res;
 }
 
@@ -214,24 +261,25 @@ export async function twoFASetup(): Promise<TwoFASetupResponse> {
   return apiFetch(`${AUTH}/2fa/setup/`, { method: "POST" });
 }
 
-/** POST /api/accounts/2fa/confirm/ — (authenticated) */
+/** POST /api/accounts/2fa/verify/ — (authenticated, setup confirmation) */
 export async function twoFAConfirm(code: string): Promise<{ detail: string }> {
-  return apiFetch(`${AUTH}/2fa/confirm/`, {
+  return apiFetch(`${AUTH}/2fa/verify/`, {
     method: "POST",
     body: { code },
   });
 }
 
-/** POST /api/accounts/2fa/verify/ — (public, temp_token) */
+/** POST /api/accounts/2fa/login-verify/ — (public, temp_token) */
 export async function twoFAVerify(data: {
   temp_token: string;
   code: string;
 }): Promise<AuthResponse> {
-  const res = await apiFetch<AuthResponse>(`${AUTH}/2fa/verify/`, {
+  const res = await apiFetch<AuthResponse>(`${AUTH}/2fa/login-verify/`, {
     method: "POST",
     body: data,
     auth: false,
   });
+  clearPendingTwoFA();
   setTokens(res.tokens.access, res.tokens.refresh);
   return res;
 }
@@ -244,25 +292,10 @@ export async function twoFADisable(code: string): Promise<{ detail: string }> {
   });
 }
 
-/** POST /api/accounts/2fa/recovery/ — (public, temp_token) */
-export async function twoFARecovery(data: {
-  temp_token: string;
-  code: string;
-}): Promise<RecoveryLoginResponse> {
-  const res = await apiFetch<RecoveryLoginResponse>(`${AUTH}/2fa/recovery/`, {
-    method: "POST",
-    body: data,
-    auth: false,
-  });
-  setTokens(res.tokens.access, res.tokens.refresh);
-  return res;
-}
-
 /** GET /api/accounts/2fa/status/ — (authenticated) */
 export async function twoFAStatus(): Promise<{
   is_2fa_enabled: boolean;
   confirmed: boolean;
-  remaining_recovery_codes: number;
   created_at: string | null;
 }> {
   return apiFetch(`${AUTH}/2fa/status/`);

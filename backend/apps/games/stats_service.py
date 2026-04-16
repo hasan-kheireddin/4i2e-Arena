@@ -45,9 +45,13 @@ def _h2h_key(user_id: UUID | int, opponent_id: UUID | int) -> str:
     return f"stats:h2h:{a}:{b}"
 
 
-def _leaderboard_key(game_type: Optional[str], metric: str) -> str:
+def _leaderboard_key(
+    game_type: Optional[str],
+    period: str,
+    limit: int,
+) -> str:
     gt = game_type or "all"
-    return f"stats:leaderboard:{gt}:{metric}"
+    return f"stats:leaderboard:{gt}:{period}:{limit}:wins"
 
 
 def invalidate_user_stats(user_id: UUID | int) -> None:
@@ -66,8 +70,9 @@ def invalidate_user_stats(user_id: UUID | int) -> None:
 
     # Also invalidate leaderboards
     for gt in [None, "pong", "tictactoe"]:
-        for metric in ["wins", "win_rate", "xp"]:
-            cache.delete(_leaderboard_key(gt, metric))
+        for period in ["all", "daily", "weekly", "monthly"]:
+            for limit in range(1, 101):
+                cache.delete(_leaderboard_key(gt, period, limit))
 
     logger.debug("Invalidated stats cache for user %s", user_id)
 
@@ -568,7 +573,7 @@ def _compute_head_to_head(
 
 def get_leaderboard(
     game_type: Optional[str] = None,
-    metric: str = "wins",
+    period: str = "all",
     limit: int = 50,
 ) -> list[dict[str, Any]]:
     """
@@ -578,34 +583,45 @@ def get_leaderboard(
     ----------
     game_type : str | None
         ``"pong"``, ``"tictactoe"``, or ``None`` for all.
-    metric : str
-        Ranking criterion: ``"wins"``, ``"win_rate"``, ``"xp"``.
+    period : str
+        Time window: ``"all"``, ``"daily"``, ``"weekly"``, ``"monthly"``.
     limit : int
         Maximum entries returned (default 50).
     """
-    cache_key = _leaderboard_key(game_type, metric)
+    cache_key = _leaderboard_key(game_type, period, limit)
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    result = _compute_leaderboard(game_type, metric, limit)
+    result = _compute_leaderboard(game_type, period, limit)
     cache.set(cache_key, result, LEADERBOARD_CACHE_TTL)
     return result
 
 
 def _compute_leaderboard(
     game_type: Optional[str],
-    metric: str,
+    period: str,
     limit: int,
 ) -> list[dict[str, Any]]:
     """Build a ranked player list from MatchPlayer aggregations."""
 
-    base_qs = MatchPlayer.objects.all()
+    # Include only online sessions (exclude locally recorded matches).
+    base_qs = MatchPlayer.objects.exclude(
+        match__game_session_id__startswith="local-",
+    )
     if game_type:
         base_qs = base_qs.filter(match__game_type=game_type)
 
     # Only consider PvP matches for fairness
-    base_qs = base_qs.filter(match__game_mode__in=["pvp"])
+    base_qs = base_qs.filter(match__game_mode=GameMode.PVP)
+
+    now = timezone.now()
+    if period == "daily":
+        base_qs = base_qs.filter(match__finished_at__gte=now - timedelta(days=1))
+    elif period == "weekly":
+        base_qs = base_qs.filter(match__finished_at__gte=now - timedelta(days=7))
+    elif period == "monthly":
+        base_qs = base_qs.filter(match__finished_at__gte=now - timedelta(days=30))
 
     player_stats = (
         base_qs.values("user_id", "user__username", "user__display_name")
@@ -617,7 +633,6 @@ def _compute_leaderboard(
             total_xp=Coalesce(Sum("xp_earned"), 0),
             avg_score=Coalesce(Avg("score"), 0.0, output_field=FloatField()),
         )
-        .filter(total__gte=5)  # minimum 5 games to qualify
     )
 
     # Add computed win_rate
@@ -629,14 +644,8 @@ def _compute_leaderboard(
         )
     )
 
-    # Ordering
-    order_map = {
-        "wins": "-wins",
-        "win_rate": "-win_rate",
-        "xp": "-total_xp",
-    }
-    order_field = order_map.get(metric, "-wins")
-    player_stats = player_stats.order_by(order_field, "-total")[:limit]
+    # Leaderboard is win-based only.
+    player_stats = player_stats.order_by("-wins", "-total_xp", "-total")[:limit]
 
     return [
         {
@@ -644,7 +653,7 @@ def _compute_leaderboard(
             "user_id": str(row["user_id"]),
             "username": row["user__username"],
             "display_name": row["user__display_name"],
-            "total_matches": row["total"],
+            "total_matches": row["wins"],
             "wins": row["wins"],
             "losses": row["losses"],
             "draws": row["draws"],

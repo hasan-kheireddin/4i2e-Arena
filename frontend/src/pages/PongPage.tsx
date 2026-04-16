@@ -110,6 +110,8 @@ export default function PongPage() {
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
+  const [localPlayerNames, setLocalPlayerNames] = useState({ p1: '', p2: '' });
+  const [localNamesReady, setLocalNamesReady] = useState(mode !== 'local');
 
   const initialBall = getBallSpeed(BASE_BALL_VX, BASE_BALL_VY);
   const gameState = useRef({
@@ -146,6 +148,7 @@ export default function PongPage() {
   const [onlineWinnerSlot, setOnlineWinnerSlot] = useState<number | null>(null);
   const [iReady, setIReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
+  const mySlotRef = useRef<number | null>(null);
 
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
@@ -156,6 +159,7 @@ export default function PongPage() {
   // ── local game loop ───────────────────────────────────────────────────────
   const animate = useCallback(() => {
     if (mode === 'online') return;
+    if (mode === 'local' && !localNamesReady) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -209,18 +213,18 @@ export default function PongPage() {
     if (!gameOver) {
       requestAnimationFrame(animate);
     }
-  }, [mode, gameOver, difficulty]);
+  }, [mode, gameOver, difficulty, localNamesReady]);
 
   useEffect(() => {
     // Don't start loop if game is over or in online mode
-    if (mode === 'online' || gameOver) return;
+    if (mode === 'online' || gameOver || (mode === 'local' && !localNamesReady)) return;
     // Set start time on first frame for local/AI modes
-    if (!gameStartTime && (mode === 'local' || mode === 'ai')) {
+    if (!gameStartTime && (mode === 'ai' || (mode === 'local' && localNamesReady))) {
       setGameStartTime(Date.now());
     }
     const id = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(id);
-  }, [mode, animate, gameOver, gameStartTime]);
+  }, [mode, animate, gameOver, gameStartTime, localNamesReady]);
 
   // ── Save match history when game ends (local/AI modes) ──
   useEffect(() => {
@@ -239,7 +243,16 @@ export default function PongPage() {
           player1_score: score.p1,
           player2_score: score.p2,
           ai_difficulty: mode === 'ai' ? difficulty : undefined,
-          metadata: { mode, final_score: score },
+          metadata: {
+            mode,
+            final_score: score,
+            local_players: mode === 'local'
+              ? {
+                  player1_name: localPlayerNames.p1.trim(),
+                  player2_name: localPlayerNames.p2.trim(),
+                }
+              : undefined,
+          },
         });
       } catch (error) {
         console.error('Failed to save Pong match:', error);
@@ -247,7 +260,7 @@ export default function PongPage() {
     };
     
     saveMatch();
-  }, [gameOver, mode, gameStartTime, score, difficulty]);
+  }, [gameOver, mode, gameStartTime, score, difficulty, localPlayerNames]);
 
   // ── online game state → canvas ────────────────────────────────────────────
   useEffect(() => {
@@ -327,6 +340,7 @@ export default function PongPage() {
       if (type === 'game_joined') {
         const slot = data.slot as number;
         setMySlot(slot);
+        mySlotRef.current = slot;
         const info = data.game_info as Record<string, unknown> | undefined;
         if (info) {
           const players = info.players as Record<string, { username: string }> | undefined;
@@ -361,9 +375,11 @@ export default function PongPage() {
         // Both players joined the lobby — ready to accept Ready clicks
       } else if (type === 'player_ready') {
         const slot = data.slot as number;
-        // If the slot that went ready is NOT mine, it's the opponent
-        setOpponentReady(true);
-        void slot; // suppress unused warning
+        if (slot === mySlotRef.current) {
+          setIReady(true);
+        } else {
+          setOpponentReady(true);
+        }
       } else if (type === 'player_left') {
         setOpponentLeft(true);
       }
@@ -381,6 +397,10 @@ export default function PongPage() {
     setScore({ p1: 0, p2: 0 });
     setGameOver(false);
     setGameStartTime(null); // Reset timer for new game
+    if (mode === 'local') {
+      setLocalPlayerNames({ p1: '', p2: '' });
+      setLocalNamesReady(false);
+    }
     const gs = gameState.current;
     gs.p1.y = 250; gs.p2.y = 250;
     const resetSpeed = getBallSpeed(BASE_BALL_VX, BASE_BALL_VY);
@@ -396,6 +416,7 @@ export default function PongPage() {
     setOnlineReason(null);
     setOnlineWinnerSlot(null);
     setMySlot(null);
+    mySlotRef.current = null;
     setOpponentName('Opponent');
     setGameId(null);
     setGamePath(null);
@@ -422,15 +443,23 @@ export default function PongPage() {
 
   const playerWon = score.p1 >= WIN_SCORE;
   const iWon = onlineWinnerSlot !== null && onlineWinnerSlot === mySlot;
-  const displayScore = mode === 'online' ? onlineScore : score;
   // For slot 2 players, swap so "my score" is always on the left
   const myDisplayScore  = mode === 'online' ? (mySlot === 2 ? onlineScore.p2 : onlineScore.p1) : score.p1;
   const oppDisplayScore = mode === 'online' ? (mySlot === 2 ? onlineScore.p1 : onlineScore.p2) : score.p2;
+  const p1DisplayLabel = mode === 'online'
+    ? t('pong.you')
+    : mode === 'local'
+      ? (localPlayerNames.p1.trim() || t('pong.player1'))
+      : t('pong.you');
   const p2Label = mode === 'online' ? opponentName : 'Opponent';
 
   // Mode label for HUD badge
   const modeLabel = mode === 'online' ? t('pong.mode_online') : mode === 'ai' ? t('pong.mode_ai', { difficulty }) : t('pong.mode_local');
-  const p2DisplayLabel = mode === 'online' ? p2Label : mode === 'ai' ? t('pong.ai_bot') : t('pong.player2');
+  const p2DisplayLabel = mode === 'online'
+    ? p2Label
+    : mode === 'ai'
+      ? t('pong.ai_bot')
+      : (localPlayerNames.p2.trim() || t('pong.player2'));
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -439,8 +468,8 @@ export default function PongPage() {
         {/* HUD */}
         <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center gap-3">
-            <Avatar name="P1" size="sm" />
-            <span className="text-sm font-medium hidden sm:block" style={{ color: '#3B82F6' }}>{mode === 'online' ? t('pong.you') : t('pong.player1')}</span>
+            <Avatar name={p1DisplayLabel} size="sm" />
+            <span className="text-sm font-medium hidden sm:block" style={{ color: '#3B82F6' }}>{p1DisplayLabel}</span>
             <span className="text-2xl font-bold font-mono" style={{ color: '#3B82F6' }}>{myDisplayScore}</span>
           </div>
           <div className="flex flex-col items-center gap-0.5">
@@ -461,12 +490,49 @@ export default function PongPage() {
         <div className="relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
           <canvas ref={canvasRef} width={800} height={387} className="w-full" style={{ backgroundColor: '#0a0e1a', aspectRatio: '800/387' }} />
 
+          {/* Local — name setup */}
+          {mode === 'local' && !localNamesReady && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
+              <h2 className="text-2xl font-bold text-center" style={{ color: 'var(--color-text-primary)' }}>
+                {t('pong.local_name_setup_title')}
+              </h2>
+              <div className="w-full max-w-sm space-y-3">
+                <input
+                  value={localPlayerNames.p1}
+                  onChange={(e) => setLocalPlayerNames((prev) => ({ ...prev, p1: e.target.value }))}
+                  placeholder={t('pong.local_player1_name')}
+                  className="w-full rounded-lg px-4 py-2 text-sm outline-none"
+                  style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                />
+                <input
+                  value={localPlayerNames.p2}
+                  onChange={(e) => setLocalPlayerNames((prev) => ({ ...prev, p2: e.target.value }))}
+                  placeholder={t('pong.local_player2_name')}
+                  className="w-full rounded-lg px-4 py-2 text-sm outline-none"
+                  style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (!localPlayerNames.p1.trim() || !localPlayerNames.p2.trim()) return;
+                  setLocalNamesReady(true);
+                  setGameStartTime(Date.now());
+                }}
+                disabled={!localPlayerNames.p1.trim() || !localPlayerNames.p2.trim()}
+                className="px-8 py-3 rounded-lg font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}
+              >
+                {t('pong.start_local_match')}
+              </button>
+            </div>
+          )}
+
           {/* Online — idle */}
           {mode === 'online' && onlinePhase === 'idle' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('pong.title')}</h2>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.subtitle')}</p>
-              <button onClick={handleFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+              <button onClick={handleFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white" style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
                 {t('pong.find_match')}
               </button>
             </div>
@@ -506,7 +572,7 @@ export default function PongPage() {
                 </button>
               ) : (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: '#a855f7', borderTopColor: 'transparent' }} />
+                  <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     {opponentReady ? t('pong.starting') : t('pong.waiting_opponent')}
                   </p>
@@ -530,7 +596,9 @@ export default function PongPage() {
           {mode === 'local' && gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
               <h2 className="text-5xl font-extrabold" style={{ color: playerWon ? '#3B82F6' : '#EF4444' }}>
-                {playerWon ? t('pong.player1_wins') : t('pong.player2_wins')}
+                {playerWon
+                  ? t('pong.local_player_wins', { name: localPlayerNames.p1.trim() || t('pong.player1') })
+                  : t('pong.local_player_wins', { name: localPlayerNames.p2.trim() || t('pong.player2') })}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
               <div className="flex gap-3 mt-2">
@@ -569,7 +637,7 @@ export default function PongPage() {
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_forfeited')}</p>
               )}
               <div className="flex gap-3 mt-2">
-                <button onClick={handleFindMatch} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>{t('pong.play_again')}</button>
+                <button onClick={handleFindMatch} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>{t('pong.play_again')}</button>
                 <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>{t('pong.back_to_games')}</button>
               </div>
             </div>
@@ -581,9 +649,9 @@ export default function PongPage() {
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {mode === 'local' ? (
               <>
-                <span><span className="font-bold" style={{ color: '#3B82F6' }}>P1</span> W / S</span>
+                <span><span className="font-bold" style={{ color: '#3B82F6' }}>{localPlayerNames.p1.trim() || 'P1'}</span> W / S</span>
                 <span className="opacity-30">|</span>
-                <span><span className="font-bold" style={{ color: '#EF4444' }}>P2</span> ↑ / ↓</span>
+                <span><span className="font-bold" style={{ color: '#EF4444' }}>{localPlayerNames.p2.trim() || 'P2'}</span> ↑ / ↓</span>
               </>
             ) : (
               <span>W / S &nbsp;or&nbsp; ↑ / ↓</span>

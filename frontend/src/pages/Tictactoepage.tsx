@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
@@ -44,8 +44,12 @@ export default function TicTacToePage() {
   const [scores, setScores] = useState({ X: 0, O: 0, draw: 0 });
   const [moves, setMoves] = useState<string[]>([]);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
+  const [localPlayerNames, setLocalPlayerNames] = useState({ p1: '', p2: '' });
+  const [localNamesReady, setLocalNamesReady] = useState(mode !== 'local');
 
   const { winner, line } = checkWinner(board);
+  const localP1Label = localPlayerNames.p1.trim() || t('ttt.player1');
+  const localP2Label = localPlayerNames.p2.trim() || t('ttt.player2');
 
   const positionNames = [
     'top-left','top-center','top-right',
@@ -64,6 +68,7 @@ export default function TicTacToePage() {
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [iReady, setIReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
+  const mySlotRef = useRef<number | null>(null);
   const [opponentLeftMsg, setOpponentLeftMsg] = useState<string | null>(null);
 
   const [mmPath, setMmPath] = useState<string | null>(null);
@@ -72,6 +77,7 @@ export default function TicTacToePage() {
   // ── Local game handlers ───────────────────────────────────────────────────
   const handleClick = async (i: number) => {
     if (mode === 'local') {
+      if (!localNamesReady) return;
       if (board[i] || winner) return;
       
       // Start timer on first move
@@ -100,7 +106,13 @@ export default function TicTacToePage() {
             duration_seconds: durationSeconds,
             player1_score: result.winner === 'X' ? 1 : 0,
             player2_score: result.winner === 'O' ? 1 : 0,
-            metadata: { board: next },
+            metadata: {
+              board: next,
+              local_players: {
+                player1_name: localPlayerNames.p1.trim(),
+                player2_name: localPlayerNames.p2.trim(),
+              },
+            },
           });
         } catch (error) {
           console.error('Failed to save match:', error);
@@ -118,6 +130,21 @@ export default function TicTacToePage() {
   const resetGame = () => {
     setBoard(Array(9).fill(null));
     setIsXTurn(true);
+    setMoves([]);
+    setGameStartTime(null);
+    if (mode === 'local') {
+      setScores({ X: 0, O: 0, draw: 0 });
+      setLocalPlayerNames({ p1: '', p2: '' });
+      setLocalNamesReady(false);
+    }
+  };
+
+  const startLocalGame = () => {
+    if (!localPlayerNames.p1.trim() || !localPlayerNames.p2.trim()) return;
+    setLocalNamesReady(true);
+    setBoard(Array(9).fill(null));
+    setIsXTurn(true);
+    setScores({ X: 0, O: 0, draw: 0 });
     setMoves([]);
     setGameStartTime(null);
   };
@@ -155,6 +182,7 @@ export default function TicTacToePage() {
       if (type === 'game_joined') {
         const slot = data.slot as number;
         setMySlot(slot);
+        mySlotRef.current = slot;
         // slot 1 = X, slot 2 = O
         setMySymbol(slot === 1 ? 'X' : 'O');
         
@@ -184,7 +212,12 @@ export default function TicTacToePage() {
       } else if (type === 'both_connected') {
         // both players in lobby — ready to accept Ready clicks
       } else if (type === 'player_ready') {
-        setOpponentReady(true);
+        const slot = data.slot as number;
+        if (slot === mySlotRef.current) {
+          setIReady(true);
+        } else {
+          setOpponentReady(true);
+        }
       } else if (type === 'opponent_left_lobby') {
         setOpponentLeftMsg((data.username as string) || 'Opponent');
         setGamePath(null);
@@ -207,6 +240,7 @@ export default function TicTacToePage() {
     setOnlineGameState(null);
     setOnlineWinner(null);
     setMySlot(null);
+    mySlotRef.current = null;
     setMySymbol(null);
     setOpponentName('Opponent');
     setGameId(null);
@@ -266,7 +300,7 @@ export default function TicTacToePage() {
           <button
             onClick={() => { setOpponentLeftMsg(null); navigate('/games/playpage'); }}
             className="px-6 py-2 rounded-lg font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
             {t('ttt.back_to_games')}
           </button>
         </div>
@@ -290,9 +324,9 @@ export default function TicTacToePage() {
         {mode === 'local' && (
           <div className="flex items-center justify-center gap-6">
             {[
-              { label: `${t('ttt.player1')} (X)`, val: scores.X, color: '#3B82F6' },
+              { label: `${localP1Label} (X)`, val: scores.X, color: '#3B82F6' },
               { label: t('ttt.draws'), val: scores.draw, color: '#f59e0b' },
-              { label: `${t('ttt.player2')} (O)`, val: scores.O, color: '#EF4444' },
+              { label: `${localP2Label} (O)`, val: scores.O, color: '#EF4444' },
             ].map(({ label, val, color }) => (
               <div key={label} className="text-center px-5 py-3 rounded-xl"
                 style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
@@ -307,10 +341,10 @@ export default function TicTacToePage() {
         <div className="flex items-center justify-between rounded-xl px-4 py-3"
           style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center gap-3">
-            <Avatar name={mode === 'online' ? 'You' : 'P1'} size="sm" />
+            <Avatar name={mode === 'online' ? 'You' : localP1Label} size="sm" />
             <div>
               <span className="text-sm font-semibold" style={{ color: '#3B82F6' }}>
-                {mode === 'online' ? t('ttt.you') : t('ttt.player1')}
+                {mode === 'online' ? t('ttt.you') : localP1Label}
               </span>
               <span className="ml-2 text-xs font-bold" style={{ color: '#3B82F6' }}>
                 ({mode === 'online' ? mySymbol ?? '?' : 'X'})
@@ -354,13 +388,13 @@ export default function TicTacToePage() {
             )}
             <div>
               <span className="text-sm font-semibold" style={{ color: '#EF4444' }}>
-                {mode === 'online' ? opponentName : t('ttt.player2')}
+                {mode === 'online' ? opponentName : localP2Label}
               </span>
               <span className="ml-2 text-xs font-bold" style={{ color: '#EF4444' }}>
                 ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
               </span>
             </div>
-            <Avatar name={mode === 'online' ? opponentName : 'P2'} size="sm" />
+            <Avatar name={mode === 'online' ? opponentName : localP2Label} size="sm" />
           </div>
         </div>
 
@@ -369,6 +403,40 @@ export default function TicTacToePage() {
 
           {/* Game Grid */}
           <div className="flex flex-col items-center gap-6 relative">
+            {mode === 'local' && !localNamesReady && (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10 rounded-xl px-6"
+                style={{ backgroundColor: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(8px)' }}
+              >
+                <p className="text-xl font-bold text-center" style={{ color: 'var(--color-text-primary)' }}>
+                  {t('ttt.local_name_setup_title')}
+                </p>
+                <div className="w-full max-w-sm space-y-3">
+                  <input
+                    value={localPlayerNames.p1}
+                    onChange={(e) => setLocalPlayerNames((prev) => ({ ...prev, p1: e.target.value }))}
+                    placeholder={t('ttt.local_player1_name')}
+                    className="w-full rounded-lg px-4 py-2 text-sm outline-none"
+                    style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                  />
+                  <input
+                    value={localPlayerNames.p2}
+                    onChange={(e) => setLocalPlayerNames((prev) => ({ ...prev, p2: e.target.value }))}
+                    placeholder={t('ttt.local_player2_name')}
+                    className="w-full rounded-lg px-4 py-2 text-sm outline-none"
+                    style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                  />
+                </div>
+                <button
+                  onClick={startLocalGame}
+                  disabled={!localPlayerNames.p1.trim() || !localPlayerNames.p2.trim()}
+                  className="px-8 py-3 rounded-lg font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
+                >
+                  {t('ttt.start_local_match')}
+                </button>
+              </div>
+            )}
             
             {/* Ready lobby overlay */}
             {mode === 'online' && onlinePhase === 'waiting' && (
@@ -453,7 +521,7 @@ export default function TicTacToePage() {
                     style={{
                       backgroundColor: 'var(--color-bg-card)',
                       border: isWinCell ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      boxShadow: isWinCell ? '0 0 20px rgba(168,85,247,0.4)' : 'none',
+                      boxShadow: isWinCell ? '0 0 20px rgba(249,115,22,0.35)' : 'none',
                       transform: isWinCell ? 'scale(1.05)' : 'scale(1)',
                     }}
                     onMouseEnter={(e) => {
@@ -485,12 +553,14 @@ export default function TicTacToePage() {
               <div className="text-center space-y-3">
                 <h2 className="text-2xl font-extrabold"
                   style={{ color: displayWinner === 'X' ? '#3B82F6' : displayWinner === 'O' ? '#EF4444' : '#fbbf24' }}>
-                  {displayWinner === 'draw' ? t('ttt.draw_result') : displayWinner === 'X' ? t('ttt.player1_wins') : t('ttt.player2_wins')}
+                  {displayWinner === 'draw'
+                    ? t('ttt.draw_result')
+                    : t('ttt.local_player_wins', { name: displayWinner === 'X' ? localP1Label : localP2Label })}
                 </h2>
                 <div className="flex gap-3 justify-center">
                   <button onClick={resetGame}
                     className="px-6 py-2 rounded-lg font-semibold text-white"
-                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+                    style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
                     {t('ttt.play_again')}
                   </button>
                   <button
@@ -517,7 +587,7 @@ export default function TicTacToePage() {
                 <div className="flex gap-3 justify-center">
                   <button onClick={handleFindMatch}
                     className="px-6 py-2 rounded-lg font-semibold text-white"
-                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+                    style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
                     {t('ttt.play_again')}
                   </button>
                   <button
@@ -541,10 +611,10 @@ export default function TicTacToePage() {
                 boxShadow: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? '0 0 20px rgba(59,130,246,0.25)' : 'none',
                 opacity: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? 1 : 0.65,
               }}>
-              <Avatar name={mode === 'online' ? 'You' : 'P1'} size="md" />
+              <Avatar name={mode === 'online' ? 'You' : localP1Label} size="md" />
               <div>
                 <p className="text-sm font-bold" style={{ color: '#3B82F6' }}>
-                  {mode === 'online' ? t('ttt.you') : t('ttt.player1')} ({mode === 'online' ? mySymbol ?? '?' : 'X'})
+                  {mode === 'online' ? t('ttt.you') : localP1Label} ({mode === 'online' ? mySymbol ?? '?' : 'X'})
                 </p>
                 {mode === 'local' && (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{t('ttt.wins_count', { count: scores.X })}</p>
@@ -559,10 +629,10 @@ export default function TicTacToePage() {
                 boxShadow: (mode === 'local' ? !isXTurn : (!isMyTurn && onlinePhase === 'playing')) && !displayWinner ? '0 0 20px rgba(239,68,68,0.25)' : 'none',
                 opacity: (mode === 'local' ? !isXTurn : (!isMyTurn && onlinePhase === 'playing')) && !displayWinner ? 1 : 0.65,
               }}>
-              <Avatar name={mode === 'online' ? opponentName : 'P2'} size="md" />
+              <Avatar name={mode === 'online' ? opponentName : localP2Label} size="md" />
               <div>
                 <p className="text-sm font-bold" style={{ color: '#EF4444' }}>
-                  {mode === 'online' ? opponentName : t('ttt.player2')} ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
+                  {mode === 'online' ? opponentName : localP2Label} ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
                 </p>
                 {mode === 'local' && (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{t('ttt.wins_count', { count: scores.O })}</p>
@@ -583,7 +653,7 @@ export default function TicTacToePage() {
                       {moves.map((move, i) => (
                         <div key={i} className="text-xs px-2 py-1.5 rounded-lg"
                           style={{
-                            backgroundColor: i === moves.length - 1 ? 'rgba(168,85,247,0.1)' : 'transparent',
+                            backgroundColor: i === moves.length - 1 ? 'rgba(249,115,22,0.12)' : 'transparent',
                             color: i === moves.length - 1 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                           }}>
                           <span style={{ color: 'var(--color-text-muted)' }}>#{i + 1}</span> {move}

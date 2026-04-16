@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/ui/Avatar";
+import { BrandLogo } from "@/components/BrandLogo";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
@@ -52,12 +53,12 @@ export function Navbar() {
 
         {/* ── Logo ── */}
         <Link to="/home" className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-gradient">
-            <span className="text-white font-bold text-sm">FT</span>
+          <div className="sm:hidden">
+            <BrandLogo compact showWordmark={false} />
           </div>
-          <span className="text-lg font-extrabold hidden sm:block bg-brand-gradient bg-clip-text text-transparent">
-            Arena
-          </span>
+          <div className="hidden sm:block">
+            <BrandLogo compact showWordmark />
+          </div>
         </Link>
 
         {/* ── Desktop Nav Links ── */}

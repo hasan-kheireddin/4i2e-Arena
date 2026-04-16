@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { BrandLogo } from "../components/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import {
   getMyMatches, getMyStats, getLeaderboard,
@@ -20,6 +21,23 @@ function timeAgo(iso: string, t: (key: string, opts?: object) => string): string
   return t("home.time_days_ago", { count: Math.floor(diffHours / 24) });
 }
 
+function pickDisplayName(
+  displayName: string | undefined,
+  username: string | undefined,
+  fallback: string,
+): string {
+  const cleanDisplay = displayName?.trim();
+  if (cleanDisplay && cleanDisplay.toLowerCase() !== "null" && cleanDisplay.toLowerCase() !== "undefined") {
+    return cleanDisplay;
+  }
+  const cleanUsername = username?.trim();
+  return cleanUsername || fallback;
+}
+
+function normalizeUsername(username: string | undefined): string {
+  return username?.trim().toLowerCase() || "";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { t } = useTranslation();
@@ -37,7 +55,7 @@ export default function HomePage() {
         const [statsData, matchesData, lbData] = await Promise.all([
           getMyStats(),
           getMyMatches({ page_size: 5 }),
-          getLeaderboard({ limit: 5 }),
+          getLeaderboard({ game_type: "pong", metric: "wins", limit: 5 }),
         ]);
         if (!cancelled) {
           setStats(statsData);
@@ -59,7 +77,9 @@ export default function HomePage() {
   const totalGames = stats?.overview.total_games ?? 0;
   const winRatePct = stats ? (stats.overview.win_rate * 100).toFixed(1) + "%" : "0.0%";
   const streak     = stats?.streaks.current.count ?? 0;
-  const myEntry    = leaderboard.find((e) => e.username === user?.username);
+  const myUsername = normalizeUsername(user?.username);
+  const myDisplayName = pickDisplayName(user?.display_name, user?.username, t("home.anonymous_player"));
+  const myEntry    = leaderboard.find((e) => normalizeUsername(e.username) === myUsername);
   const myRank     = myEntry ? `#${myEntry.rank}` : "#–";
 
   if (loading) {
@@ -76,54 +96,31 @@ export default function HomePage() {
   return (
     <div className="space-y-8 animate-fadeIn">
 
-      {/* ── Quick Access Game Shortcuts ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
-        <Link
-          to="/games/pong"
-          className="group flex flex-col items-center justify-center gap-2 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
-          style={{ background: "linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1))", border: "1px solid rgba(168,85,247,0.25)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#a855f7"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(168,85,247,0.25)"; }}
-        >
-          <Gamepad2 className="w-8 h-8" style={{ color: "#a855f7" }} />
-          <span className="text-sm font-bold" style={{ color: "var(--color-text-primary)" }}>{t("home.game_pong")}</span>
-          <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{t("home.play_now")}</span>
-        </Link>
-        <Link
-          to="/games/tictactoe"
-          className="group flex flex-col items-center justify-center gap-2 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
-          style={{ background: "linear-gradient(135deg,rgba(6,182,212,0.15),rgba(59,130,246,0.1))", border: "1px solid rgba(6,182,212,0.25)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#06b6d4"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(6,182,212,0.25)"; }}
-        >
-          <Gamepad2 className="w-8 h-8" style={{ color: "#06b6d4" }} />
-          <span className="text-sm font-bold" style={{ color: "var(--color-text-primary)" }}>{t("home.game_ttt")}</span>
-          <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{t("home.play_now")}</span>
-        </Link>
-      </div>
-
       {/* ── Welcome Banner ─────────────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden rounded-2xl p-7 md:p-10"
-        style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12) 0%, rgba(236,72,153,0.08) 60%, rgba(249,115,22,0.05) 100%)", border: "1px solid rgba(168,85,247,0.2)" }}
+        style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.14) 0%, rgba(239,68,68,0.1) 55%, rgba(245,158,11,0.08) 100%)", border: "1px solid rgba(249,115,22,0.25)" }}
       >
         {/* BG blobs */}
         <div className="absolute top-0 left-0 w-64 h-64 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ backgroundColor: "rgba(168,85,247,0.12)" }} />
+          style={{ backgroundColor: "rgba(249,115,22,0.2)" }} />
         <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"
-          style={{ backgroundColor: "rgba(236,72,153,0.08)" }} />
+          style={{ backgroundColor: "rgba(239,68,68,0.15)" }} />
 
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="min-w-0">
-            <p className="text-sm font-semibold mb-1" style={{ color: "#a855f7" }}>
-              {t("home.welcome_back")} 👋
-            </p>
+            <div className="mb-2 flex items-center gap-2">
+              <BrandLogo compact />
+              <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "#fb923c" }}>
+                FireArena Hub
+              </p>
+            </div>
             <h1 className="text-2xl md:text-4xl font-extrabold mb-2" style={{ color: "var(--color-text-primary)" }}>
               <span style={{
-                background: "linear-gradient(135deg,#a855f7,#ec4899)",
+                background: "linear-gradient(135deg,#f97316,#ef4444)",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
               }}>
-                {user?.display_name || user?.username || t("home.anonymous_player")}
+                {myDisplayName}
               </span>
             </h1>
 
@@ -140,7 +137,7 @@ export default function HomePage() {
               <div className="w-full max-w-xs h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
                 <div
                   className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${xpProgress}%`, background: "linear-gradient(90deg,#a855f7,#ec4899)" }}
+                  style={{ width: `${xpProgress}%`, background: "linear-gradient(90deg,#f97316,#ef4444)" }}
                 />
               </div>
             </div>
@@ -150,7 +147,7 @@ export default function HomePage() {
             <Link
               to="/games/playpage"
               className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
-              style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", boxShadow: "0 4px 20px rgba(168,85,247,0.35)" }}
+              style={{ background: "linear-gradient(135deg,#f97316,#ef4444)", boxShadow: "0 4px 20px rgba(249,115,22,0.35)" }}
             >
               <Gamepad2 className="w-4 h-4" />
               {t("home.quick_play")}
@@ -167,14 +164,14 @@ export default function HomePage() {
           label={t("home.stat.total_wins")}
           value={String(totalWins)}
           sub={t("home.stat.of_games", { total: totalGames })}
-          color="#a855f7"
+          color="#f97316"
         />
         <StatCard
           icon={<TrendingUp className="w-5 h-5" />}
           label={t("home.stat.win_rate")}
           value={winRatePct}
           sub={t("home.stat.win_percentage")}
-          color="#ec4899"
+          color="#ef4444"
         />
         <StatCard
           icon={<Flame className="w-5 h-5" />}
@@ -188,7 +185,7 @@ export default function HomePage() {
           label={t("home.stat.rank")}
           value={myRank}
           sub={t("home.stat.global_ranking")}
-          color="#06b6d4"
+          color="#fb923c"
         />
       </div>
 
@@ -205,15 +202,15 @@ export default function HomePage() {
                 title={t("home.game_pong")}
                 desc={t("home.game_pong_desc")}
                 players={24}
-                to="/games/pong"
-                c1="#a855f7" c2="#ec4899"
+                to="/games/playpage"
+                c1="#f97316" c2="#ef4444"
               />
               <GameCard
                 title={t("home.game_ttt")}
                 desc={t("home.game_ttt_desc")}
                 players={18}
-                to="/games/tictactoe"
-                c1="#06b6d4" c2="#3b82f6"
+                to="/games/playpage"
+                c1="#f59e0b" c2="#f97316"
               />
             </div>
           </Section>
@@ -231,8 +228,8 @@ export default function HomePage() {
             ) : (
               <div className="space-y-2">
                 {recentMatches.map((match) => {
-                  const me = match.players.find((p) => p.username === user?.username);
-                  const opp = match.players.find((p) => p.username !== user?.username);
+                  const me = match.players.find((p) => normalizeUsername(p.username) === myUsername);
+                  const opp = match.players.find((p) => normalizeUsername(p.username) !== myUsername);
                   const result: "win" | "loss" | "draw" = me?.outcome ?? "loss";
                   const score = `${match.player1_score}-${match.player2_score}`;
                   const xpEarned = me?.xp_earned ?? 0;
@@ -312,15 +309,15 @@ export default function HomePage() {
                     player.rank === 2 ? "#94a3b8" :
                     player.rank === 3 ? "#fb923c" :
                     "var(--color-text-muted)";
-                  const isMe = player.username === user?.username;
+                  const isMe = normalizeUsername(player.username) === myUsername;
 
                   return (
                     <div
                       key={player.rank}
                       className="flex items-center gap-3 px-2 py-2 rounded-lg transition-colors"
                       style={{
-                        backgroundColor: isMe ? "rgba(168,85,247,0.08)" : "transparent",
-                        border: isMe ? "1px solid rgba(168,85,247,0.2)" : "1px solid transparent",
+                        backgroundColor: isMe ? "rgba(249,115,22,0.08)" : "transparent",
+                        border: isMe ? "1px solid rgba(249,115,22,0.2)" : "1px solid transparent",
                       }}
                     >
                       <span className="text-xs font-bold w-6 text-center shrink-0" style={{ color: rankColor }}>
@@ -332,10 +329,10 @@ export default function HomePage() {
                       >
                         {player.username.charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-sm truncate flex-1 font-medium" style={{ color: "var(--color-text-primary)" }}>
-                        {player.username}
-                        {isMe && <span className="ml-1 text-xs" style={{ color: "#a855f7" }}>{t("home.you")}</span>}
-                      </span>
+                        <span className="text-sm truncate flex-1 font-medium" style={{ color: "var(--color-text-primary)" }}>
+                          {player.username}
+                        {isMe && <span className="ml-1 text-xs" style={{ color: "#f97316" }}>{t("home.you")}</span>}
+                        </span>
                       <span className="text-xs font-mono shrink-0" style={{ color: "var(--color-primary)" }}>
                         {player.total_xp.toLocaleString()} XP
                       </span>
@@ -350,8 +347,8 @@ export default function HomePage() {
           <Section title={t("home.xp_breakdown")} icon={<Zap className="w-4 h-4" />}>
             <div className="space-y-3">
               {[
-                { label: t("home.xp_this_week"), value: stats?.overview.total_xp ?? 0, max: 1000, color: "#a855f7" },
-                { label: t("home.xp_win_bonus"), value: totalWins * 50, max: Math.max(totalWins * 50, 500), color: "#ec4899" },
+                { label: t("home.xp_this_week"), value: stats?.overview.total_xp ?? 0, max: 1000, color: "#f97316" },
+                { label: t("home.xp_win_bonus"), value: totalWins * 50, max: Math.max(totalWins * 50, 500), color: "#ef4444" },
                 { label: t("home.xp_streak_bonus"), value: streak * 25, max: Math.max(streak * 25, 250), color: "#f97316" },
               ].map(({ label, value, max, color }) => (
                 <div key={label}>

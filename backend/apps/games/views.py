@@ -398,11 +398,12 @@ class LeaderboardView(APIView):
 
     Query parameters:
       - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
-      - ``metric``    — ``"wins"`` (default), ``"win_rate"``, ``"xp"``
+      - ``metric``    — only ``"wins"`` is supported
+      - ``period``    — ``"daily"``, ``"weekly"``, ``"monthly"``, ``"all"``
       - ``limit``     — max entries (1–100, default 50)
 
-    Only PvP matches are considered.
-    Players must have at least 5 qualifying matches to appear.
+    Only online Pong PvP matches are considered.
+    All players with qualifying matches are included.
     Results are cached for 10 minutes.
     """
 
@@ -412,13 +413,27 @@ class LeaderboardView(APIView):
         query = LeaderboardQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
 
-        game_type = query.validated_data.get("game_type")
+        requested_game_type = query.validated_data.get("game_type")
+        if requested_game_type and requested_game_type != "pong":
+            return Response(
+                {"detail": "Only online Pong leaderboard is supported."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         metric = query.validated_data.get("metric", "wins")
+        if metric != "wins":
+            return Response(
+                {"detail": "Only win-based leaderboard is supported."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        game_type = "pong"
+        period = query.validated_data.get("period", "all")
         limit = query.validated_data.get("limit", 50)
 
         data = get_leaderboard(
             game_type=game_type,
-            metric=metric,
+            period=period,
             limit=limit,
         )
         return Response(data, status=status.HTTP_200_OK)

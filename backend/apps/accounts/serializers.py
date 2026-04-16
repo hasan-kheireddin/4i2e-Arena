@@ -17,6 +17,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     Used in auth responses and profile endpoints.
     """
 
+    is_oauth_user = serializers.ReadOnlyField()
+
     class Meta:
         model = User
         fields = [
@@ -29,6 +31,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "xp",
             "level",
             "is_2fa_enabled",
+            "is_oauth_user",
             "is_online",
             "last_activity",
             "date_joined",
@@ -101,6 +104,7 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         username_or_email = attrs["username"]
         password = attrs["password"]
+        user_obj = None
 
         # Allow login by email
         if "@" in username_or_email:
@@ -111,6 +115,16 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     {"detail": "Invalid credentials."}
                 )
+        else:
+            try:
+                user_obj = User.objects.get(username=username_or_email)
+            except User.DoesNotExist:
+                user_obj = None
+
+        if user_obj is not None and user_obj.is_oauth_user:
+            raise serializers.ValidationError(
+                {"detail": "This account uses 42 OAuth sign-in. Use the 42 login button."}
+            )
 
         user = authenticate(username=username_or_email, password=password)
 

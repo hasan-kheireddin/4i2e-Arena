@@ -22,9 +22,14 @@ class LeaderboardQuerySerializer(serializers.Serializer):
         allow_null=True,
     )
     metric = serializers.ChoiceField(
-        choices=["wins", "win_rate", "xp"],
+        choices=["wins"],
         required=False,
         default="wins",
+    )
+    period = serializers.ChoiceField(
+        choices=["all", "daily", "weekly", "monthly"],
+        required=False,
+        default="all",
     )
     limit = serializers.IntegerField(
         required=False,
@@ -90,6 +95,7 @@ class MatchListSerializer(serializers.ModelSerializer):
             "finished_at",
             "duration_seconds",
             "ai_difficulty",
+            "metadata",
             "players",
         ]
 

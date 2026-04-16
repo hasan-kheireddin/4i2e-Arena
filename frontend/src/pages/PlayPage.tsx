@@ -89,7 +89,7 @@ export default function PlayPage() {
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
                     style={{
-                      background: active || done ? 'linear-gradient(135deg,#a855f7,#ec4899)' : 'var(--color-bg-card)',
+                      background: active || done ? 'linear-gradient(135deg,#f97316,#ef4444)' : 'var(--color-bg-card)',
                       color: active || done ? '#fff' : 'var(--color-text-muted)',
                       border: active || done ? 'none' : '1px solid var(--color-border)',
                     }}
@@ -126,12 +126,12 @@ export default function PlayPage() {
                 onClick={() => selectGame('pong')}
                 className="group relative overflow-hidden p-8 rounded-2xl text-left transition-all duration-300 hover:-translate-y-2 outline-none"
                 style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#a855f7'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(168,85,247,0.2)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(249,115,22,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div className="absolute top-4 right-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none">🏓</div>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-3xl"
-                  style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)' }}>
+                  style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)' }}>
                   🏓
                 </div>
                 <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>Pong</h2>
@@ -141,12 +141,12 @@ export default function PlayPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {[t('play.pong_tag_online'), t('play.pong_tag_ai'), t('play.pong_tag_local')].map((tag) => (
                     <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{ backgroundColor: 'rgba(168,85,247,0.12)', color: '#c084fc' }}>
+                      style={{ backgroundColor: 'rgba(249,115,22,0.12)', color: '#fdba74' }}>
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="mt-4 flex items-center gap-1 text-sm font-semibold" style={{ color: '#a855f7' }}>
+                <div className="mt-4 flex items-center gap-1 text-sm font-semibold" style={{ color: '#f97316' }}>
                   {t('play.select')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
@@ -156,12 +156,12 @@ export default function PlayPage() {
                 onClick={() => selectGame('tictactoe')}
                 className="group relative overflow-hidden p-8 rounded-2xl text-left transition-all duration-300 hover:-translate-y-2 outline-none"
                 style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#06b6d4'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(6,182,212,0.2)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(245,158,11,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div className="absolute top-4 right-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none">⭕</div>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-3xl"
-                  style={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)' }}>
+                  style={{ background: 'linear-gradient(135deg,#f59e0b,#f97316)' }}>
                   ⭕
                 </div>
                 <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>Tic-Tac-Toe</h2>
@@ -171,12 +171,12 @@ export default function PlayPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {[t('play.pong_tag_local')].map((tag) => (
                     <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{ backgroundColor: 'rgba(6,182,212,0.12)', color: '#22d3ee' }}>
+                      style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: '#fcd34d' }}>
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="mt-4 flex items-center gap-1 text-sm font-semibold" style={{ color: '#06b6d4' }}>
+                <div className="mt-4 flex items-center gap-1 text-sm font-semibold" style={{ color: '#f59e0b' }}>
                   {t('play.select')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
@@ -206,7 +206,7 @@ export default function PlayPage() {
                   style={{
                     backgroundColor: 'var(--color-bg-card)',
                     border: mode === m.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    boxShadow: mode === m.id ? '0 0 24px rgba(168,85,247,0.2)' : 'none',
+                    boxShadow: mode === m.id ? '0 0 24px rgba(249,115,22,0.2)' : 'none',
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
                   onMouseLeave={(e) => { if (mode !== m.id) e.currentTarget.style.borderColor = 'var(--color-border)'; }}
@@ -244,7 +244,7 @@ export default function PlayPage() {
                   onClick={launch}
                   disabled={!canLaunch}
                   className="group px-10 py-3 rounded-xl font-bold text-white flex items-center gap-2 transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}>
+                  style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)', boxShadow: '0 4px 20px rgba(249,115,22,0.35)' }}>
                   <Gamepad2 className="w-5 h-5" />
                   {t('play.play_now')}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -316,7 +316,7 @@ export default function PlayPage() {
               <button
                 onClick={launch}
                 className="group px-10 py-3 rounded-xl font-bold text-white flex items-center gap-2 transition-all duration-200 hover:scale-105"
-                style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)', boxShadow: '0 4px 20px rgba(168,85,247,0.35)' }}>
+                style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)', boxShadow: '0 4px 20px rgba(249,115,22,0.35)' }}>
                 <Gamepad2 className="w-5 h-5" />
                 {t('play.start_game')}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

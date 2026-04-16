@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Toast from "../components/Toast";
-import { twoFASetup, twoFAConfirm } from "../services/auth";
+import { useAuth } from "../context/AuthContext";
+import { getProfile, twoFASetup, twoFAConfirm } from "../services/auth";
 import type { ApiError } from "../services/api";
 
 export default function Setup2FAPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { setUser } = useAuth();
 
   const [step, setStep] = useState<"qr" | "verify">("qr");
   const [code, setCode] = useState("");
@@ -19,7 +21,6 @@ export default function Setup2FAPage() {
   // Data from backend
   const [qrCodeData, setQrCodeData] = useState("");
   const [secretKey, setSecretKey] = useState("");
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
   // Fetch 2FA setup data from backend on mount
   useEffect(() => {
@@ -31,7 +32,6 @@ export default function Setup2FAPage() {
         if (cancelled) return;
         setQrCodeData(data.qr_code);
         setSecretKey(data.secret);
-        setBackupCodes(data.recovery_codes);
       } catch (err: unknown) {
         if (cancelled) return;
         const apiErr = err as ApiError;
@@ -62,7 +62,13 @@ export default function Setup2FAPage() {
 
     try {
       await twoFAConfirm(code);
-      navigate("/home");
+      try {
+        const profile = await getProfile();
+        setUser(profile);
+      } catch {
+        // If the profile refresh fails, the setup itself still succeeded.
+      }
+      navigate("/settings");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? "Invalid code. Please try again.");
@@ -144,48 +150,6 @@ export default function Setup2FAPage() {
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Backup Codes */}
-            <div
-              className="p-6 rounded-lg mb-6"
-              style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
-            >
-              <h2
-                className="text-lg font-bold mb-3"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {t("2fa.backup_codes_title", "Backup Codes")}
-              </h2>
-              <p className="text-sm mb-4" style={{ color: "var(--color-text-muted)" }}>
-                {t("2fa.backup_codes_subtitle", "Save these codes in a safe place. You can use them to access your account if you lose your device.")}
-              </p>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {backupCodes.map((code, index) => (
-                  <code
-                    key={index}
-                    className="px-3 py-2 rounded text-xs font-mono text-center"
-                    style={{
-                      backgroundColor: "var(--color-bg-input)",
-                      color: "var(--color-text-primary)",
-                      border: "1px solid var(--color-border)",
-                    }}
-                  >
-                    {code}
-                  </code>
-                ))}
-              </div>
-              <button
-                onClick={() => copyToClipboard(backupCodes.join("\n"))}
-                className="w-full px-4 py-2 rounded text-sm font-medium transition-colors"
-                style={{
-                  backgroundColor: "var(--color-bg-input)",
-                  color: "var(--color-text-link)",
-                  border: "1px solid var(--color-border)",
-                }}
-              >
-                {t("2fa.copy_all", "Copy all codes")}
-              </button>
             </div>
 
             {/* Continue */}

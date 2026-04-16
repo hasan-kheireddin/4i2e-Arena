@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from datetime import datetime, timezone as tz
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
 from apps.games.models import (
@@ -24,7 +24,10 @@ logger = logging.getLogger("games.match_recording")
 
 User = get_user_model()
 
-async def record_match(session: GameSession) -> Optional[str]:
+async def record_match(
+    session: GameSession,
+    xp_awards: Mapping[Any, int] | None = None,
+) -> Optional[str]:
     """
     Persist a finished game session to the database.
 
@@ -46,11 +49,14 @@ async def record_match(session: GameSession) -> Optional[str]:
     if not session.players:
         return None
 
-    match_id = await _create_match_record(session)
+    match_id = await _create_match_record(session, xp_awards=xp_awards)
     return match_id
 
 @sync_to_async
-def _create_match_record(session: GameSession) -> Optional[str]:
+def _create_match_record(
+    session: GameSession,
+    xp_awards: Mapping[Any, int] | None = None,
+) -> Optional[str]:
     """
     Synchronous database operations wrapped with sync_to_async.
     """
@@ -77,13 +83,15 @@ def _create_match_record(session: GameSession) -> Optional[str]:
     # Scores
     p1_score, p2_score = _extract_scores(session)
 
+    winner_user_id = _resolve_winner_user_id(session)
+
     # Winner user object (for FK)
     winner_user = None
-    if session.winner_id is not None:
+    if winner_user_id is not None:
         try:
-            winner_user = User.objects.get(pk=session.winner_id)
+            winner_user = User.objects.get(pk=winner_user_id)
         except User.DoesNotExist:
-            logger.warning("Winner user %s not found", session.winner_id)
+            logger.warning("Winner user %s not found", winner_user_id)
 
     # Metadata from engine
     metadata = _extract_metadata(session)
@@ -106,7 +114,11 @@ def _create_match_record(session: GameSession) -> Optional[str]:
 
     # --- Create MatchPlayer rows ---
     for slot, player_slot in session.players.items():
-        outcome = _determine_outcome(session, player_slot.user_id)
+        outcome = _determine_outcome(
+            session,
+            player_slot.user_id,
+            winner_user_id=winner_user_id,
+        )
         score = _get_player_score(session, slot)
 
         MatchPlayer.objects.create(
@@ -115,7 +127,7 @@ def _create_match_record(session: GameSession) -> Optional[str]:
             slot=slot,
             outcome=outcome,
             score=score,
-            xp_earned=0,  # XP is tracked via the xp_service, not here
+            xp_earned=int(xp_awards.get(player_slot.user_id, 0)) if xp_awards else 0,
         )
 
     logger.info(
@@ -126,7 +138,7 @@ def _create_match_record(session: GameSession) -> Optional[str]:
         game_type,
         game_mode,
         duration,
-        session.winner_id,
+        winner_user_id,
     )
 
     # Invalidate cached stats for all human participants
@@ -136,7 +148,11 @@ def _create_match_record(session: GameSession) -> Optional[str]:
     # Track activity analytics only for online Pong matches.
     if game_type == DBGameType.PONG and game_mode == GameMode.PVP:
         for slot, player_slot in session.players.items():
-            outcome = _determine_outcome(session, player_slot.user_id)
+            outcome = _determine_outcome(
+                session,
+                player_slot.user_id,
+                winner_user_id=winner_user_id,
+            )
             score = _get_player_score(session, slot)
             track_match_completed(
                 player_slot.user_id,
@@ -181,13 +197,43 @@ def _determine_game_mode(session: GameSession) -> str:
     return GameMode.PVP
 
 
-def _determine_outcome(session: GameSession, user_id: int) -> str:
+def _determine_outcome(
+    session: GameSession,
+    user_id: int,
+    winner_user_id: int | None = None,
+) -> str:
     """Determine a player's outcome in the match."""
     if session.finish_reason == FinishReason.DRAW:
         return MatchOutcome.DRAW
-    if session.winner_id is not None and session.winner_id == user_id:
+
+    resolved_winner_user_id = (
+        winner_user_id
+        if winner_user_id is not None
+        else _resolve_winner_user_id(session)
+    )
+    if resolved_winner_user_id is not None and resolved_winner_user_id == user_id:
         return MatchOutcome.WIN
     return MatchOutcome.LOSS
+
+
+def _resolve_winner_user_id(session: GameSession) -> int | None:
+    """
+    Resolve winner user_id from session state.
+
+    Primary source is ``session.winner_id``. For Pong score finishes, fall back
+    to mapping engine winner slot (1/2) to the matching human player.
+    """
+    if session.winner_id is not None:
+        return session.winner_id
+
+    if session.game_type == GameType.PONG:
+        winner_slot = getattr(session.engine, "winner", None)
+        if winner_slot in (1, 2):
+            winner_player = session.players.get(winner_slot)
+            if winner_player is not None:
+                return winner_player.user_id
+
+    return None
 
 def _extract_scores(session: GameSession) -> tuple[int, int]:
     """

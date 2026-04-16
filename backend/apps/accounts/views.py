@@ -8,7 +8,8 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.contrib.auth import get_user_model
-from .models import EmailVerificationToken
+from .models import EmailVerificationToken, TOTPDevice
+from .twofa_views import _issue_temp_token
 
 logger = logging.getLogger(__name__)
 from .email_service import send_otp_email, send_password_reset_email
@@ -82,7 +83,7 @@ class LoginView(APIView):
 
     If the user has 2FA enabled, returns `requires_2fa: true` with a
     temporary token instead — the client must call the 2FA verification
-    endpoint to complete login. (2FA flow is implemented in Task 2.3.)
+    endpoint to complete login.
     """
 
     permission_classes = [permissions.AllowAny]
@@ -96,19 +97,28 @@ class LoginView(APIView):
         user.last_activity = timezone.now()
         user.save(update_fields=["last_activity"])
 
-        # If 2FA is enabled, signal the client to complete verification
+        # If 2FA is enabled, require the authenticator-app verification step.
         if user.is_2fa_enabled:
-            # Generate a short-lived token for the 2FA step
-            refresh = RefreshToken.for_user(user)
-            refresh.set_exp(lifetime=timezone.timedelta(minutes=5))
-            return Response(
-                {
-                    "requires_2fa": True,
-                    "temp_token": str(refresh.access_token),
-                    "user_id": str(user.id),
-                },
-                status=status.HTTP_200_OK,
-            )
+            has_confirmed_device = TOTPDevice.objects.filter(
+                user=user,
+                confirmed=True,
+            ).exists()
+            if not has_confirmed_device:
+                logger.warning(
+                    "User %s has is_2fa_enabled=True but no confirmed TOTP device",
+                    user.pk,
+                )
+                user.is_2fa_enabled = False
+                user.save(update_fields=["is_2fa_enabled"])
+            else:
+                return Response(
+                    {
+                        "requires_2fa": True,
+                        "temp_token": _issue_temp_token(user, auth_method="password"),
+                        "user_id": str(user.id),
+                    },
+                    status=status.HTTP_200_OK,
+                )
 
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
@@ -234,6 +244,12 @@ class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        if request.user.is_oauth_user:
+            return Response(
+                {"detail": "Password changes are disabled for 42 OAuth accounts."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = ChangePasswordSerializer(
             data=request.data,
             context={"request": request},
@@ -348,6 +364,11 @@ class PasswordResetRequestView(APIView):
 
         try:
             user = User.objects.get(email__iexact=email, is_active=True)
+            if user.is_oauth_user:
+                return Response(
+                    {"detail": "If that email exists, a reset link has been sent."},
+                    status=status.HTTP_200_OK,
+                )
             token = EmailVerificationToken.create_reset_token(user)
             send_password_reset_email(user, token.code)
         except User.DoesNotExist:
@@ -391,6 +412,14 @@ class PasswordResetConfirmView(APIView):
         if token.is_expired:
             return Response(
                 {"detail": "This reset link has expired. Please request a new one."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if token.user.is_oauth_user:
+            token.used = True
+            token.save(update_fields=["used"])
+            return Response(
+                {"detail": "Password reset is disabled for 42 OAuth accounts."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
-import { cn } from '../lib/utils';
 import { exportActivityData, importActivityData, type ExportFormat, type ImportResult } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
-import { updateProfile } from '../services/auth';
+import { twoFADisable, twoFAStatus, updateProfile } from '../services/auth';
+import type { ApiError } from '../services/api';
 
 type SettingsTab = 'profile' | 'security' | 'appearance' | 'privacy';
 
@@ -31,6 +32,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const [tab, setTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
@@ -39,6 +41,7 @@ export default function SettingsPage() {
   // Profile state — read-only fields from server
   const username = user?.username ?? '';
   const email = user?.email ?? '';
+  const isOAuthUser = user?.is_oauth_user ?? false;
 
   // Editable profile fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
@@ -80,6 +83,23 @@ export default function SettingsPage() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 2FA management state
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [twoFAError, setTwoFAError] = useState<string | null>(null);
+  const [twoFAInfo, setTwoFAInfo] = useState<{
+    is_2fa_enabled: boolean;
+    confirmed: boolean;
+    created_at: string | null;
+  }>({
+    is_2fa_enabled: false,
+    confirmed: false,
+    created_at: null,
+  });
+  const [showDisable2FA, setShowDisable2FA] = useState(false);
+  const [disableCode, setDisableCode] = useState('');
+  const [disableLoading, setDisableLoading] = useState(false);
+  const [disableSuccess, setDisableSuccess] = useState<string | null>(null);
 
   const handleExport = async () => {
     setExporting(true);
@@ -131,12 +151,88 @@ export default function SettingsPage() {
     }
   };
 
+  const refreshTwoFAState = useCallback(async () => {
+    if (!user) return;
+    setTwoFALoading(true);
+    setTwoFAError(null);
+
+    try {
+      const status = await twoFAStatus();
+      setTwoFAInfo(status);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setTwoFAError(apiErr.detail ?? 'Failed to load two-factor authentication status.');
+    } finally {
+      setTwoFALoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (tab === 'security') {
+      void refreshTwoFAState();
+    }
+  }, [tab, refreshTwoFAState]);
+
+  const handleManage2FA = () => {
+    setDisableSuccess(null);
+    setTwoFAError(null);
+
+    if (twoFAInfo.is_2fa_enabled) {
+      setShowDisable2FA((prev) => !prev);
+      return;
+    }
+
+    navigate('/setup-2fa');
+  };
+
+  const handleDisable2FA = async () => {
+    if (disableCode.length !== 6) {
+      setTwoFAError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+
+    setDisableLoading(true);
+    setTwoFAError(null);
+    setDisableSuccess(null);
+
+    try {
+      await twoFADisable(disableCode);
+      setTwoFAInfo({
+        is_2fa_enabled: false,
+        confirmed: false,
+        created_at: null,
+      });
+      setShowDisable2FA(false);
+      setDisableCode('');
+      setDisableSuccess('Two-factor authentication has been disabled.');
+      if (user) {
+        setUser({ ...user, is_2fa_enabled: false });
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setTwoFAError(apiErr.detail ?? 'Failed to disable two-factor authentication.');
+    } finally {
+      setDisableLoading(false);
+    }
+  };
+
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: t('settings.tabs.profile') },
     { key: 'security', label: t('settings.tabs.security') },
     { key: 'appearance', label: t('settings.tabs.appearance') },
     { key: 'privacy', label: t('settings.tabs.privacy') },
   ];
+
+  const twoFAEnabled = twoFAInfo.is_2fa_enabled && twoFAInfo.confirmed;
+  const twoFAStatusText = twoFALoading
+    ? 'Checking status...'
+    : twoFAEnabled
+      ? t('settings.security.enabled')
+      : 'Disabled';
+  const twoFAManageLabel = twoFAEnabled ? 'Disable' : 'Enable';
+  const twoFAEnabledAt = twoFAInfo.created_at
+    ? new Date(twoFAInfo.created_at).toLocaleString()
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -271,17 +367,32 @@ export default function SettingsPage() {
                 <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
                   {t('settings.security.change_password')}
                 </h2>
-                <div className="space-y-4">
-                  <InputField label={t('settings.security.current_password')} type="password" placeholder="••••••••" />
-                  <InputField label={t('settings.security.new_password')} type="password" placeholder="••••••••" />
-                  <InputField label={t('settings.security.confirm_password')} type="password" placeholder="••••••••" />
-                </div>
-                <button
-                  className="mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
-                  style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
-                >
-                  {t('settings.security.update_password')}
-                </button>
+                {isOAuthUser ? (
+                  <div
+                    className="rounded-lg p-4 text-sm"
+                    style={{
+                      backgroundColor: 'var(--color-bg-input)',
+                      border: '1px solid var(--color-border)',
+                      color: 'var(--color-text-secondary)',
+                    }}
+                  >
+                    This account uses 42 OAuth. Password login and password changes are disabled.
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      <InputField label={t('settings.security.current_password')} type="password" placeholder="••••••••" />
+                      <InputField label={t('settings.security.new_password')} type="password" placeholder="••••••••" />
+                      <InputField label={t('settings.security.confirm_password')} type="password" placeholder="••••••••" />
+                    </div>
+                    <button
+                      className="mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                      style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+                    >
+                      {t('settings.security.update_password')}
+                    </button>
+                  </>
+                )}
               </Card>
 
               <Card>
@@ -291,6 +402,16 @@ export default function SettingsPage() {
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                   {t('settings.security.two_factor_desc')}
                 </p>
+                {twoFAError && (
+                  <p className="text-sm mb-4" style={{ color: 'var(--color-error)' }}>
+                    {twoFAError}
+                  </p>
+                )}
+                {disableSuccess && (
+                  <p className="text-sm mb-4" style={{ color: 'var(--color-success)' }}>
+                    {disableSuccess}
+                  </p>
+                )}
                 <div 
                   className="flex items-center justify-between p-3 rounded-lg"
                   style={{
@@ -302,19 +423,83 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
                       {t('settings.security.authenticator_app')}
                     </p>
-                    <p className="text-xs" style={{ color: 'var(--color-success)' }}>{t('settings.security.enabled')}</p>
+                    <p className="text-xs" style={{ color: twoFAEnabled ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                      {twoFAStatusText}
+                    </p>
+                    {twoFAEnabledAt && (
+                      <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                        Enabled on {twoFAEnabledAt}
+                      </p>
+                    )}
                   </div>
                   <button 
+                    onClick={handleManage2FA}
+                    disabled={twoFALoading || disableLoading}
                     className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
                     style={{
                       backgroundColor: 'var(--color-bg-input)',
                       color: 'var(--color-text-primary)',
                       border: '1px solid var(--color-border)',
+                      opacity: twoFALoading || disableLoading ? 0.6 : 1,
                     }}
                   >
-                    {t('settings.security.manage')}
+                    {twoFAManageLabel}
                   </button>
                 </div>
+                {!twoFAEnabled && !twoFALoading && (
+                  <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>
+                    You will be redirected to the setup flow to scan a QR code and confirm your first TOTP code.
+                  </p>
+                )}
+                {twoFAEnabled && showDisable2FA && (
+                  <div
+                    className="mt-4 p-4 rounded-lg space-y-4"
+                    style={{
+                      backgroundColor: 'var(--color-bg-input)',
+                      border: '1px solid var(--color-border)',
+                    }}
+                  >
+                    <InputField
+                      label="Authenticator Code"
+                      value={disableCode}
+                      onChange={(val) => {
+                        setDisableCode(val.replace(/\D/g, '').slice(0, 6));
+                        setTwoFAError(null);
+                        setDisableSuccess(null);
+                      }}
+                      placeholder="000000"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleDisable2FA}
+                        disabled={disableLoading}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                        style={{
+                          backgroundColor: disableLoading ? 'var(--color-error)' : 'var(--color-error)',
+                          opacity: disableLoading ? 0.7 : 1,
+                        }}
+                      >
+                        {disableLoading ? 'Disabling...' : 'Confirm Disable'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDisable2FA(false);
+                          setDisableCode('');
+                          setTwoFAError(null);
+                        }}
+                        disabled={disableLoading}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                        style={{
+                          backgroundColor: 'var(--color-bg-card)',
+                          color: 'var(--color-text-primary)',
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </Card>
 
               <Card>

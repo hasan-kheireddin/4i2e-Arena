@@ -57,6 +57,11 @@ class User(AbstractUser):
             return False
         return timezone.now() - self.last_activity <= timezone.timedelta(minutes=2)
 
+    @property
+    def is_oauth_user(self) -> bool:
+        """True when the account is linked to at least one OAuth provider."""
+        return self.oauth_accounts.exists()
+
 class OAuthAccount(models.Model):
     """
     Links a third-party OAuth provider (42) to a local User.

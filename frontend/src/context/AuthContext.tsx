@@ -18,7 +18,7 @@ export type { User };
 interface AuthContextType {
   user: User | null;
   /** Set the user after a successful login / register / 2FA verify */
-  setUser: (user: User) => void;
+  setUser: (user: User | null) => void;
   /** Log out — blacklists refresh token + clears local state */
   logout: () => Promise<void>;
   /** True while we check for an existing session on mount */
