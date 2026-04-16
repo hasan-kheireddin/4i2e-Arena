@@ -28,14 +28,14 @@ export function Avatar({ src, name, size = 'md', online, className }: AvatarProp
           src={src}
           alt={name}
           className={cn(
-            'rounded-full object-cover border-2 border-white/[0.08]',
+            'rounded-full border-2 border-border object-cover',
             s.container
           )}
         />
       ) : (
         <div
           className={cn(
-            'rounded-full bg-brand-gradient-subtle flex items-center justify-center border-2 border-white/[0.08] font-semibold text-primary',
+            'flex items-center justify-center rounded-full border-2 border-border bg-brand-gradient font-semibold text-white shadow-card',
             s.container,
             s.text
           )}
@@ -46,7 +46,7 @@ export function Avatar({ src, name, size = 'md', online, className }: AvatarProp
       {online !== undefined && (
         <span
           className={cn(
-            'absolute bottom-0 right-0 rounded-full border-elevated',
+            'absolute bottom-0 right-0 rounded-full border-2 border-surface',
             s.dot,
             online ? 'bg-success' : 'bg-muted'
           )}

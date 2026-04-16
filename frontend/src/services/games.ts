@@ -113,11 +113,16 @@ export interface LeaderboardEntry {
 }
 
 export type LeaderboardPeriod = 'all' | 'daily' | 'weekly' | 'monthly';
+export type MatchOrdering = 'date' | '-date' | 'score' | '-score' | 'duration' | '-duration';
 
 export interface MatchFilters {
   game_type?: 'pong' | 'tictactoe';
   game_mode?: 'pvp' | 'pve' | 'pva';
   outcome?: 'win' | 'loss' | 'draw';
+  search?: string;
+  result?: 'win' | 'loss' | 'draw';
+  mode?: 'pvp' | 'pva' | 'local';
+  ordering?: MatchOrdering;
   page?: number;
   page_size?: number;
 }

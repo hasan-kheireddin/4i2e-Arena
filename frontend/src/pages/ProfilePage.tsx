@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { getMyStats, getMyMatches, type UserStats, type Match } from "../services/games";
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
 
-function timeAgo(iso: string, t: (key: string, opts?: object) => string): string {
+function timeAgo(iso: string, t: TFunction): string {
   const ms = Date.now() - new Date(iso).getTime();
   const h = Math.floor(ms / 3_600_000);
   if (h < 1) return t("home.time_just_now");

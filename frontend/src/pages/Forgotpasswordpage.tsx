@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { requestPasswordReset } from "../services/auth";
 import type { ApiError } from "../services/api";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import forgetPass from "../images/loginimg.png";
 import forgetPassDark from "../images/loginimgDark.png";
 
@@ -116,7 +119,7 @@ interface FormContentProps {
   setError: (error: string) => void;
   loading: boolean;
   handleSubmit: (e: React.FormEvent) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }
 
 function FormContent({ email, setEmail, error, setError, loading, handleSubmit, t }: FormContentProps) {
@@ -137,61 +140,26 @@ function FormContent({ email, setEmail, error, setError, loading, handleSubmit, 
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {t("forgot.email", "Email")}
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError("");
-            }}
-            placeholder="m@example.com"
-            className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
-            style={{
-              border: `1px solid ${error ? "var(--color-border-error)" : "var(--color-border)"}`,
-              backgroundColor: "var(--color-bg-input)",
-              color: "var(--color-text-primary)",
-            }}
-            onFocus={(e) =>
-              (e.currentTarget.style.boxShadow =
-                "0 0 0 2px var(--color-border-focus)")
-            }
-            onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-          />
-          {error && (
-            <p className="text-sm mt-2" style={{ color: "var(--color-error)" }}>
-              {error}
-            </p>
-          )}
-        </div>
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError("");
+          }}
+          label={t("forgot.email", "Email")}
+          placeholder="m@example.com"
+          error={error}
+          autoComplete="email"
+        />
 
-        <button
+        <Button
           type="submit"
-          disabled={loading}
-          className="w-full font-medium py-3.5 rounded-lg transition-colors duration-200"
-          style={{
-            backgroundColor: loading
-              ? "var(--color-primary-disabled)"
-              : "var(--color-primary)",
-            color: "#ffffff",
-          }}
-          onMouseEnter={(e) => {
-            if (!loading)
-              e.currentTarget.style.backgroundColor = "var(--color-primary-hover)";
-          }}
-          onMouseLeave={(e) => {
-            if (!loading)
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
-          }}
+          loading={loading}
+          className="w-full"
         >
-          {loading ? "Sending..." : t("forgot.submit", "Reset password")}
-        </button>
+          {t("forgot.submit", "Reset password")}
+        </Button>
       </form>
 
       {/* Back to login */}
@@ -223,7 +191,7 @@ function FormContent({ email, setEmail, error, setError, loading, handleSubmit, 
 interface SuccessContentProps {
   email: string;
   setSubmitted: (submitted: boolean) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }
 
 function SuccessContent({ email, setSubmitted, t }: SuccessContentProps) {
@@ -262,17 +230,7 @@ function SuccessContent({ email, setSubmitted, t }: SuccessContentProps) {
       {/* Back to login */}
       <Link
         to="/login"
-        className="inline-block font-medium py-3.5 px-8 rounded-lg transition-colors duration-200"
-        style={{
-          backgroundColor: "var(--color-primary)",
-          color: "#ffffff",
-        }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = "var(--color-primary-hover)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.backgroundColor = "var(--color-primary)")
-        }
+        className="inline-flex h-12 items-center justify-center rounded-xl bg-brand-gradient px-8 font-semibold text-white shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:shadow-glow-primary"
       >
         {t("forgot.back_to_login", "Back to login")}
       </Link>

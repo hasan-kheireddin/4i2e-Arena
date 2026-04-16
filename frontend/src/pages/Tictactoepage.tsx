@@ -60,7 +60,6 @@ export default function TicTacToePage() {
   // ── Online mode state ─────────────────────────────────────────────────────
   const [onlinePhase, setOnlinePhase] = useState<OnlinePhase>('idle');
   const [gameId, setGameId] = useState<string | null>(null);
-  const [mySlot, setMySlot] = useState<number | null>(null);
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(null);
   const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
   const [opponentName, setOpponentName] = useState('Opponent');
@@ -181,7 +180,6 @@ export default function TicTacToePage() {
 
       if (type === 'game_joined') {
         const slot = data.slot as number;
-        setMySlot(slot);
         mySlotRef.current = slot;
         // slot 1 = X, slot 2 = O
         setMySymbol(slot === 1 ? 'X' : 'O');
@@ -239,7 +237,6 @@ export default function TicTacToePage() {
     setOnlinePhase('searching');
     setOnlineGameState(null);
     setOnlineWinner(null);
-    setMySlot(null);
     mySlotRef.current = null;
     setMySymbol(null);
     setOpponentName('Opponent');
@@ -280,8 +277,6 @@ export default function TicTacToePage() {
   const isMyTurn = mode === 'online' 
     ? (onlineGameState?.current_turn === mySymbol && onlinePhase === 'playing')
     : false;
-
-  const currentTurnSymbol = mode === 'online' ? onlineGameState?.current_turn : (isXTurn ? 'X' : 'O');
 
   const modeLabel = mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local');
 

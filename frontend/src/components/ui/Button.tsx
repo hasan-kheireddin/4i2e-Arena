@@ -14,15 +14,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-gradient-subtle text-primary hover:shadow-glow-purple hover:-translate-y-0.5 active:scale-[0.98]',
+    'bg-brand-gradient text-white shadow-card hover:shadow-glow-primary hover:-translate-y-0.5 active:scale-[0.98]',
   secondary:
-    'bg-transparent text-brand border border-brand hover:bg-brand/10 hover:-translate-y-0.5 active:scale-[0.98]',
+    'bg-surface text-primary border border-border hover:border-brand/40 hover:bg-brand/10 hover:-translate-y-0.5 active:scale-[0.98]',
   ghost:
     'bg-transparent text-secondary hover:text-primary hover:bg-surface-hover active:scale-[0.98]',
   danger:
-    'bg-error text-primary hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98]',
+    'bg-danger text-white hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98]',
   success:
-    'bg-success text-primary hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98]',
+    'bg-success text-white hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98]',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -45,7 +45,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150',
+        'inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-150',
         'focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-base outline-none',
         'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0 disabled:hover:scale-100',
         variantClasses[variant],

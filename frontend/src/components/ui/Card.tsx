@@ -12,11 +12,11 @@ export function Card({ children, variant = 'default', className, onClick }: Card
     <div
       onClick={onClick}
       className={cn(
-        'bg-surface border border-white/[0.06] rounded-xl p-5 card-highlight transition-all duration-250',
-        variant === 'interactive' && 'cursor-pointer hover:border-white/[0.12] hover:shadow-lg hover:-translate-y-0.5',
-        variant === 'featured' && 'border-gradient',
+        'surface-card p-5 transition-all duration-200',
+        variant === 'interactive' && 'cursor-pointer hover:border-brand/30 hover:shadow-glow-primary hover:-translate-y-0.5',
+        variant === 'featured' && 'border-brand/30 bg-brand-gradient-subtle shadow-glow-primary',
         variant === 'stat' && 'p-4 text-center',
-        onClick && 'cursor-pointer hover:border-white/[0.12] hover:shadow-lg hover:-translate-y-0.5',
+        onClick && 'cursor-pointer hover:border-brand/30 hover:shadow-glow-primary hover:-translate-y-0.5',
         className
       )}
     >
@@ -36,7 +36,7 @@ interface StatCardProps {
 export function StatCard({ icon, label, value, trend, iconColor = 'text-brand-light' }: StatCardProps) {
   return (
     <Card variant="stat" className="flex flex-col items-center gap-2">
-      <div className={cn('p-2 rounded-lg bg-brand/10', iconColor)}>{icon}</div>
+      <div className={cn('rounded-xl bg-brand/12 p-2.5', iconColor)}>{icon}</div>
       <p className="text-xs text-secondary uppercase tracking-wider">{label}</p>
       <p className="text-2xl font-bold font-mono text-primary">{value}</p>
       {trend && (

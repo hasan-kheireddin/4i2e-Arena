@@ -47,8 +47,8 @@ export function Tooltip({ content, children, placement = 'top', className }: Too
           role="tooltip"
           className={cn(
             'absolute z-50 pointer-events-none whitespace-nowrap',
-            'bg-elevated border border-white/[0.08] text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-lg',
-            'animate-in fade-in-0 zoom-in-95 duration-150',
+            'rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs font-medium text-primary shadow-card',
+            'animate-scale-in duration-150',
             tooltip,
             className
           )}

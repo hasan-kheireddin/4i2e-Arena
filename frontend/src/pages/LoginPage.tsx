@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import loginImg from "../images/loginimg.png";
 import loginImgDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import { clearPendingTwoFA, login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
 import { clearTokens } from "../services/api";
 import type { ApiError } from "../services/api";
@@ -191,7 +194,7 @@ interface FormProps {
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
   handle42Login: () => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }
 
 function FormContent({
@@ -233,37 +236,21 @@ function FormContent({
       </div>
        {/* Server error banner */}
       {serverError && (
-        <div
-          className="mb-4 p-3 rounded-lg text-sm text-center"
-          style={{
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            color: "var(--color-error)",
-            border: "1px solid var(--color-border-error)",
-          }}
-        >
+        <div className="mb-4 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
           {serverError}
         </div>
       )}
 
       {/* 42 OAuth button */}
-      <button
+      <Button
+        type="button"
         onClick={handle42Login}
-        className="w-full flex items-center justify-center gap-3 rounded-lg py-3 px-4 font-medium transition-colors duration-200 mb-6"
-        style={{
-          border: "1px solid var(--color-border)",
-          color: "var(--color-text-secondary)",
-          backgroundColor: "var(--color-bg-input)",
-        }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = "var(--color-bg-hover)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.backgroundColor = "var(--color-bg-input)")
-        }
+        variant="secondary"
+        className="mb-6 w-full"
+        icon={<span className="text-lg font-bold leading-none">42</span>}
       >
-        <span className="text-lg font-bold">42</span>
         {t("login.42", "Login with 42")}
-      </button>
+      </Button>
 
       {/* Divider */}
       <div className="flex items-center gap-3 mb-6">
@@ -276,38 +263,16 @@ function FormContent({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Username or Email */}
-        <div>
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {t("login.username", "Username or Email")}
-          </label>
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="username or m@example.com"
-            className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
-            style={{
-              border: `1px solid ${errors.username ? "var(--color-border-error)" : "var(--color-border)"}`,
-              backgroundColor: "var(--color-bg-input)",
-              color: "var(--color-text-primary)",
-            }}
-            onFocus={(e) =>
-              (e.currentTarget.style.boxShadow =
-                "0 0 0 2px var(--color-border-focus)")
-            }
-            onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-          />
-          {errors.username && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.username}
-            </p>
-          )}
-        </div>
+        <Input
+          type="text"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          label={t("login.username", "Username or Email")}
+          placeholder="username or m@example.com"
+          error={errors.username}
+          autoComplete="username"
+        />
 
         {/* Password */}
         <div>
@@ -326,62 +291,34 @@ function FormContent({
               {t("login.forgot", "Forgot password?")}
             </Link>
           </div>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full rounded-lg px-4 py-3 pr-11 text-sm transition-colors focus:outline-none"
-              style={{
-                border: `1px solid ${errors.password ? "var(--color-border-error)" : "var(--color-border)"}`,
-                backgroundColor: "var(--color-bg-input)",
-                color: "var(--color-text-primary)",
-              }}
-              onFocus={(e) =>
-                (e.currentTarget.style.boxShadow =
-                  "0 0 0 2px var(--color-border-focus)")
-              }
-              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {showPassword ? <EyeIcon /> : <EyeOffIcon />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.password}
-            </p>
-          )}
+          <Input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            autoComplete="current-password"
+            trailing={
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            }
+          />
         </div>
 
         {/* Submit */}
-        <button
+        <Button
           type="submit"
-          disabled={loading}
-          className="w-full font-medium py-3.5 rounded-lg transition-colors duration-200 mt-2"
-          style={{
-            backgroundColor: loading
-              ? "var(--color-primary-disabled)"
-              : "var(--color-primary)",
-            color: "#ffffff",
-          }}
-          onMouseEnter={(e) => {
-            if (!loading)
-              e.currentTarget.style.backgroundColor = "var(--color-primary-hover)";
-          }}
-          onMouseLeave={(e) => {
-            if (!loading)
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
-          }}
+          loading={loading}
+          className="mt-2 w-full"
         >
-          {loading ? t("loading.logging_in", "Logging in...") : t("login.submit", "Log in")}
-        </button>
+          {t("login.submit", "Log in")}
+        </Button>
       </form>
 
       {/* Register link */}

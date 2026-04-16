@@ -39,7 +39,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       <div
         ref={panelRef}
         className={cn(
-          'relative z-10 w-full max-w-md bg-elevated border border-white/[0.08] rounded-2xl shadow-modal animate-scale-in',
+          'relative z-10 w-full max-w-md rounded-2xl border border-border bg-elevated shadow-modal animate-scale-in',
           className
         )}
         role="dialog"
@@ -51,7 +51,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             <h2 className="text-lg font-semibold text-primary font-display">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="rounded-lg p-1.5 text-muted transition-colors outline-none hover:bg-surface-hover hover:text-primary focus-visible:ring-2 focus-visible:ring-brand"
               aria-label="Close"
             >
               <X className="w-5 h-5" />

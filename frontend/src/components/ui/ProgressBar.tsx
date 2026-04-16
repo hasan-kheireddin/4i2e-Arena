@@ -30,19 +30,19 @@ export function ProgressBar({
     brand: 'bg-brand-gradient-subtle',
     success: 'bg-success',
     warning: 'bg-warning',
-    error: 'bg-error',
+    error: 'bg-danger',
   };
   const colorMap: Record<string, string> = {
     purple: 'bg-brand',
-    pink: 'bg-accent-pink',
-    cyan: 'bg-accent-cyan',
-    orange: 'bg-accent-orange',
+    pink: 'bg-secondary',
+    cyan: 'bg-info',
+    orange: 'bg-brand',
   };
   const barColor = color ? colorMap[color] : fillColors[variant];
 
   return (
     <div className={cn('w-full', className)}>
-      <div className={cn('w-full bg-surface rounded-full overflow-hidden', heightMap[size])}>
+      <div className={cn('w-full overflow-hidden rounded-full bg-elevated', heightMap[size])}>
         <div
           className={cn(
             'h-full rounded-full transition-all',

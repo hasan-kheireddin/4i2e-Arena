@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import registerImg from "../images/registerimg.png";
 import registerImgDark from "../images/registerimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import { register as apiRegister } from "../services/auth";
 import type { ApiError } from "../services/api";
 import type { RegisterResponse } from "../services/auth";
@@ -240,7 +243,7 @@ interface FormProps {
   setShowConfirmPassword: React.Dispatch<React.SetStateAction<boolean>>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }
 
 function FormContent({
@@ -280,90 +283,40 @@ function FormContent({
       </div>
       {/* Server error banner */}
       {serverError && (
-        <div
-          className="mb-4 p-3 rounded-lg text-sm text-center"
-          style={{
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            color: "var(--color-error)",
-            border: "1px solid var(--color-border-error)",
-          }}
-        >
+        <div className="mb-4 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
           {serverError}
         </div>
       )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Username */}
-        <div>
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {t("register.username", "Username")}
-          </label>
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="myusername"
-            className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
-            style={{
-              border: `1px solid ${errors.username ? "var(--color-border-error)" : "var(--color-border)"}`,
-              backgroundColor: "var(--color-bg-input)",
-              color: "var(--color-text-primary)",
-            }}
-            onFocus={(e) =>
-              (e.currentTarget.style.boxShadow =
-                "0 0 0 2px var(--color-border-focus)")
-            }
-            onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-          />
-          {errors.username && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.username}
-            </p>
-          )}
-          {!errors.username && formData.username && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-              {t("register.username_hint", "8-30 characters, letters and numbers only")}
-            </p>
-          )}
-        </div>
+        <Input
+          type="text"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          label={t("register.username", "Username")}
+          placeholder="myusername"
+          error={errors.username}
+          hint={
+            formData.username && !errors.username
+              ? t("register.username_hint", "8-30 characters, letters and numbers only")
+              : undefined
+          }
+          autoComplete="username"
+        />
 
         {/* Email */}
-        <div>
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {t("register.email", "Email")}
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="m@example.com"
-            className="w-full rounded-lg px-4 py-3 text-sm transition-colors focus:outline-none"
-            style={{
-              border: `1px solid ${errors.email ? "var(--color-border-error)" : "var(--color-border)"}`,
-              backgroundColor: "var(--color-bg-input)",
-              color: "var(--color-text-primary)",
-            }}
-            onFocus={(e) =>
-              (e.currentTarget.style.boxShadow =
-                "0 0 0 2px var(--color-border-focus)")
-            }
-            onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-          />
-          {errors.email && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.email}
-            </p>
-          )}
-        </div>
+        <Input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          label={t("register.email", "Email")}
+          placeholder="m@example.com"
+          error={errors.email}
+          autoComplete="email"
+        />
 
         {/* Password */}
         <div>
@@ -375,109 +328,56 @@ function FormContent({
               {t("register.password", "Password")}
             </label>
           </div>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full rounded-lg px-4 py-3 pr-11 text-sm transition-colors focus:outline-none"
-              style={{
-                border: `1px solid ${errors.password ? "var(--color-border-error)" : "var(--color-border)"}`,
-                backgroundColor: "var(--color-bg-input)",
-                color: "var(--color-text-primary)",
-              }}
-              onFocus={(e) =>
-                (e.currentTarget.style.boxShadow =
-                  "0 0 0 2px var(--color-border-focus)")
-              }
-              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {showPassword ? <EyeIcon /> : <EyeOffIcon />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.password}
-            </p>
-          )}
-          {!errors.password && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-              {t("register.password_length", "Must be at least 10 characters long.")}
-            </p>
-          )}
+          <Input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            hint={!errors.password ? t("register.password_length", "Must be at least 10 characters long.") : undefined}
+            autoComplete="new-password"
+            trailing={
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            }
+          />
         </div>
 
         {/* Confirm Password */}
-        <div>
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {t("register.confirm_password", "Confirm Password")}
-          </label>
-          <div className="relative">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full rounded-lg px-4 py-3 pr-11 text-sm transition-colors focus:outline-none"
-              style={{
-                border: `1px solid ${errors.confirmPassword ? "var(--color-border-error)" : "var(--color-border)"}`,
-                backgroundColor: "var(--color-bg-input)",
-                color: "var(--color-text-primary)",
-              }}
-              onFocus={(e) =>
-                (e.currentTarget.style.boxShadow =
-                  "0 0 0 2px var(--color-border-focus)")
-              }
-              onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
-            />
+        <Input
+          type={showConfirmPassword ? "text" : "password"}
+          name="confirmPassword"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          label={t("register.confirm_password", "Confirm Password")}
+          error={errors.confirmPassword}
+          autoComplete="new-password"
+          trailing={
             <button
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none"
-              style={{ color: "var(--color-text-muted)" }}
+              className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
             >
               {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
-          </div>
-          {errors.confirmPassword && (
-            <p className="text-xs mt-1.5" style={{ color: "var(--color-error)" }}>
-              {errors.confirmPassword}
-            </p>
-          )}
-        </div>
+          }
+        />
 
         {/* Submit */}
-        <button
+        <Button
           type="submit"
-          disabled={loading}
-          className="w-full font-medium py-3.5 rounded-lg transition-colors duration-200 mt-2"
-          style={{
-            backgroundColor: loading
-              ? "var(--color-primary-disabled)"
-              : "var(--color-primary)",
-            color: "#ffffff",
-          }}
-          onMouseEnter={(e) => {
-            if (!loading)
-              e.currentTarget.style.backgroundColor = "var(--color-primary-hover)";
-          }}
-          onMouseLeave={(e) => {
-            if (!loading)
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
-          }}
+          loading={loading}
+          className="mt-2 w-full"
         >
-          {loading ? t("loading.creating_account", "Creating account...") : t("register.submit", "Get started")}
-        </button>
+          {t("register.submit", "Get started")}
+        </Button>
       </form>
 
       {/* Login link */}

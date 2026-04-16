@@ -1,5 +1,6 @@
 import { useState, useRef, KeyboardEvent, ClipboardEvent, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import verify from "../images/loginimg.png";
@@ -205,7 +206,7 @@ interface FormContentProps {
   handlePaste: (e: ClipboardEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
   navigate: (path: string) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }
 
 function FormContent({

@@ -21,7 +21,7 @@ const sizeClasses: Record<SpinnerSize, string> = {
 const variantClasses: Record<SpinnerVariant, string> = {
   brand: 'border-brand/25 border-t-brand',
   white: 'border-white/25 border-t-white',
-  muted: 'border-white/10 border-t-white/40',
+  muted: 'border-border/40 border-t-muted',
 };
 
 export function Spinner({ size = 'md', variant = 'brand', label, className }: SpinnerProps) {

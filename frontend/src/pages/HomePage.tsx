@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { BrandLogo } from "../components/BrandLogo";
 import { useAuth } from "../context/AuthContext";
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 
 // ── Helper ────────────────────────────────────────────────────────────────────
-function timeAgo(iso: string, t: (key: string, opts?: object) => string): string {
+function timeAgo(iso: string, t: TFunction): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   if (diffHours < 1) return t("home.time_just_now");
@@ -74,7 +75,7 @@ export default function HomePage() {
   const xpToNext   = 200 - (totalXp % 200);
   const xpProgress = ((200 - xpToNext) / 200) * 100;
   const totalWins  = stats?.overview.wins ?? 0;
-  const totalGames = stats?.overview.total_games ?? 0;
+  const totalGames = stats?.overview.total_matches ?? 0;
   const winRatePct = stats ? (stats.overview.win_rate * 100).toFixed(1) + "%" : "0.0%";
   const streak     = stats?.streaks.current.count ?? 0;
   const myUsername = normalizeUsername(user?.username);

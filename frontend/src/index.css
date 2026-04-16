@@ -5,10 +5,10 @@
 /* Prevent white flash before React hydrates */
 html,
 body {
-  background-color: var(--color-bg, #09090b);
-  color: var(--color-text-primary, #fafafa);
-  font-family: "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 12.8px;
+  background-color: var(--color-bg, #0a0e1a);
+  color: var(--color-text-primary, #f8fafc);
+  font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -29,103 +29,111 @@ textarea {
 
 @layer base {
   :root {
-    /* ── Brand ── */
-    --color-primary: #f97316;        /* orange-500 */
-    --color-primary-hover: #ea580c;  /* orange-600 */
-    --color-primary-disabled: #fb923c; /* orange-400 */
-    --color-brand: #f97316;
-    --color-brand-light: #fb923c;    /* orange-400 */
-
-    /* ── RGB channels (required for Tailwind opacity modifiers: bg-brand/10) ── */
+    --color-primary: #f97316;
+    --color-primary-hover: #ea580c;
+    --color-primary-disabled: #fb923c;
     --color-primary-rgb: 249 115 22;
-    --color-accent-rgb:  239 68 68;
-    --color-error-rgb:   248 113 113;
-    --color-success-rgb: 74 222 128;
-    --color-warning-rgb: 251 191 36;
+    --color-primary-light-rgb: 251 146 60;
 
-    /* ── Background ── */
-    --color-bg: #ffffff;
-    --color-bg-card: #ffffff;
-    --color-bg-input: #ffffff;
-    --color-bg-hover: #f9fafb;       /* gray-50 */
-    --color-bg-elevated: #f3f4f6;    /* gray-100 */
+    --color-secondary: #ef4444;
+    --color-secondary-rgb: 239 68 68;
 
-    /* ── Text ── */
-    --color-text-primary: #111827;   /* gray-900 */
-    --color-text-secondary: #374151; /* gray-700 */
-    --color-text-muted: #9ca3af;     /* gray-400 */
-    --color-text-link: #f97316;      /* orange-500 */
-
-    /* ── Border ── */
-    --color-border: #e5e7eb;         /* gray-200 */
-    --color-border-error: #f87171;   /* red-400 */
-    --color-border-focus: #f97316;   /* orange-500 */
-
-    /* ── Status ── */
-    --color-error: #f87171;          /* red-400 */
-    --color-success: #4ade80;        /* green-400 */
-    --color-warning: #f59e0b;        /* amber-500 */
-
-    /* ── Gradients ── */
-    --gradient-gaming:        linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-    --gradient-gaming-subtle: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%);
-
-    /* ── Shadow ── */
-    --color-shadow: rgba(0, 0, 0, 0.08);
-  }
-
-  /* Dark mode — just flip the variables, nothing else changes */
-  .dark {
-    /* Primary - Fire gaming gradient */
-    --color-primary: #f97316;        /* Orange-500 */
-    --color-primary-hover: #fb923c;  /* Orange-400 */
-    --color-primary-disabled: #ea580c; /* Orange-600 */
-    --color-brand: #f97316;
-    --color-brand-light: #fb923c;    /* Orange-400 */
-
-    /* RGB channels (required for Tailwind opacity modifiers: bg-brand/10) */
-    --color-primary-rgb: 249 115 22;
-    --color-accent-rgb:  239 68 68;
-    --color-error-rgb:   244 63 94;
-    --color-success-rgb: 34 197 94;
+    --color-success: #16a34a;
+    --color-success-rgb: 22 163 74;
+    --color-danger: #f43f5e;
+    --color-danger-rgb: 244 63 94;
+    --color-info: #0ea5e9;
+    --color-info-rgb: 14 165 233;
+    --color-warning: #f59e0b;
     --color-warning-rgb: 245 158 11;
 
-    /* Backgrounds - Very dark with subtle purple tint */
-    --color-bg: #09090b;             /* Almost black (zinc-950) */
-    --color-bg-card: #18181b;        /* Dark card (zinc-900) */
-    --color-bg-input: #27272a;       /* Input background (zinc-800) */
-    --color-bg-hover: #3f3f46;       /* Hover state (zinc-700) */
-    --color-bg-elevated: #18181b;    /* Elevated surfaces */
-    --color-bg-surface: #0f0f10;     /* Deeper surface */
+    --color-background-rgb: 255 247 237;
+    --color-surface-rgb: 255 255 255;
+    --color-elevated-rgb: 255 251 245;
+    --color-input-rgb: 255 255 255;
+    --color-hover-rgb: 255 237 213;
 
-    /* Text - High contrast gaming style */
-    --color-text-primary: #fafafa;   /* Almost white (zinc-50) */
-    --color-text-secondary: #d4d4d8; /* Light gray (zinc-300) */
-    --color-text-muted: #71717a;     /* Muted gray (zinc-500) */
-    --color-text-link: #f97316;      /* Orange link */
+    --color-text-rgb: 17 24 39;
+    --color-text-secondary-rgb: 75 85 99;
+    --color-text-muted-rgb: 148 163 184;
+    --color-border-rgb: 226 232 240;
+    --color-focus-rgb: 249 115 22;
 
-    /* Borders - Subtle with warm accent */
-    --color-border: #27272a;         /* Dark border (zinc-800) */
-    --color-border-error: #f43f5e;   /* Rose-500 */
-    --color-border-focus: #f97316;   /* Orange glow */
+    --color-bg: rgb(var(--color-background-rgb));
+    --color-bg-card: rgb(var(--color-surface-rgb));
+    --color-bg-input: rgb(var(--color-input-rgb));
+    --color-bg-hover: rgb(var(--color-hover-rgb));
+    --color-bg-elevated: rgb(var(--color-elevated-rgb));
+    --color-bg-surface: rgb(var(--color-surface-rgb));
 
-    /* Status colors - Gaming vibrant */
-    --color-error: #f43f5e;          /* Rose-500 */
-    --color-success: #22c55e;        /* Green-500 */
-    --color-warning: #f59e0b;        /* Amber-500 */
+    --color-text-primary: rgb(var(--color-text-rgb));
+    --color-text-secondary: rgb(var(--color-text-secondary-rgb));
+    --color-text-muted: rgb(var(--color-text-muted-rgb));
+    --color-text-link: rgb(var(--color-primary-rgb));
 
-    /* Gaming accents - Fire theme */
-    --color-accent: #ef4444;         /* Red-500 */
+    --color-border: rgb(var(--color-border-rgb));
+    --color-border-error: rgb(var(--color-danger-rgb));
+    --color-border-focus: rgb(var(--color-focus-rgb));
+    --color-error: rgb(var(--color-danger-rgb));
 
-    /* Shadows & Glows */
-    --color-shadow: rgba(0, 0, 0, 0.5);
-    --color-glow-primary: rgba(249, 115, 22, 0.4);
-    --color-glow-accent: rgba(239, 68, 68, 0.3);
+    --gradient-brand: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+    --gradient-brand-subtle: linear-gradient(135deg, rgb(249 115 22 / 0.14) 0%, rgb(239 68 68 / 0.1) 100%);
 
-    /* Gradients */
-    --gradient-gaming:        linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-    --gradient-gaming-subtle: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%);
-    --gradient-card:          linear-gradient(180deg, rgba(249, 115, 22, 0.05) 0%, transparent 100%);
+    --color-shadow: rgb(15 23 42 / 0.08);
+  }
+
+  .dark {
+    --color-primary: #fb923c;
+    --color-primary-hover: #fdba74;
+    --color-primary-disabled: #c2410c;
+    --color-primary-rgb: 251 146 60;
+    --color-primary-light-rgb: 253 186 116;
+
+    --color-secondary: #ef4444;
+    --color-secondary-rgb: 239 68 68;
+
+    --color-success: #22c55e;
+    --color-success-rgb: 34 197 94;
+    --color-danger: #fb7185;
+    --color-danger-rgb: 251 113 133;
+    --color-info: #38bdf8;
+    --color-info-rgb: 56 189 248;
+    --color-warning: #f59e0b;
+    --color-warning-rgb: 245 158 11;
+
+    --color-background-rgb: 10 14 26;
+    --color-surface-rgb: 18 24 38;
+    --color-elevated-rgb: 26 34 52;
+    --color-input-rgb: 24 32 48;
+    --color-hover-rgb: 36 45 67;
+
+    --color-text-rgb: 248 250 252;
+    --color-text-secondary-rgb: 203 213 225;
+    --color-text-muted-rgb: 148 163 184;
+    --color-border-rgb: 51 65 85;
+    --color-focus-rgb: 251 146 60;
+
+    --color-bg: rgb(var(--color-background-rgb));
+    --color-bg-card: rgb(var(--color-surface-rgb));
+    --color-bg-input: rgb(var(--color-input-rgb));
+    --color-bg-hover: rgb(var(--color-hover-rgb));
+    --color-bg-elevated: rgb(var(--color-elevated-rgb));
+    --color-bg-surface: rgb(var(--color-surface-rgb));
+
+    --color-text-primary: rgb(var(--color-text-rgb));
+    --color-text-secondary: rgb(var(--color-text-secondary-rgb));
+    --color-text-muted: rgb(var(--color-text-muted-rgb));
+    --color-text-link: rgb(var(--color-primary-rgb));
+
+    --color-border: rgb(var(--color-border-rgb));
+    --color-border-error: rgb(var(--color-danger-rgb));
+    --color-border-focus: rgb(var(--color-focus-rgb));
+    --color-error: rgb(var(--color-danger-rgb));
+
+    --gradient-brand: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+    --gradient-brand-subtle: linear-gradient(135deg, rgb(249 115 22 / 0.18) 0%, rgb(239 68 68 / 0.12) 100%);
+
+    --color-shadow: rgb(2 8 23 / 0.55);
   }
 }
 
@@ -184,67 +192,13 @@ textarea {
   }
 }
 
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @layer utilities {
-  .animate-slideInLeft {
-    animation: slideInLeft 0.6s ease-out;
-  }
-
-  .animate-slideInRight {
-    animation: slideInRight 0.6s ease-out;
-  }
-
-  .animate-fadeIn {
-    animation: fadeIn 0.6s ease-out;
-  }
-
-  .animate-slideUp {
-    animation: slideUp 0.5s ease-out;
-  }
-
   .animation-delay-200 {
     animation-delay: 0.2s;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-border bg-surface shadow-card;
   }
 }
 
@@ -317,7 +271,7 @@ input[type="range"] {
   width: 100%;
   height: 6px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--color-border-rgb) / 0.35);
   outline: none;
   cursor: pointer;
   accent-color: var(--color-primary);
