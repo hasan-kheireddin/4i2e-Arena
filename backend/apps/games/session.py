@@ -74,6 +74,11 @@ class GameSession:
     finished_at: float | None = None
     finish_reason: FinishReason | None = None
     winner_id: int | None = None
+    paused: bool = False
+    pause_reason: str | None = None
+    tick_task: Any = None
+    tick_owner: int | None = None
+    disconnect_tasks: dict[int, Any] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if not self.group_name:
@@ -134,11 +139,31 @@ class GameSession:
             self.players[slot].connected = False
             self.players[slot].disconnected_at = time.time()
 
+    def mark_player_connected(
+        self,
+        slot: int,
+        *,
+        channel_name: str | None = None,
+    ) -> None:
+        """Mark a player slot as connected again and refresh metadata."""
+        if slot in self.players:
+            self.players[slot].connected = True
+            self.players[slot].disconnected_at = None
+            if channel_name is not None:
+                self.players[slot].channel_name = channel_name
+
     def all_players_disconnected(self) -> bool:
         """True if every human player in the session is disconnected."""
         if not self.players:
             return False
         return all(not ps.connected for ps in self.players.values())
+
+    @property
+    def all_players_connected(self) -> bool:
+        """True if every human player in the session is currently connected."""
+        if not self.players:
+            return False
+        return all(ps.connected for ps in self.players.values())
 
     def to_info(self) -> dict[str, Any]:
         """Lobby-safe summary (no engine internals)."""

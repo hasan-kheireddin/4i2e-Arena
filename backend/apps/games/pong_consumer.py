@@ -4,9 +4,13 @@ import collections
 import logging
 import time
 from typing import Any
+
+from apps.analytics.achievement_service import check_achievements_after_game
+from apps.analytics.xp_service import award_xp_after_game
 from apps.games.consumers import BaseConsumer
-from apps.games.pong_engine import PongEngine
+from apps.games.match_recording_service import record_match
 from apps.games.pong_engine import GameStatus as PongStatus
+from apps.games.pong_engine import PongEngine
 from apps.games.session import (
     FinishReason,
     GameSession,
@@ -17,20 +21,16 @@ from apps.games.session import (
     get_session,
     remove_session,
 )
-from apps.analytics.achievement_service import check_achievements_after_game
-from apps.analytics.xp_service import award_xp_after_game
-from apps.games.match_recording_service import record_match
 
 logger = logging.getLogger("games.pong")
 
-TICK_RATE: int = 60                     # Hz
-TICK_INTERVAL: float = 1.0 / TICK_RATE  # ~16.67 ms
+TICK_RATE: int = 60
+TICK_INTERVAL: float = 1.0 / TICK_RATE
+RECONNECT_GRACE_SECONDS: float = 12.0
 
-# Rate limiting: max paddle-input messages per second per player.
 INPUT_RATE_LIMIT: int = 120
-INPUT_RATE_WINDOW: float = 1.0  # seconds
+INPUT_RATE_WINDOW: float = 1.0
 
-# Valid paddle directions
 _VALID_DIRECTIONS: frozenset[str] = frozenset({"up", "down", "stop"})
 
 
@@ -41,69 +41,47 @@ class PongConsumer(BaseConsumer):
         super().__init__(*args, **kwargs)
         self._session: GameSession | None = None
         self._slot: int | None = None
-
-        # Per-connection rate limiter — deque is O(1) popleft.
         self._input_timestamps: collections.deque[float] = collections.deque()
 
-
     async def on_connect(self) -> None:
-        """Connection accepted — wait for a 'join' message."""
+        """Connection accepted — wait for a join message."""
 
     async def on_disconnect(self, code: int) -> None:
-        """Handle player disconnect — immediate forfeit, no reconnection.
-
-        The session is removed outright; there is no grace period.
-        """
+        """Pause the match and allow a short reconnection grace period."""
         session = self._session
-        if session is None:
+        slot = self._slot
+        if session is None or slot is None:
             return
 
-        slot = self._slot
+        if session.status in (SessionStatus.FINISHED, SessionStatus.ABANDONED):
+            return
+
+        session.mark_player_disconnected(slot)
+        await self.broadcast(
+            session.group_name,
+            {
+                "slot": slot,
+                "connected": False,
+                "game_info": session.to_info(),
+            },
+            handler="player.presence",
+        )
 
         if session.status == SessionStatus.PLAYING:
-            # Forfeit + game over
-            if slot is not None:
-                session.engine.forfeit(slot)
-            # Determine the winner (the opponent of the disconnecting player)
-            winner_id: int | None = None
-            if slot is not None:
-                opp_slot = session.get_opponent_slot(slot)
-                opp = session.players.get(opp_slot)
-                if opp is not None:
-                    winner_id = opp.user_id
-            session.mark_finished(
-                reason=FinishReason.DISCONNECT_FORFEIT,
-                winner_id=winner_id,
-            )
+            session.paused = True
+            session.pause_reason = "player_disconnected"
             await self._stop_tick_loop(session, force=True)
             await self.broadcast(
                 session.group_name,
-                {"slot": slot},
-                handler="player.left",
+                {
+                    "slot": slot,
+                    "reason": "player_disconnected",
+                    "resume_deadline_seconds": RECONNECT_GRACE_SECONDS,
+                },
+                handler="game.paused",
             )
-            await self._broadcast_game_over(
-                session, reason="disconnect_forfeit",
-            )
-            # Check achievements for all players
-            await check_achievements_after_game(session)
-            # Award XP to participants
-            xp_awards = await award_xp_after_game(session)
-            # Record match to database
-            await record_match(session, xp_awards=xp_awards)
-        elif session.status == SessionStatus.WAITING:
-            # Nobody started yet — abandon
-            session.mark_abandoned(reason=FinishReason.CANCELED)
-            if slot is not None:
-                await self.broadcast(
-                    session.group_name,
-                    {"slot": slot},
-                    handler="player.left",
-                )
-            # Let the remaining client know the match is canceled.
-            await self._broadcast_game_over(session, reason="canceled")
 
-        remove_session(session.game_id)
-        await self.leave_group(session.group_name)
+        await self._schedule_disconnect_resolution(session, slot)
 
     async def on_message(self, content: dict[str, Any]) -> None:
         msg_type = content.get("type", "")
@@ -129,36 +107,41 @@ class PongConsumer(BaseConsumer):
             await self.send_error("invalid_game_id", "Missing or invalid game_id")
             return
 
-        # Look up or create session
         session = get_session(game_id)
         if session is None:
-            # Create a new PvP session
             session = create_session(
                 game_type=GameType.PONG,
                 engine=PongEngine(),
                 game_id=game_id,
             )
 
-        # Already finished?
         if session.status in (SessionStatus.FINISHED, SessionStatus.ABANDONED):
             await self.send_error("game_over", "This game has already ended")
             return
 
-        # Duplicate join (no reconnection allowed)
         user_id: int = self.user.pk
         existing_slot = session.get_player_slot(user_id)
+        reconnected = False
 
         if existing_slot is not None:
-            await self.send_error(
-                "rejoin_denied",
-                "Cannot rejoin — disconnection forfeits the match",
-            )
-            return
+            player = session.players.get(existing_slot)
+            if player is None:
+                await self.send_error("invalid_session", "Player slot is missing")
+                return
+            if player.connected:
+                await self.send_error(
+                    "already_joined",
+                    "This player is already connected to the session",
+                )
+                return
+            slot = existing_slot
+            reconnected = True
+            await self._cancel_disconnect_task(session, slot)
+            session.mark_player_connected(slot, channel_name=self.channel_name)
         elif session.is_full:
             await self.send_error("game_full", "Game is already full")
             return
         else:
-            # Assign to next free slot
             slot = 1 if 1 not in session.players else 2
             session.engine.set_player(str(user_id), slot)
             session.players[slot] = PlayerSlot(
@@ -175,15 +158,33 @@ class PongConsumer(BaseConsumer):
         await self.send_json({
             "type": "game_joined",
             "slot": slot,
+            "reconnected": reconnected,
             "game_info": session.to_info(),
         })
+        await self.broadcast(
+            session.group_name,
+            {
+                "slot": slot,
+                "connected": True,
+                "game_info": session.to_info(),
+            },
+            handler="player.presence",
+        )
 
-        # If session is now full, notify both players to get ready.
         if session.is_full and session.status == SessionStatus.WAITING and not session.both_connected_sent:
             session.both_connected_sent = True
-            await self.broadcast(session.group_name, {
-                "game_info": session.to_info(),
-            }, handler="both.connected")
+            await self.broadcast(
+                session.group_name,
+                {"game_info": session.to_info()},
+                handler="both.connected",
+            )
+        elif reconnected and session.status == SessionStatus.PLAYING:
+            await self.send_json({
+                "type": "game_state",
+                **session.engine.get_state(),
+            })
+            if session.paused and session.all_players_connected:
+                await self._resume_game(session)
 
     async def _handle_ready(self) -> None:
         session = self._session
@@ -191,39 +192,37 @@ class PongConsumer(BaseConsumer):
             await self.send_error("not_joined", "Not in a game session")
             return
         if session.status != SessionStatus.WAITING:
-            return  # already started or over
+            return
 
         session.ready_slots.add(self._slot)
+        await self.broadcast(
+            session.group_name,
+            {"slot": self._slot},
+            handler="player.ready",
+        )
 
-        # Tell the other player this slot is ready
-        await self.broadcast(session.group_name, {
-            "slot": self._slot,
-        }, handler="player.ready")
-
-        # Start once both human slots have confirmed ready
         if session.ready_slots.issuperset({1, 2}) and session.is_full:
             await self._start_game(session)
 
     async def _start_game(self, session: GameSession) -> None:
-        # Guard: only one consumer should start the game / tick loop.
         if session.status != SessionStatus.WAITING:
             return
-        if getattr(session, "_tick_task", None) is not None:
+        if session.tick_task is not None:
             return
 
         session.engine.start()
         session.status = SessionStatus.PLAYING
+        session.paused = False
+        session.pause_reason = None
 
-        await self.broadcast(session.group_name, {
-            "game_info": session.to_info(),
-        }, handler="game.start")
-
-        # Start the tick loop — store on the session so any consumer
-        # can cancel it, but track the owner for safe cleanup.
-        session._tick_task = asyncio.create_task(  # type: ignore[attr-defined]
-            self._tick_loop(session),
+        await self.broadcast(
+            session.group_name,
+            {"game_info": session.to_info()},
+            handler="game.start",
         )
-        session._tick_owner = self.user.pk  # type: ignore[attr-defined]
+
+        session.tick_task = asyncio.create_task(self._tick_loop(session))
+        session.tick_owner = self.user.pk
 
     async def _handle_input(self, content: dict[str, Any]) -> None:
         session = self._session
@@ -231,8 +230,9 @@ class PongConsumer(BaseConsumer):
             return
         if self._slot is None:
             return
-
-        # Rate limit check
+        if session.paused:
+            await self.send_error("game_paused", "Game is paused while a player reconnects")
+            return
         if self._is_rate_limited():
             await self.send_error(
                 "rate_limited",
@@ -251,11 +251,8 @@ class PongConsumer(BaseConsumer):
         session.engine.handle_input(self._slot, direction)
 
     def _is_rate_limited(self) -> bool:
-        """Sliding-window rate limiter using a deque (no list copy)."""
         now = time.monotonic()
         cutoff = now - INPUT_RATE_WINDOW
-
-        # Drop expired timestamps from the front
         while self._input_timestamps and self._input_timestamps[0] <= cutoff:
             self._input_timestamps.popleft()
 
@@ -274,7 +271,6 @@ class PongConsumer(BaseConsumer):
             return
 
         session.engine.forfeit(self._slot)
-        # Determine the winner (the opponent)
         opp_slot = session.get_opponent_slot(self._slot)
         opp = session.players.get(opp_slot)
         winner_id = opp.user_id if opp else None
@@ -284,47 +280,42 @@ class PongConsumer(BaseConsumer):
         )
 
         await self._stop_tick_loop(session)
+        await self._cancel_disconnect_tasks(session)
         await self._broadcast_game_over(session, reason="forfeit")
-        # Check achievements for all players
         await check_achievements_after_game(session)
-        # Award XP to participants
         xp_awards = await award_xp_after_game(session)
-        # Record match to database
         await record_match(session, xp_awards=xp_awards)
 
-
-
     async def _tick_loop(self, session: GameSession) -> None:
-        """Run the game engine at TICK_RATE Hz, broadcasting state."""
+        """Run the game engine at TICK_RATE Hz and broadcast snapshots."""
         try:
             while session.status == SessionStatus.PLAYING:
-                tick_start = time.monotonic()
+                if session.paused:
+                    await asyncio.sleep(0.1)
+                    continue
 
-                # Advance engine
+                tick_start = time.monotonic()
                 state = session.engine.tick()
 
-                # Broadcast state to all watchers
-                await self.broadcast(session.group_name, {
-                    "state": state,
-                }, handler="game.state")
+                await self.broadcast(
+                    session.group_name,
+                    {"state": state},
+                    handler="game.state",
+                )
 
-                # Check for game over
                 if state.get("status") == PongStatus.FINISHED.value:
                     winner_id = self._resolve_winner_id(session)
                     session.mark_finished(
                         reason=FinishReason.SCORE,
                         winner_id=winner_id,
                     )
+                    await self._cancel_disconnect_tasks(session)
                     await self._broadcast_game_over(session, reason="score")
-                    # Check achievements for all players
                     await check_achievements_after_game(session)
-                    # Award XP to participants
                     xp_awards = await award_xp_after_game(session)
-                    # Record match to database
                     await record_match(session, xp_awards=xp_awards)
                     break
 
-                # Sleep until next tick
                 elapsed = time.monotonic() - tick_start
                 sleep_time = TICK_INTERVAL - elapsed
                 if sleep_time > 0:
@@ -335,84 +326,168 @@ class PongConsumer(BaseConsumer):
         except Exception:
             logger.exception("Tick loop crashed for game_id=%s", session.game_id)
             session.mark_finished(reason=FinishReason.SERVER_ERROR)
-            await self.broadcast(session.group_name, {
-                "winner": None,
-                "reason": "server_error",
-            }, handler="game.over")
+            await self._cancel_disconnect_tasks(session)
+            await self.broadcast(
+                session.group_name,
+                {
+                    "winner": None,
+                    "reason": "server_error",
+                    "final_state": session.engine.get_state(),
+                },
+                handler="game.over",
+            )
+        finally:
+            session.tick_task = None
+            session.tick_owner = None
 
     def _resolve_winner_id(self, session: GameSession) -> int | None:
-        """Resolve winner user_id from Pong engine winner slot (1 or 2)."""
         winner_slot = session.engine.winner
         if winner_slot not in (1, 2):
             return None
         winner_player = session.players.get(winner_slot)
         return winner_player.user_id if winner_player is not None else None
 
-    async def _broadcast_game_over(
-        self, session: GameSession, reason: str,
-    ) -> None:
-        winner = session.engine.winner
-        await self.broadcast(session.group_name, {
-            "winner": winner,
-            "reason": reason,
-            "final_state": session.engine.get_state(),
-        }, handler="game.over")
+    async def _broadcast_game_over(self, session: GameSession, reason: str) -> None:
+        await self.broadcast(
+            session.group_name,
+            {
+                "winner": session.engine.winner,
+                "reason": reason,
+                "final_state": session.engine.get_state(),
+            },
+            handler="game.over",
+        )
 
     async def _stop_tick_loop(
-        self, session: GameSession, *, force: bool = False,
+        self,
+        session: GameSession,
+        *,
+        force: bool = False,
     ) -> None:
-        """Cancel the tick loop.
-
-        Ownership is checked by ``user_id`` (stable across reconnects).
-        If the owner's slot is disconnected, any consumer may take over
-        cancellation to avoid orphaned loops.
-
-        Pass ``force=True`` to skip the ownership check entirely (used
-        when the game is definitively over, e.g. disconnect forfeit).
-        """
-        task: asyncio.Task[None] | None = getattr(session, "_tick_task", None)
+        task: asyncio.Task[None] | None = session.tick_task
         if task is None or task.done():
             return
 
         if not force:
-            owner_id: int | None = getattr(session, "_tick_owner", None)
+            owner_id = session.tick_owner
             is_owner = owner_id is not None and owner_id == self.user.pk
-
             if not is_owner:
-                # Allow takeover only when the owner's slot is disconnected.
                 owner_slot = session.get_player_slot(owner_id) if owner_id else None
                 owner_connected = (
                     owner_slot is not None
-                    and session.players.get(owner_slot, None) is not None
+                    and session.players.get(owner_slot) is not None
                     and session.players[owner_slot].connected
                 )
                 if owner_connected:
-                    return  # owner is still around — let them handle it
+                    return
 
         task.cancel()
         try:
             await task
         except asyncio.CancelledError:
             pass
-        session._tick_task = None  # type: ignore[attr-defined]
-        session._tick_owner = None  # type: ignore[attr-defined]
+
+    async def _schedule_disconnect_resolution(
+        self,
+        session: GameSession,
+        slot: int,
+    ) -> None:
+        await self._cancel_disconnect_task(session, slot)
+        session.disconnect_tasks[slot] = asyncio.create_task(
+            self._resolve_disconnect_after_grace(session.game_id, slot),
+        )
+
+    async def _cancel_disconnect_task(
+        self,
+        session: GameSession,
+        slot: int,
+    ) -> None:
+        task = session.disconnect_tasks.pop(slot, None)
+        if task is None or task.done():
+            return
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    async def _cancel_disconnect_tasks(self, session: GameSession) -> None:
+        for slot in list(session.disconnect_tasks):
+            await self._cancel_disconnect_task(session, slot)
+
+    async def _resolve_disconnect_after_grace(self, game_id: str, slot: int) -> None:
+        try:
+            await asyncio.sleep(RECONNECT_GRACE_SECONDS)
+            session = get_session(game_id)
+            if session is None:
+                return
+            session.disconnect_tasks.pop(slot, None)
+
+            player = session.players.get(slot)
+            if player is None or player.connected:
+                return
+
+            if session.status == SessionStatus.PLAYING:
+                session.engine.forfeit(slot)
+                opp_slot = session.get_opponent_slot(slot)
+                opp = session.players.get(opp_slot)
+                winner_id = opp.user_id if opp else None
+                session.mark_finished(
+                    reason=FinishReason.DISCONNECT_FORFEIT,
+                    winner_id=winner_id,
+                )
+                await self._stop_tick_loop(session, force=True)
+                await self.broadcast(
+                    session.group_name,
+                    {"slot": slot},
+                    handler="player.left",
+                )
+                await self._broadcast_game_over(session, reason="disconnect_forfeit")
+                await self._cancel_disconnect_tasks(session)
+                await check_achievements_after_game(session)
+                xp_awards = await award_xp_after_game(session)
+                await record_match(session, xp_awards=xp_awards)
+            elif session.status == SessionStatus.WAITING:
+                session.mark_abandoned(reason=FinishReason.CANCELED)
+                await self.broadcast(
+                    session.group_name,
+                    {"slot": slot},
+                    handler="player.left",
+                )
+                await self._broadcast_game_over(session, reason="canceled")
+                await self._cancel_disconnect_tasks(session)
+                remove_session(session.game_id)
+        except asyncio.CancelledError:
+            return
+
+    async def _resume_game(self, session: GameSession) -> None:
+        session.paused = False
+        session.pause_reason = None
+        await self.broadcast(
+            session.group_name,
+            {
+                "game_info": session.to_info(),
+                "state": session.engine.get_state(),
+            },
+            handler="game.resumed",
+        )
+        if session.tick_task is None:
+            session.tick_task = asyncio.create_task(self._tick_loop(session))
+            session.tick_owner = self.user.pk
 
     async def game_state(self, event: dict[str, Any]) -> None:
-        """Forward game_state events from channel layer to client."""
         await self.send_json({
             "type": "game_state",
             **event.get("state", {}),
         })
 
     async def game_start(self, event: dict[str, Any]) -> None:
-        """Forward game_start events."""
         await self.send_json({
             "type": "game_start",
             "game_info": event.get("game_info"),
         })
 
     async def game_over(self, event: dict[str, Any]) -> None:
-        """Forward game_over events."""
         await self.send_json({
             "type": "game_over",
             "winner": event.get("winner"),
@@ -421,22 +496,45 @@ class PongConsumer(BaseConsumer):
         })
 
     async def player_left(self, event: dict[str, Any]) -> None:
-        """Forward player_left events."""
         await self.send_json({
             "type": "player_left",
             "slot": event.get("slot"),
         })
 
+    async def player_presence(self, event: dict[str, Any]) -> None:
+        await self.send_json({
+            "type": "player_presence",
+            "slot": event.get("slot"),
+            "connected": event.get("connected", False),
+            "game_info": event.get("game_info"),
+        })
+
     async def both_connected(self, event: dict[str, Any]) -> None:
-        """Notify both players that the lobby is full and ready to start."""
         await self.send_json({
             "type": "both_connected",
             "game_info": event.get("game_info"),
         })
 
     async def player_ready(self, event: dict[str, Any]) -> None:
-        """Notify players when one side has clicked Ready."""
         await self.send_json({
             "type": "player_ready",
             "slot": event.get("slot"),
         })
+
+    async def game_paused(self, event: dict[str, Any]) -> None:
+        await self.send_json({
+            "type": "game_paused",
+            "slot": event.get("slot"),
+            "reason": event.get("reason"),
+            "resume_deadline_seconds": event.get("resume_deadline_seconds"),
+        })
+
+    async def game_resumed(self, event: dict[str, Any]) -> None:
+        payload: dict[str, Any] = {
+            "type": "game_resumed",
+            "game_info": event.get("game_info"),
+        }
+        state = event.get("state")
+        if isinstance(state, dict):
+            payload.update(state)
+        await self.send_json(payload)
