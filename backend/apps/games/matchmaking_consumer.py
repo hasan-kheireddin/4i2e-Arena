@@ -20,10 +20,14 @@ CLEANUP_INTERVAL: float = 30.0  # seconds
 CLEANUP_LOCK_KEY: str = "matchmaking:cleanup_lock"
 CLEANUP_LOCK_TTL: int = 45  # seconds
 
+# How long a disconnected queued player keeps their queue slot.
+QUEUE_RESUME_GRACE_SECONDS: float = 12.0
+
 # Valid game types for matchmaking.
 _VALID_GAME_TYPES: frozenset[str] = frozenset(
     gt.value for gt in GameType
 )
+
 
 class MatchmakingConsumer(BaseConsumer):
     """WebSocket consumer for the matchmaking queue."""
@@ -43,7 +47,7 @@ class MatchmakingConsumer(BaseConsumer):
         )
 
     async def on_disconnect(self, code: int) -> None:
-        """Dequeue the player and cancel background tasks."""
+        """Pause queue participation briefly so clients can reconnect."""
         # Stop the match-polling loop
         await self._cancel_match_task()
 
@@ -56,17 +60,24 @@ class MatchmakingConsumer(BaseConsumer):
                 pass
             self._cleanup_task = None
 
-        # Remove from queue
+        # Keep queue position briefly for reconnect; fallback to dequeue.
         user_id: int = self.user.pk
-        was_queued = await self._service.dequeue(user_id)
-
-        # Leave the matchmaking notification group
-        await self.leave_group(self._user_group_name)
-
-        if was_queued:
+        preserved = await self._service.mark_disconnected(
+            user_id,
+            grace_seconds=QUEUE_RESUME_GRACE_SECONDS,
+        )
+        if preserved:
             logger.info(
-                "Player dequeued on disconnect: user_id=%s", user_id,
+                "Player temporarily disconnected from queue: user_id=%s grace=%.1fs",
+                user_id,
+                QUEUE_RESUME_GRACE_SECONDS,
             )
+        else:
+            was_queued = await self._service.dequeue(user_id)
+            if was_queued:
+                logger.info(
+                    "Player dequeued on disconnect: user_id=%s", user_id,
+                )
 
         # Close Redis connection
         await self._redis.aclose()
@@ -112,7 +123,7 @@ class MatchmakingConsumer(BaseConsumer):
         await self.join_group(self._user_group_name)
 
         # Enqueue
-        await self._service.enqueue(
+        enqueue_result = await self._service.enqueue(
             user_id=user_id,
             username=username,
             game_type=game_type,
@@ -131,6 +142,7 @@ class MatchmakingConsumer(BaseConsumer):
         await self.send_json({
             "type": "queue_joined",
             "game_type": game_type,
+            "resumed": enqueue_result["resumed"],
             **info,
         })
 
@@ -154,7 +166,6 @@ class MatchmakingConsumer(BaseConsumer):
         })
 
         await self.leave_group(self._user_group_name)
-
 
     async def _handle_status(self) -> None:
         if self._game_type is None:
@@ -227,7 +238,6 @@ class MatchmakingConsumer(BaseConsumer):
                 "username": p1["username"],
             },
         })
-
 
     async def _cleanup_loop_leader(self) -> None:
         """Run cleanup only if we hold the Redis leader lock.

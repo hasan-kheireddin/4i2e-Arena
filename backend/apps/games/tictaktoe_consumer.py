@@ -13,9 +13,10 @@ from apps.games.session import (
     GameType,
     PlayerSlot,
     SessionStatus,
-    create_session,
-    get_session,
-    remove_session,
+    create_session_async,
+    get_session_async,
+    persist_session,
+    remove_session_async,
 )
 from apps.games.tictactoe_engine import GameStatus as TTTStatus
 from apps.games.tictactoe_engine import MoveResult, TicTacToeEngine
@@ -74,6 +75,7 @@ class TicTacToeConsumer(BaseConsumer):
             )
 
         await self._schedule_disconnect_resolution(session, slot)
+        await persist_session(session)
 
     async def on_message(self, content: dict[str, Any]) -> None:
         msg_type = content.get("type", "")
@@ -86,6 +88,8 @@ class TicTacToeConsumer(BaseConsumer):
             await self._handle_move(content)
         elif msg_type == "forfeit":
             await self._handle_forfeit()
+        elif msg_type == "ping":
+            await self._handle_ping(content)
         else:
             await self.send_error("unknown_type", f"Unknown message type: {msg_type}")
 
@@ -99,9 +103,9 @@ class TicTacToeConsumer(BaseConsumer):
             await self.send_error("invalid_game_id", "Missing or invalid game_id")
             return
 
-        session = get_session(game_id)
+        session = await get_session_async(game_id)
         if session is None:
-            session = create_session(
+            session = await create_session_async(
                 game_type=GameType.TICTACTOE,
                 engine=TicTacToeEngine(),
                 game_id=game_id,
@@ -162,9 +166,15 @@ class TicTacToeConsumer(BaseConsumer):
             },
             handler="player.presence",
         )
+        await persist_session(session)
 
-        if session.is_full and session.status == SessionStatus.WAITING and not session.both_connected_sent:
+        if (
+            session.is_full
+            and session.status == SessionStatus.WAITING
+            and not session.both_connected_sent
+        ):
             session.both_connected_sent = True
+            await persist_session(session)
             await self.broadcast(
                 session.group_name,
                 {"game_info": session.to_info()},
@@ -173,6 +183,7 @@ class TicTacToeConsumer(BaseConsumer):
         elif reconnected and session.status == SessionStatus.PLAYING:
             await self.send_json({
                 "type": "game_state",
+                "server_ts_ms": int(time.time() * 1000),
                 **session.engine.get_state(),
             })
             if session.paused and session.all_players_connected:
@@ -187,6 +198,7 @@ class TicTacToeConsumer(BaseConsumer):
             return
 
         session.ready_slots.add(self._slot)
+        await persist_session(session)
         await self.broadcast(
             session.group_name,
             {"slot": self._slot},
@@ -204,6 +216,7 @@ class TicTacToeConsumer(BaseConsumer):
         session.status = SessionStatus.PLAYING
         session.paused = False
         session.pause_reason = None
+        await persist_session(session)
 
         await self.broadcast(
             session.group_name,
@@ -220,7 +233,10 @@ class TicTacToeConsumer(BaseConsumer):
         if self._slot is None:
             return
         if session.paused:
-            await self.send_error("game_paused", "Game is paused while a player reconnects")
+            await self.send_error(
+                "game_paused",
+                "Game is paused while a player reconnects",
+            )
             return
         if self._is_rate_limited():
             await self.send_error("rate_limited", "Too many moves — slow down")
@@ -239,12 +255,14 @@ class TicTacToeConsumer(BaseConsumer):
             })
             return
 
+        await persist_session(session)
         await self._broadcast_state(session)
 
         if session.engine.status == TTTStatus.FINISHED:
             reason = FinishReason.DRAW if session.engine.is_draw else FinishReason.SCORE
             winner_id = self._resolve_winner_id(session)
             session.mark_finished(reason=reason, winner_id=winner_id)
+            await persist_session(session)
             await self._cancel_disconnect_tasks(session)
             await self._broadcast_game_over(
                 session,
@@ -268,9 +286,22 @@ class TicTacToeConsumer(BaseConsumer):
             reason=FinishReason.FORFEIT,
             winner_id=winner_id,
         )
+        await persist_session(session)
         await self._cancel_disconnect_tasks(session)
         await self._broadcast_game_over(session, reason="forfeit")
         await record_match(session)
+
+    async def _handle_ping(self, content: dict[str, Any]) -> None:
+        client_ts_ms = content.get("client_ts_ms")
+        await self.send_json({
+            "type": "pong",
+            "client_ts_ms": (
+                client_ts_ms
+                if isinstance(client_ts_ms, (int, float))
+                else None
+            ),
+            "server_ts_ms": int(time.time() * 1000),
+        })
 
     def _resolve_winner_id(self, session: GameSession) -> int | None:
         if session.engine.is_draw or session.engine.winner is None:
@@ -292,7 +323,10 @@ class TicTacToeConsumer(BaseConsumer):
     async def _broadcast_state(self, session: GameSession) -> None:
         await self.broadcast(
             session.group_name,
-            {"state": session.engine.get_state()},
+            {
+                "state": session.engine.get_state(),
+                "server_ts_ms": int(time.time() * 1000),
+            },
             handler="game.state",
         )
 
@@ -341,7 +375,7 @@ class TicTacToeConsumer(BaseConsumer):
     async def _resolve_disconnect_after_grace(self, game_id: str, slot: int) -> None:
         try:
             await asyncio.sleep(RECONNECT_GRACE_SECONDS)
-            session = get_session(game_id)
+            session = await get_session_async(game_id)
             if session is None:
                 return
             session.disconnect_tasks.pop(slot, None)
@@ -359,6 +393,7 @@ class TicTacToeConsumer(BaseConsumer):
                     reason=FinishReason.DISCONNECT_FORFEIT,
                     winner_id=winner_id,
                 )
+                await persist_session(session)
                 await self.broadcast(
                     session.group_name,
                     {"slot": slot},
@@ -370,30 +405,37 @@ class TicTacToeConsumer(BaseConsumer):
             elif session.status == SessionStatus.WAITING:
                 left_username = player.username
                 session.mark_abandoned(reason=FinishReason.CANCELED)
+                await persist_session(session)
                 await self.broadcast(
                     session.group_name,
                     {"username": left_username},
                     handler="opponent.left.lobby",
                 )
                 await self._cancel_disconnect_tasks(session)
-                remove_session(session.game_id)
+                await remove_session_async(session.game_id)
         except asyncio.CancelledError:
             return
 
     async def _resume_game(self, session: GameSession) -> None:
         session.paused = False
         session.pause_reason = None
+        await persist_session(session)
         await self.broadcast(
             session.group_name,
             {
                 "game_info": session.to_info(),
                 "state": session.engine.get_state(),
+                "server_ts_ms": int(time.time() * 1000),
             },
             handler="game.resumed",
         )
 
     async def game_state(self, event: dict[str, Any]) -> None:
-        await self.send_json({"type": "game_state", **event.get("state", {})})
+        await self.send_json({
+            "type": "game_state",
+            "server_ts_ms": event.get("server_ts_ms"),
+            **event.get("state", {}),
+        })
 
     async def game_start(self, event: dict[str, Any]) -> None:
         await self.send_json({
@@ -454,6 +496,7 @@ class TicTacToeConsumer(BaseConsumer):
         payload: dict[str, Any] = {
             "type": "game_resumed",
             "game_info": event.get("game_info"),
+            "server_ts_ms": event.get("server_ts_ms"),
         }
         state = event.get("state")
         if isinstance(state, dict):

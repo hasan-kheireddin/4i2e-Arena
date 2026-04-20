@@ -5,7 +5,6 @@ Generated for Django 5.1 with Channels, DRF, JWT, CORS, and PostgreSQL.
 """
 
 from __future__ import annotations
-import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -20,12 +19,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="change-me-in-production-very-secret-key")
+SECRET_KEY = config(
+    "DJANGO_SECRET_KEY",
+    default="change-me-in-production-very-secret-key",
+)
 
 DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS_RAW = config("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,backend")
-ALLOWED_HOSTS: list[str] = [h.strip() for h in ALLOWED_HOSTS_RAW.split(",") if h.strip()]
+_allowed_hosts_default = "*" if DEBUG else "localhost,127.0.0.1,backend"
+ALLOWED_HOSTS_RAW = config("DJANGO_ALLOWED_HOSTS", default=_allowed_hosts_default)
+ALLOWED_HOSTS: list[str] = [
+    h.strip() for h in ALLOWED_HOSTS_RAW.split(",") if h.strip()
+]
 
 # ---------------------------------------------------------------------------
 # Application definition
@@ -108,7 +113,12 @@ AUTH_USER_MODEL = "accounts.User"
 # Password validation
 # ---------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
+        ),
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -169,13 +179,28 @@ SIMPLE_JWT = {
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
+CORS_ALLOW_ALL_ORIGINS = config(
+    "CORS_ALLOW_ALL_ORIGINS",
+    default=DEBUG,
+    cast=bool,
+)
 _cors_raw = config(
     "CORS_ALLOWED_ORIGINS",
-    default="https://localhost,https://127.0.0.1",
+    default="https://localhost:8443,https://127.0.0.1:8443",
 )
-CORS_ALLOWED_ORIGINS: list[str] = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+CORS_ALLOWED_ORIGINS: list[str] = (
+    [o.strip() for o in _cors_raw.split(",") if o.strip()]
+    if not CORS_ALLOW_ALL_ORIGINS
+    else []
+)
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+
+_csrf_raw = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="https://localhost:8443,https://127.0.0.1:8443",
+)
+CSRF_TRUSTED_ORIGINS: list[str] = [o.strip() for o in _csrf_raw.split(",") if o.strip()]
 
 # ---------------------------------------------------------------------------
 # Channels / Redis
@@ -211,6 +236,8 @@ SESSION_CACHE_ALIAS = "default"
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 
 # ---------------------------------------------------------------------------
 # OAuth — 42 School

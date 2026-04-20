@@ -8,6 +8,7 @@ from apps.games.session import GameType, generate_game_id
 logger = logging.getLogger("games.matchmaking")
 
 _KEY_PREFIX = "matchmaking"
+QUEUE_METADATA_TTL_SECONDS: int = 300
 
 
 def _queue_key(game_type: str) -> str:
@@ -50,42 +51,117 @@ class MatchmakingService:
         user_id: int,
         username: str,
         game_type: str,
-    ) -> None:
+    ) -> dict[str, bool]:
         """Add a player to the matchmaking queue.
 
-        If the player is already queued (for any game type), they are
-        removed from the old queue first.
+        If the player is already queued for the same game, their slot is
+        reused so reconnects keep queue position. If queued elsewhere, the
+        old queue entry is removed first.
 
         Player metadata is stored in a hash with a 5-minute TTL as a
-        safety net — ``dequeue()`` should be called explicitly on
-        disconnect.
+        safety net.
+
+        Returns
+        -------
+        dict
+            ``{"resumed": bool}`` where:
+            - ``resumed=True`` means the user reclaimed an existing queue
+              slot after a temporary disconnect.
+            - ``resumed=False`` means a fresh queue entry was created.
         """
+        uid_str = str(user_id)
+        player_key = _player_key(user_id)
+
+        existing_meta = await self._get_player_meta(user_id)
+        if existing_meta is not None and existing_meta.get("game_type") == game_type:
+            queue = await self._redis.lrange(_queue_key(game_type), 0, -1)
+            in_queue = any(
+                (q.decode() if isinstance(q, bytes) else str(q)) == uid_str
+                for q in queue
+            )
+            if in_queue:
+                was_connected = existing_meta.get("connected", "1") == "1"
+                now = time.time()
+                pipe = self._redis.pipeline(transaction=True)
+                pipe.hset(player_key, mapping={
+                    "user_id": uid_str,
+                    "username": username,
+                    "game_type": game_type,
+                    "connected": "1",
+                    "disconnected_at": "0",
+                    "disconnect_deadline": "0",
+                    "last_seen_at": str(now),
+                })
+                pipe.expire(player_key, QUEUE_METADATA_TTL_SECONDS)
+                pipe.sadd(_active_key(), uid_str)
+                await pipe.execute()
+                return {"resumed": not was_connected}
+
         # Remove from any previous queue first
         await self._remove_from_all_queues(user_id)
 
         pipe = self._redis.pipeline(transaction=True)
 
         # Store player metadata
-        player_key = _player_key(user_id)
+        now = time.time()
         pipe.hset(player_key, mapping={
-            "user_id": str(user_id),
+            "user_id": uid_str,
             "username": username,
             "game_type": game_type,
-            "enqueued_at": str(time.time()),
+            "enqueued_at": str(now),
+            "connected": "1",
+            "disconnected_at": "0",
+            "disconnect_deadline": "0",
+            "last_seen_at": str(now),
         })
-        pipe.expire(player_key, 300)  # 5-min TTL safety net
+        pipe.expire(player_key, QUEUE_METADATA_TTL_SECONDS)
 
         # Push into the game-type queue
         queue_key = _queue_key(game_type)
-        pipe.rpush(queue_key, str(user_id))
+        pipe.rpush(queue_key, uid_str)
 
         # Track in active set
-        pipe.sadd(_active_key(), str(user_id))
+        pipe.sadd(_active_key(), uid_str)
 
         await pipe.execute()
         logger.info(
             "Player enqueued: user_id=%s game_type=%s", user_id, game_type,
         )
+        return {"resumed": False}
+
+    async def mark_disconnected(self, user_id: int, grace_seconds: float) -> bool:
+        """Keep a queued player in-place briefly so they can resume."""
+        meta = await self._get_player_meta(user_id)
+        if meta is None:
+            return False
+
+        game_type = meta.get("game_type")
+        if not game_type:
+            await self._cleanup_player_keys(user_id)
+            return False
+
+        uid_str = str(user_id)
+        queue = await self._redis.lrange(_queue_key(game_type), 0, -1)
+        in_queue = any(
+            (q.decode() if isinstance(q, bytes) else str(q)) == uid_str
+            for q in queue
+        )
+        if not in_queue:
+            return False
+
+        now = time.time()
+        deadline = now + max(1.0, float(grace_seconds))
+        pipe = self._redis.pipeline(transaction=True)
+        pipe.hset(_player_key(user_id), mapping={
+            "connected": "0",
+            "disconnected_at": str(now),
+            "disconnect_deadline": str(deadline),
+            "last_seen_at": str(now),
+        })
+        pipe.expire(_player_key(user_id), QUEUE_METADATA_TTL_SECONDS)
+        pipe.sadd(_active_key(), uid_str)
+        await pipe.execute()
+        return True
 
     async def dequeue(self, user_id: int) -> bool:
         """Remove a player from their queue.
@@ -125,17 +201,26 @@ class MatchmakingService:
         p1_meta = await self._get_player_meta(p1_id)
         p2_meta = await self._get_player_meta(p2_id)
 
-        if p1_meta is None or p2_meta is None:
-            # Stale entry — re-queue valid player to the back (fairness),
-            # clean up only the one whose metadata is missing.
-            if p1_meta is not None:
-                await self._redis.rpush(queue_key, str(p1_id))
+        now = time.time()
+        p1_status = self._candidate_status(p1_meta, now)
+        p2_status = self._candidate_status(p2_meta, now)
+
+        if p1_status != "ready" or p2_status != "ready":
+            # Keep queue order stable: restore any non-stale candidates to
+            # the front in original order.
+            restore_ids: list[str] = []
+            if p1_status in ("ready", "waiting"):
+                restore_ids.append(str(p1_id))
             else:
                 await self._cleanup_player_keys(p1_id)
-            if p2_meta is not None:
-                await self._redis.rpush(queue_key, str(p2_id))
+
+            if p2_status in ("ready", "waiting"):
+                restore_ids.append(str(p2_id))
             else:
                 await self._cleanup_player_keys(p2_id)
+
+            if restore_ids:
+                await self._redis.lpush(queue_key, *reversed(restore_ids))
             return None
 
         game_id = generate_game_id()
@@ -196,38 +281,44 @@ class MatchmakingService:
         }
 
     async def cleanup_disconnected(self) -> int:
-        """Remove players whose metadata has expired (TTL elapsed).
+        """Remove queue entries that are stale or past reconnect grace.
 
-        Iterates all queues and drops entries whose player hash is
-        gone.  EXISTS checks are pipelined per queue to reduce
-        round-trips.  Returns the count of cleaned-up entries.
+        Iterates all queues and drops entries whose player hash is gone,
+        or whose disconnect deadline has elapsed.
 
         Call this periodically (e.g. every 30 s) from a background task.
         """
         cleaned = 0
+        now = time.time()
         for gt in _all_game_types():
             queue_key = _queue_key(gt)
             entries: list[bytes] = await self._redis.lrange(queue_key, 0, -1)
             if not entries:
                 continue
 
-            # Pipeline all EXISTS checks in one round-trip.
-            pipe = self._redis.pipeline(transaction=False)
+            stale: list[bytes] = []
             for raw_uid in entries:
-                uid_str = raw_uid.decode() if isinstance(raw_uid, bytes) else str(raw_uid)
-                pipe.exists(_player_key(uid_str))
-            results = await pipe.execute()
+                uid_str = (
+                    raw_uid.decode()
+                    if isinstance(raw_uid, bytes)
+                    else str(raw_uid)
+                )
+                meta = await self._get_player_meta(uid_str)
+                status = self._candidate_status(meta, now)
+                if status in ("stale", "expired"):
+                    stale.append(raw_uid)
 
-            # Collect stale entries, then pipeline all removals.
-            stale = [
-                raw_uid for raw_uid, exists in zip(entries, results)
-                if not exists
-            ]
             if stale:
                 rm_pipe = self._redis.pipeline(transaction=True)
                 for raw_uid in stale:
+                    uid_str = (
+                        raw_uid.decode()
+                        if isinstance(raw_uid, bytes)
+                        else str(raw_uid)
+                    )
                     rm_pipe.lrem(queue_key, 1, raw_uid)
-                    rm_pipe.srem(_active_key(), raw_uid)
+                    rm_pipe.srem(_active_key(), uid_str)
+                    rm_pipe.delete(_player_key(uid_str))
                 await rm_pipe.execute()
                 cleaned += len(stale)
 
@@ -275,6 +366,26 @@ class MatchmakingService:
         pipe.delete(_player_key(user_id))
         pipe.srem(_active_key(), str(user_id))
         await pipe.execute()
+
+    @staticmethod
+    def _candidate_status(
+        meta: dict[str, str] | None,
+        now: float,
+    ) -> str:
+        """Return candidate state used by matching/cleanup decisions."""
+        if meta is None:
+            return "stale"
+        if meta.get("connected", "1") != "0":
+            return "ready"
+        deadline_raw = meta.get("disconnect_deadline")
+        if deadline_raw:
+            try:
+                if float(deadline_raw) <= now:
+                    return "expired"
+            except ValueError:
+                return "expired"
+        return "waiting"
+
 
 def get_redis_client() -> aioredis.Redis:
     """Create an async Redis client from the CHANNEL_LAYERS config.

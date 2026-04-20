@@ -1,6 +1,6 @@
 import os
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import OriginValidator
+from channels.security.websocket import AllowedHostsOriginValidator, OriginValidator
 from django.conf import settings
 from django.core.asgi import get_asgi_application
 
@@ -13,12 +13,18 @@ django_asgi_app = get_asgi_application()
 from config.channelsmiddleware import JWTAuthMiddleware  # noqa: E402
 from config.routing import websocket_urlpatterns  # noqa: E402
 
+websocket_app = JWTAuthMiddleware(URLRouter(websocket_urlpatterns))
+if settings.CORS_ALLOW_ALL_ORIGINS:
+    websocket_app = AllowedHostsOriginValidator(websocket_app)
+else:
+    websocket_app = OriginValidator(
+        websocket_app,
+        allowed_origins=settings.CORS_ALLOWED_ORIGINS,
+    )
+
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": OriginValidator(
-            JWTAuthMiddleware(URLRouter(websocket_urlpatterns)),
-            allowed_origins=settings.CORS_ALLOWED_ORIGINS,
-        ),
+        "websocket": websocket_app,
     }
 )
