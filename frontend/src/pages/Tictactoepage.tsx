@@ -67,6 +67,7 @@ export default function TicTacToePage() {
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [iReady, setIReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
+  const [gamePaused, setGamePaused] = useState(false);
   const mySlotRef = useRef<number | null>(null);
   const [opponentLeftMsg, setOpponentLeftMsg] = useState<string | null>(null);
 
@@ -170,7 +171,7 @@ export default function TicTacToePage() {
   });
 
   // ── Online game socket ────────────────────────────────────────────────────
-  const { send: gameSend } = useGameSocket(gamePath, {
+  const { send: gameSend, status: gameSocketStatus } = useGameSocket(gamePath, {
     onOpen: useCallback(() => {
       if (gameId) gameSend({ type: 'join', game_id: gameId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,6 +195,7 @@ export default function TicTacToePage() {
         }
       } else if (type === 'game_start') {
         setOnlinePhase('playing');
+        setGamePaused(false);
         // Initialize board
         setOnlineGameState({
           board: Array(9).fill(null),
@@ -207,6 +209,15 @@ export default function TicTacToePage() {
           board: boardData,
           current_turn: currentTurn,
         });
+      } else if (type === 'game_resumed') {
+        const boardData = data.board as CellValue[];
+        const currentTurn = data.current_turn as 'X' | 'O';
+        setOnlineGameState({
+          board: boardData,
+          current_turn: currentTurn,
+        });
+        setGamePaused(false);
+        setOnlinePhase('playing');
       } else if (type === 'both_connected') {
         // both players in lobby — ready to accept Ready clicks
       } else if (type === 'player_ready') {
@@ -216,20 +227,25 @@ export default function TicTacToePage() {
         } else {
           setOpponentReady(true);
         }
+      } else if (type === 'player_presence') {
+        const slot = data.slot as number;
+        const connected = data.connected as boolean;
+        if (slot !== mySlotRef.current && connected) {
+          setOpponentLeftMsg(null);
+        }
       } else if (type === 'opponent_left_lobby') {
         setOpponentLeftMsg((data.username as string) || 'Opponent');
         setGamePath(null);
         setOnlinePhase('idle');
+      } else if (type === 'game_paused') {
+        setGamePaused(true);
       } else if (type === 'game_over') {
         const winnerData = data.winner as 'X' | 'O' | 'draw' | null;
         setOnlineWinner(winnerData);
+        setGamePaused(false);
         setOnlinePhase('game_over');
       }
     }, []),
-    onClose: useCallback(() => {
-      if (onlinePhase === 'playing') setOnlinePhase('game_over');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onlinePhase]),
   });
 
   // ── Online helpers ────────────────────────────────────────────────────────
@@ -245,6 +261,7 @@ export default function TicTacToePage() {
     setQueuePosition(null);
     setIReady(false);
     setOpponentReady(false);
+    setGamePaused(false);
     setMmPath('/ws/matchmaking/');
   };
 
@@ -275,8 +292,12 @@ export default function TicTacToePage() {
   const displayLine = mode === 'online' ? checkWinner(displayBoard).line : line;
   
   const isMyTurn = mode === 'online' 
-    ? (onlineGameState?.current_turn === mySymbol && onlinePhase === 'playing')
+    ? (onlineGameState?.current_turn === mySymbol && onlinePhase === 'playing' && !gamePaused)
     : false;
+  const showRealtimeRecoveryOverlay =
+    mode === 'online'
+    && onlinePhase === 'playing'
+    && (gamePaused || gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting');
 
   const modeLabel = mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local');
 
@@ -363,7 +384,13 @@ export default function TicTacToePage() {
             <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5" 
               style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-              {onlinePhase === 'playing' ? t('ttt.live') : onlinePhase}
+              {gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
+                ? 'reconnecting'
+                : gamePaused
+                  ? 'paused'
+                  : onlinePhase === 'playing'
+                    ? t('ttt.live')
+                    : onlinePhase}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
           </div>
@@ -493,6 +520,20 @@ export default function TicTacToePage() {
                   style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
                   {t('ttt.cancel')}
                 </button>
+              </div>
+            )}
+
+            {showRealtimeRecoveryOverlay && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 rounded-xl"
+                style={{ backgroundColor: 'rgba(10,14,26,0.82)', backdropFilter: 'blur(8px)' }}>
+                <div className="w-10 h-10 rounded-full border-4 animate-spin"
+                  style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
+                <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                  Reconnecting players...
+                </p>
+                <p className="text-sm text-center max-w-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  Your board state is preserved and the match will resume automatically.
+                </p>
               </div>
             )}
 

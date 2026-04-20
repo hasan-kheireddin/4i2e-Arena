@@ -94,7 +94,7 @@ async function doRefresh(): Promise<boolean> {
 }
 
 /** Refresh access token (deduplicates concurrent calls). */
-async function refreshAccessToken(): Promise<boolean> {
+export async function refreshAccessToken(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = doRefresh().finally(() => {
       refreshPromise = null;

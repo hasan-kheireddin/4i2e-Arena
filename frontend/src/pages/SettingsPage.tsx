@@ -14,6 +14,7 @@ import { Tooltip } from '../components/ui/Tooltip';
 import { exportActivityData, importActivityData, type ExportFormat, type ImportResult } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
 import { twoFADisable, twoFAStatus, updateProfile } from '../services/auth';
+import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from '../i18n/language';
 import type { ApiError } from '../services/api';
 
 type SettingsTab = 'profile' | 'security' | 'appearance' | 'privacy';
@@ -60,7 +61,7 @@ export default function SettingsPage() {
   });
 
   // Language - synced with i18n and user preferred_language
-  const [language, setLanguage] = useState(() => user?.preferred_language || i18n.language || 'en');
+  const [language, setLanguage] = useState(() => normalizeLanguage(user?.preferred_language || i18n.language));
 
   // Apply dark mode changes
   useEffect(() => {
@@ -73,13 +74,10 @@ export default function SettingsPage() {
   }, [isDark]);
 
   // Apply language changes
-  const RTL_LANGUAGES = ['ar'];
   const handleLanguageChange = (lang: string) => {
-    setLanguage(lang);
-    i18n.changeLanguage(lang);
-    localStorage.setItem('i18nextLng', lang);
-    document.documentElement.setAttribute('lang', lang);
-    document.documentElement.setAttribute('dir', RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr');
+    const normalizedLang = applyLanguageToDocument(lang);
+    setLanguage(normalizedLang);
+    void i18n.changeLanguage(normalizedLang);
   };
 
   // Privacy / data export-import state
@@ -492,12 +490,7 @@ export default function SettingsPage() {
                   {t('settings.appearance.language')}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { code: 'en', label: 'English', flag: '🇬🇧' },
-                    { code: 'fr', label: 'Français', flag: '🇫🇷' },
-                    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-                    { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-                  ].map((lang) => (
+                  {LANGUAGE_OPTIONS.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageChange(lang.code)}
@@ -506,7 +499,7 @@ export default function SettingsPage() {
                         borderColor: language === lang.code ? 'rgb(var(--color-primary-rgb))' : 'rgb(var(--color-border-rgb))',
                         backgroundColor: language === lang.code ? 'rgb(var(--color-primary-rgb) / 0.1)' : undefined,
                         color: language === lang.code ? 'rgb(var(--color-primary-rgb))' : 'rgb(var(--color-text-secondary-rgb))',
-                        direction: lang.code === 'ar' ? 'rtl' : 'ltr',
+                        direction: lang.direction,
                       }}
                     >
                       <span className="text-xl">{lang.flag}</span>

@@ -4,9 +4,10 @@ import en from "./locales/en.json";
 import fr from "./locales/fr.json";
 import de from "./locales/de.json";
 import ar from "./locales/ar.json";
+import { applyLanguageToDocument, normalizeLanguage } from "./language";
 
 // Persist selected language across page reloads
-const savedLang = localStorage.getItem('i18nextLng') ?? 'en';
+const savedLang = normalizeLanguage(localStorage.getItem("i18nextLng"));
 
 i18n.use(initReactI18next).init({
   resources: {
@@ -20,9 +21,6 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-const RTL_LANGUAGES = ['ar'];
-const isRTL = RTL_LANGUAGES.includes(savedLang);
-document.documentElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
-document.documentElement.setAttribute('lang', savedLang);
+applyLanguageToDocument(savedLang);
 
 export default i18n;

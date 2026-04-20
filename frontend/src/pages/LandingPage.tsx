@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { BrandLogo } from "../components/BrandLogo";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import {
   Gamepad2, ArrowRight, Users, Trophy, Zap,
   Shield, Star,
@@ -86,6 +87,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
           <BrandLogo />
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <Link
               to="/login"
               className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200"

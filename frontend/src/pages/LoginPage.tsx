@@ -8,6 +8,7 @@ import loginImgDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { clearPendingTwoFA, login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
 import { clearTokens } from "../services/api";
 import type { ApiError } from "../services/api";
@@ -114,7 +115,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden">
+    <div className="relative h-screen w-screen flex overflow-hidden">
+      <div className="absolute right-4 top-4 z-20">
+        <LanguageSwitcher />
+      </div>
       {/* ─────────────────────────────────────────
           DESKTOP LAYOUT  (lg and above)
           Left: form (full height) | Right: image (full height)
@@ -145,7 +149,7 @@ export default function LoginPage() {
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
             src={isDark ? loginImgDark : loginImg}
-            alt="Sport"
+            alt={t("login.hero_image_alt", "Sports arena illustration")}
             className="w-full h-full object-cover"
           />
         </div>
@@ -269,7 +273,7 @@ function FormContent({
           value={formData.username}
           onChange={handleChange}
           label={t("login.username", "Username or Email")}
-          placeholder="username or m@example.com"
+          placeholder={t("login.username_placeholder", "username or m@example.com")}
           error={errors.username}
           autoComplete="username"
         />
@@ -303,7 +307,7 @@ function FormContent({
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t("login.hide_password", "Hide password") : t("login.show_password", "Show password")}
               >
                 {showPassword ? <EyeIcon /> : <EyeOffIcon />}
               </button>

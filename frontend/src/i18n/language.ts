@@ -1,0 +1,28 @@
+export type SupportedLanguage = "en" | "fr" | "de" | "ar";
+
+export const LANGUAGE_OPTIONS: ReadonlyArray<{
+  code: SupportedLanguage;
+  label: string;
+  flag: string;
+  direction: "ltr" | "rtl";
+}> = [
+  { code: "en", label: "English", flag: "🇬🇧", direction: "ltr" },
+  { code: "fr", label: "Français", flag: "🇫🇷", direction: "ltr" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪", direction: "ltr" },
+  { code: "ar", label: "العربية", flag: "🇸🇦", direction: "rtl" },
+];
+
+const RTL_LANGUAGES = new Set<SupportedLanguage>(["ar"]);
+
+export function normalizeLanguage(lang: string | null | undefined): SupportedLanguage {
+  const baseLanguage = (lang ?? "en").toLowerCase().split("-")[0] as SupportedLanguage;
+  return LANGUAGE_OPTIONS.some(({ code }) => code === baseLanguage) ? baseLanguage : "en";
+}
+
+export function applyLanguageToDocument(lang: string): SupportedLanguage {
+  const normalizedLanguage = normalizeLanguage(lang);
+  localStorage.setItem("i18nextLng", normalizedLanguage);
+  document.documentElement.setAttribute("lang", normalizedLanguage);
+  document.documentElement.setAttribute("dir", RTL_LANGUAGES.has(normalizedLanguage) ? "rtl" : "ltr");
+  return normalizedLanguage;
+}

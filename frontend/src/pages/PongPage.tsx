@@ -148,6 +148,7 @@ export default function PongPage() {
   const [onlineWinnerSlot, setOnlineWinnerSlot] = useState<number | null>(null);
   const [iReady, setIReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
+  const [gamePaused, setGamePaused] = useState(false);
   const mySlotRef = useRef<number | null>(null);
 
   const [mmPath, setMmPath] = useState<string | null>(null);
@@ -329,7 +330,7 @@ export default function PongPage() {
   });
 
   // ── game socket ───────────────────────────────────────────────────────────
-  const { send: gameSend } = useGameSocket(gamePath, {
+  const { send: gameSend, status: gameSocketStatus } = useGameSocket(gamePath, {
     onOpen: useCallback(() => {
       if (gameId) gameSend({ type: 'join', game_id: gameId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,6 +351,8 @@ export default function PongPage() {
           }
         }
       } else if (type === 'game_start') {
+        setGamePaused(false);
+        setOpponentLeft(false);
         setOnlinePhase('playing');
       } else if (type === 'game_state') {
         const ball = data.ball as { x: number; y: number; vx: number; vy: number };
@@ -361,12 +364,24 @@ export default function PongPage() {
         }
         // Transition from waiting → playing on first state frame
         setOnlinePhase((prev) => prev === 'waiting' ? 'playing' : prev);
+      } else if (type === 'game_resumed') {
+        const ball = data.ball as { x: number; y: number; vx: number; vy: number };
+        const p1 = data.player1 as { score: number; paddle: { y: number } } | undefined;
+        const p2 = data.player2 as { score: number; paddle: { y: number } } | undefined;
+        if (ball && p1 && p2) {
+          setOnlineGameState({ ball, paddles: { 1: { y: p1.paddle.y }, 2: { y: p2.paddle.y } } });
+          setOnlineScore({ p1: p1.score, p2: p2.score });
+        }
+        setGamePaused(false);
+        setOpponentLeft(false);
+        setOnlinePhase('playing');
       } else if (type === 'game_over') {
         const winner = data.winner as number | null;
         const reason = data.reason as string;
         const fs = data.final_state as { player1?: { score: number }; player2?: { score: number } } | undefined;
         setOnlineReason(reason);
         setOnlineWinnerSlot(winner ?? null);
+        setGamePaused(false);
         if (fs?.player1 && fs?.player2) {
           setOnlineScore({ p1: fs.player1.score, p2: fs.player2.score });
         }
@@ -380,14 +395,18 @@ export default function PongPage() {
         } else {
           setOpponentReady(true);
         }
+      } else if (type === 'player_presence') {
+        const slot = data.slot as number;
+        const connected = data.connected as boolean;
+        if (slot !== mySlotRef.current) {
+          setOpponentLeft(!connected);
+        }
+      } else if (type === 'game_paused') {
+        setGamePaused(true);
       } else if (type === 'player_left') {
         setOpponentLeft(true);
       }
     }, []),
-    onClose: useCallback(() => {
-      if (onlinePhase === 'playing') setOnlinePhase('over');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onlinePhase]),
   });
 
   useEffect(() => { gameSendRef.current = gameSend; }, [gameSend]);
@@ -422,6 +441,7 @@ export default function PongPage() {
     setGamePath(null);
     setIReady(false);
     setOpponentReady(false);
+    setGamePaused(false);
     prevDirectionRef.current = 'stop';
     setMmPath('/ws/matchmaking/');
   };
@@ -460,6 +480,10 @@ export default function PongPage() {
     : mode === 'ai'
       ? t('pong.ai_bot')
       : (localPlayerNames.p2.trim() || t('pong.player2'));
+  const showRealtimeRecoveryOverlay =
+    mode === 'online'
+    && onlinePhase === 'playing'
+    && (gamePaused || gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting');
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -475,7 +499,15 @@ export default function PongPage() {
           <div className="flex flex-col items-center gap-0.5">
             <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5" style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-              {mode !== 'online' ? t('pong.live') : onlinePhase === 'playing' ? t('pong.live') : onlinePhase}
+              {mode !== 'online'
+                ? t('pong.live')
+                : gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
+                  ? 'reconnecting'
+                  : gamePaused
+                    ? 'paused'
+                    : onlinePhase === 'playing'
+                      ? t('pong.live')
+                      : onlinePhase}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
           </div>
@@ -589,6 +621,20 @@ export default function PongPage() {
               <div className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}>
                 {t('pong.opponent_disconnected')}
               </div>
+            </div>
+          )}
+
+          {showRealtimeRecoveryOverlay && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+              style={{ backgroundColor: 'rgba(10,14,26,0.72)', backdropFilter: 'blur(6px)' }}>
+              <div className="w-10 h-10 rounded-full border-4 animate-spin"
+                style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
+              <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                Reconnecting players...
+              </p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                The match will resume automatically if both clients reconnect in time.
+              </p>
             </div>
           )}
 

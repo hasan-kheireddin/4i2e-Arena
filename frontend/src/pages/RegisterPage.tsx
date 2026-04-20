@@ -7,6 +7,7 @@ import registerImgDark from "../images/registerimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { register as apiRegister } from "../services/auth";
 import type { ApiError } from "../services/api";
 import type { RegisterResponse } from "../services/auth";
@@ -150,7 +151,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden">
+    <div className="relative h-screen w-screen flex overflow-hidden">
+      <div className="absolute right-4 top-4 z-20">
+        <LanguageSwitcher />
+      </div>
       {/* ─────────────────────────────────────────
           DESKTOP LAYOUT  (lg and above)
           Left: image (full height) | Right: form (full height)
@@ -160,7 +164,7 @@ export default function RegisterPage() {
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
             src={isDark ? registerImgDark : registerImg}
-            alt="Sport"
+            alt={t("register.hero_image_alt", "Sports arena illustration")}
             className="w-full h-full object-cover"
           />
         </div>
@@ -296,7 +300,7 @@ function FormContent({
           value={formData.username}
           onChange={handleChange}
           label={t("register.username", "Username")}
-          placeholder="myusername"
+          placeholder={t("register.username_placeholder", "myusername")}
           error={errors.username}
           hint={
             formData.username && !errors.username
@@ -313,7 +317,7 @@ function FormContent({
           value={formData.email}
           onChange={handleChange}
           label={t("register.email", "Email")}
-          placeholder="m@example.com"
+          placeholder={t("register.email_placeholder", "m@example.com")}
           error={errors.email}
           autoComplete="email"
         />
@@ -341,7 +345,7 @@ function FormContent({
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t("register.hide_password", "Hide password") : t("register.show_password", "Show password")}
               >
                 {showPassword ? <EyeIcon /> : <EyeOffIcon />}
               </button>
@@ -363,7 +367,7 @@ function FormContent({
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
               className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
-              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              aria-label={showConfirmPassword ? t("register.hide_password", "Hide password") : t("register.show_password", "Show password")}
             >
               {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
