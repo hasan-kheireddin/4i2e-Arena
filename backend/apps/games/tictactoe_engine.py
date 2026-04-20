@@ -115,6 +115,9 @@ class TicTacToeEngine:
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
 
+        # Match analytics (used by progression/achievements)
+        self.player_block_counts: dict[int, int] = {1: 0, 2: 0}
+
     # ------------------------------------------------------------------
     # Player management
     # ------------------------------------------------------------------
@@ -205,6 +208,12 @@ class TicTacToeEngine:
             return MoveResult.CELL_OCCUPIED
 
         # --- Move is valid ---
+        opponent_mark = Mark.O if mark == Mark.X else Mark.X
+        threat_cells = self._get_immediate_winning_cells(opponent_mark)
+        if cell in threat_cells:
+            self.player_block_counts[player_slot] = (
+                self.player_block_counts.get(player_slot, 0) + 1
+            )
 
         # Place the mark
         self.board[cell] = mark
@@ -245,6 +254,18 @@ class TicTacToeEngine:
                 return line
         return None
 
+    def _get_immediate_winning_cells(self, mark: Mark) -> set[int]:
+        """
+        Return empty cells that would let `mark` win immediately.
+        """
+        winning_cells: set[int] = set()
+        for a, b, c in WIN_LINES:
+            line = [self.board[a], self.board[b], self.board[c]]
+            if line.count(mark) == 2 and line.count(None) == 1:
+                idx = (a, b, c)[line.index(None)]
+                winning_cells.add(idx)
+        return winning_cells
+
     # ------------------------------------------------------------------
     # State serialisation
     # ------------------------------------------------------------------
@@ -265,6 +286,9 @@ class TicTacToeEngine:
             "is_draw": self.is_draw,
             "player1_id": self.player1_id,
             "player2_id": self.player2_id,
+            "stats": {
+                "player_block_counts": self.player_block_counts,
+            },
         }
 
         # Include winning line coordinates if there's a winner
@@ -293,6 +317,7 @@ class TicTacToeEngine:
         self.winning_line = None
         self.started_at = None
         self.finished_at = None
+        self.player_block_counts = {1: 0, 2: 0}
 
     def get_board_display(self) -> str:
         """Return a human-readable board string (for debugging)."""

@@ -15,9 +15,6 @@ from .views import (
     ActivityHeatmapView,
     ActivitySummaryView,
     ActivityTimelineView,
-    AnonymiseActivityView,
-    ExportActivityView,
-    ImportActivityView,
     GlobalActivitySummaryView,
     RecentActivityView,
     TrackEventView,
@@ -100,21 +97,6 @@ urlpatterns = [
         "activity/track/",
         TrackEventView.as_view(),
         name="activity-track",
-    ),
-    path(
-        "activity/export/",
-        ExportActivityView.as_view(),
-        name="activity-export",
-    ),
-    path(
-        "activity/import/",
-        ImportActivityView.as_view(),
-        name="activity-import",
-    ),
-    path(
-        "activity/anonymise/",
-        AnonymiseActivityView.as_view(),
-        name="activity-anonymise",
     ),
     path(
         "activity/global/",

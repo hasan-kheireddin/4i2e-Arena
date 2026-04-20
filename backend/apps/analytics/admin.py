@@ -55,10 +55,9 @@ class ActivityEventAdmin(admin.ModelAdmin):
         "category",
         "event_type",
         "ip_address",
-        "is_anonymised",
         "created_at",
     ]
-    list_filter = ["category", "event_type", "is_anonymised"]
+    list_filter = ["category", "event_type"]
     search_fields = ["user__username", "event_type", "ip_address"]
     readonly_fields = [
         "id",
@@ -68,7 +67,6 @@ class ActivityEventAdmin(admin.ModelAdmin):
         "metadata",
         "ip_address",
         "user_agent",
-        "is_anonymised",
         "created_at",
     ]
     raw_id_fields = ["user"]

@@ -19,9 +19,6 @@
 #   GET  /api/analytics/activity/heatmap/        → Hourly heatmap
 #   GET  /api/analytics/activity/recent/         → Recent activity feed
 #   POST /api/analytics/activity/track/          → Frontend page-view tracking
-#   GET  /api/analytics/activity/export/         → Export user data (JSON/CSV)
-#   POST /api/analytics/activity/import/         → Import user data (JSON/CSV)
-#   POST /api/analytics/activity/anonymise/      → Anonymise user data
 #   GET  /api/analytics/activity/global/         → Platform-wide summary (admin)
 # =============================================================================
 
@@ -61,9 +58,11 @@ from .serializers import (
     LeaderboardEntrySerializer,
     UserXPDetailSerializer,
 )
+from .achievement_definitions import ACHIEVEMENT_MAP
 from .xp_service import get_xp_for_level, get_xp_to_next_level, MAX_LEVEL
 
 User = get_user_model()
+CATALOG_KEYS = tuple(ACHIEVEMENT_MAP.keys())
 
 class AchievementListView(generics.ListAPIView):
     """
@@ -88,11 +87,14 @@ class AchievementListView(generics.ListAPIView):
             user=user, achievement=OuterRef("pk"),
         )
 
-        qs = Achievement.objects.exclude(
+        qs = Achievement.objects.filter(
+            key__in=CATALOG_KEYS,
+        ).exclude(
             is_hidden=True,
         ).union(
             # Include hidden achievements that the user has unlocked
             Achievement.objects.filter(
+                key__in=CATALOG_KEYS,
                 is_hidden=True,
                 unlocks__user=user,
             ),
@@ -155,7 +157,10 @@ class AchievementUnlockedListView(generics.ListAPIView):
     def get_queryset(self):
         return (
             AchievementUnlock.objects
-            .filter(user=self.request.user)
+            .filter(
+                user=self.request.user,
+                achievement__key__in=CATALOG_KEYS,
+            )
             .select_related("achievement")
             .order_by("-unlocked_at")
         )
@@ -172,6 +177,7 @@ class AchievementProgressListView(generics.ListAPIView):
             .filter(
                 user=self.request.user,
                 achievement__is_hidden=False,
+                achievement__key__in=CATALOG_KEYS,
             )
             .select_related("achievement")
             .order_by("achievement__category", "achievement__ordering_priority")
@@ -187,9 +193,14 @@ class AchievementStatsView(APIView):
         user = request.user
 
         # Total visible achievements (exclude internal/hidden)
-        total = Achievement.objects.filter(is_hidden=False).count()
+        total = Achievement.objects.filter(
+            is_hidden=False,
+            key__in=CATALOG_KEYS,
+        ).count()
         unlocked_qs = AchievementUnlock.objects.filter(
-            user=user, achievement__is_hidden=False,
+            user=user,
+            achievement__is_hidden=False,
+            achievement__key__in=CATALOG_KEYS,
         ).select_related("achievement")
         unlocked_count = unlocked_qs.count()
         locked_count = total - unlocked_count
@@ -204,7 +215,9 @@ class AchievementStatsView(APIView):
         by_category = {}
         for cat_value, cat_label in AchievementCategory.choices:
             cat_total = Achievement.objects.filter(
-                category=cat_value, is_hidden=False,
+                category=cat_value,
+                is_hidden=False,
+                key__in=CATALOG_KEYS,
             ).count()
             cat_unlocked = unlocked_qs.filter(
                 achievement__category=cat_value,
@@ -220,7 +233,9 @@ class AchievementStatsView(APIView):
         by_tier = {}
         for tier_value, tier_label in AchievementTier.choices:
             tier_total = Achievement.objects.filter(
-                tier=tier_value, is_hidden=False,
+                tier=tier_value,
+                is_hidden=False,
+                key__in=CATALOG_KEYS,
             ).count()
             tier_unlocked = unlocked_qs.filter(
                 achievement__tier=tier_value,
@@ -268,6 +283,7 @@ class AchievementDetailView(generics.RetrieveAPIView):
 
         return (
             Achievement.objects
+            .filter(key__in=CATALOG_KEYS)
             .annotate(
                 is_unlocked=Case(
                     When(unlocks__user=user, then=Value(True)),
@@ -437,13 +453,6 @@ from .aggregation_service import (
     get_recent_activity,
     get_user_activity_summary,
 )
-from .privacy_service import (
-    anonymise_user_events,
-    export_user_events,
-    export_user_events_csv,
-    import_user_events,
-    parse_import_file,
-)
 from .tracking_service import get_client_ip, get_user_agent, track_page_view
 
 
@@ -574,138 +583,6 @@ class TrackEventView(APIView):
 
 
 # ---------------------------------------------------------------------------
-# GET  /api/analytics/activity/export/  — Data portability (JSON / CSV)
-# POST /api/analytics/activity/import/  — Data import (JSON / CSV)
-# ---------------------------------------------------------------------------
-
-class ExportActivityView(APIView):
-    """
-    Export all activity events for the authenticated user.
-
-    Query parameter:
-      - ``export_format`` — ``json`` (default) | ``csv``
-
-    All formats trigger a file download via Content-Disposition header.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        # Use 'export_format' to avoid conflict with DRF's reserved 'format' param
-        fmt = request.query_params.get("export_format", "json").lower()
-        user_id = request.user.pk
-
-        if fmt == "csv":
-            from django.http import HttpResponse
-            content = export_user_events_csv(user_id)
-            response = HttpResponse(content, content_type="text/csv; charset=utf-8")
-            response["Content-Disposition"] = (
-                'attachment; filename="activity_export.csv"'
-            )
-            return response
-
-        # Default: Pretty JSON (indent=2)
-        from django.http import HttpResponse
-        import json as _json
-        data = export_user_events(user_id)
-        payload = _json.dumps({"events": data, "total": len(data)}, ensure_ascii=False, indent=2)
-        response = HttpResponse(payload, content_type="application/json; charset=utf-8")
-        response["Content-Disposition"] = (
-            'attachment; filename="activity_export.json"'
-        )
-        return response
-
-
-class ImportActivityView(APIView):
-    """
-    Import activity events from a previously exported file.
-
-    Accepts multipart file upload OR raw request body.
-    Supported formats (detected from Content-Type or file extension):
-      - JSON: list of event objects, or ``{"events": [...]}``
-      - CSV:  exported CSV with header row
-
-    Rules:
-      - Events whose ``id`` already exists in the DB are skipped (idempotent).
-      - Events are always imported for the authenticated user — the
-        ``user_id`` field in the file is ignored for security.
-      - Returns a summary: imported / skipped / errors.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        # ── Resolve file content and content-type ──────────────────────────
-        uploaded = request.FILES.get("file")
-        if uploaded:
-            content = uploaded.read()
-            # Detect format from filename extension if content-type is generic
-            ct = uploaded.content_type or ""
-            name = (uploaded.name or "").lower()
-            if "octet-stream" in ct or not ct:
-                if name.endswith(".csv"):
-                    ct = "text/csv"
-                else:
-                    ct = "application/json"
-        else:
-            # Accept raw body with explicit Content-Type
-            content = request.body
-            ct = request.content_type or "application/json"
-
-        if not content:
-            return Response(
-                {"detail": "No file or body provided."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ── Parse ──────────────────────────────────────────────────────────
-        rows, parse_error = parse_import_file(content, ct)
-        if parse_error:
-            return Response(
-                {"detail": parse_error},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not rows:
-            return Response(
-                {"detail": "File contained no events.", "imported": 0, "skipped": 0, "errors": []},
-                status=status.HTTP_200_OK,
-            )
-
-        # ── Import ─────────────────────────────────────────────────────────
-        result = import_user_events(request.user.pk, rows)
-
-        http_status = (
-            status.HTTP_200_OK
-            if result["imported"] > 0 or not result["errors"]
-            else status.HTTP_400_BAD_REQUEST
-        )
-        return Response(result, status=http_status)
-
-
-# ---------------------------------------------------------------------------
-# POST /api/analytics/activity/anonymise/ — Privacy: anonymise data
-# ---------------------------------------------------------------------------
-
-class AnonymiseActivityView(APIView):
-    """
-    Anonymise all activity events for the authenticated user.
-
-    Scrubs metadata, IP addresses, and user-agent strings while
-    preserving aggregate counts.  This action cannot be undone.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        count = anonymise_user_events(request.user.pk)
-        return Response(
-            {"detail": f"Anonymised {count} activity events."},
-            status=status.HTTP_200_OK,
-        )
-
-
-# ---------------------------------------------------------------------------
 # GET /api/analytics/activity/global/ — Platform-wide summary (admin)
 # ---------------------------------------------------------------------------
 
@@ -721,4 +598,3 @@ class GlobalActivitySummaryView(APIView):
     def get(self, request):
         data = get_global_activity_summary()
         return Response(data, status=status.HTTP_200_OK)
-

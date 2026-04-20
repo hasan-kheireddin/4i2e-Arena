@@ -79,8 +79,11 @@ export default function ProfilePage() {
 
   const totalXp = xp?.xp ?? 0;
   const level   = xp?.level ?? 1;
-  const xpInLevel = totalXp % 200;
-  const xpProgress = (xpInLevel / 200) * 100;
+  const xpInLevel = xp?.level_info?.xp_in_level ?? 0;
+  const xpNeeded = xp?.level_info?.xp_needed ?? 0;
+  const xpRemaining = Math.max(xpNeeded - xpInLevel, 0);
+  const xpProgress = xpNeeded > 0 ? Math.min((xpInLevel / xpNeeded) * 100, 100) : 100;
+  const nextLevel = xpNeeded > 0 ? level + 1 : level;
 
   const recentForm = stats?.recent_form ?? [];
 
@@ -121,7 +124,7 @@ export default function ProfilePage() {
             <div className="max-w-xs mx-auto sm:mx-0">
               <div className="flex justify-between text-xs mb-1.5" style={{ color: "var(--color-text-muted)" }}>
                 <span>{t("profile.level_xp", { level, xp: totalXp.toLocaleString() })}</span>
-                <span>{t("profile.xp_to_level", { remaining: 200 - xpInLevel, next: level + 1 })}</span>
+                <span>{t("profile.xp_to_level", { remaining: xpRemaining, next: nextLevel })}</span>
               </div>
               <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
                 <div className="h-full rounded-full transition-all duration-700"

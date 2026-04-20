@@ -171,7 +171,12 @@ export default function TicTacToePage() {
   });
 
   // ── Online game socket ────────────────────────────────────────────────────
-  const { send: gameSend, status: gameSocketStatus } = useGameSocket(gamePath, {
+  const {
+    send: gameSend,
+    status: gameSocketStatus,
+    latency: gameLatency,
+  } = useGameSocket(gamePath, {
+    enableLatencyProbe: true,
     onOpen: useCallback(() => {
       if (gameId) gameSend({ type: 'join', game_id: gameId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -393,6 +398,11 @@ export default function TicTacToePage() {
                     : onlinePhase}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
+            {mode === 'online' && (
+              <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                RTT {gameLatency.rttMs === null ? '--' : `${Math.round(gameLatency.rttMs)}ms`}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

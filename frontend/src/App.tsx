@@ -21,6 +21,7 @@ import MatchHistoryPage from "./pages/MatchHistoryPage";
 import SettingsPage from "./pages/SettingsPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
+import AchievementsPage from "./pages/AchievementsPage";
 
 function App() {
   return (
@@ -98,6 +99,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/achievements"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AchievementsPage />
                 </Layout>
               </ProtectedRoute>
             }

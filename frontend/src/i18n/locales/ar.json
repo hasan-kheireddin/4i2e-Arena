@@ -41,6 +41,7 @@
     "search_placeholder": "ابحث عن لاعبين أو ألعاب...",
     "notifications": "الإشعارات",
     "profile": "الملف الشخصي",
+    "achievements": "الإنجازات",
     "settings": "الإعدادات",
     "toggle_theme": "تبديل المظهر",
     "sign_out": "تسجيل الخروج"
@@ -141,8 +142,7 @@
       "security": "الأمان",
       "notifications": "الإشعارات",
       "appearance": "اللغة",
-      "audio": "الصوت",
-      "privacy": "تصدير/استيراد البيانات"
+      "audio": "الصوت"
     },
     "profile": {
       "title": "معلومات الملف الشخصي",
@@ -199,19 +199,6 @@
       "game_effects": "مؤثرات اللعبة",
       "music": "الموسيقى",
       "notifications": "الإشعارات"
-    },
-    "privacy": {
-      "export_title": "تصدير بياناتك",
-      "export_desc": "تنزيل جميع أحداث نشاطك. مفيد للنسخ الاحتياطي أو نقل البيانات.",
-      "export_btn": "تنزيل {{format}}",
-      "exporting": "جارٍ التصدير...",
-      "import_title": "استيراد البيانات",
-      "import_desc": "استعادة أحداث النشاط من ملف مُصدَّر سابقاً (JSON أو CSV). يتم تخطي المكررات تلقائياً.",
-      "import_btn": "اختر ملفاً واستورد",
-      "importing": "جارٍ الاستيراد...",
-      "import_imported": "تم استيراد {{count}} حدث.",
-      "import_skipped": "تم تخطي {{count}} مكرر.",
-      "import_errors": "{{count}} خطأ — انقر للتوسيع"
     }
   },
   "sidebar": {
@@ -323,7 +310,7 @@
     "feat_xp_title": "نقاط الخبرة والمستويات",
     "feat_xp_desc": "اكسب خبرة مع كل لعبة. ارتقِ في المستويات وافتح مكافآت حصرية.",
     "feat_sec_title": "آمن وخاص",
-    "feat_sec_desc": "مصادقة JWT، دعم 2FA، وتحكم كامل في تصدير البيانات.",
+    "feat_sec_desc": "مصادقة JWT ودعم 2FA لحماية حسابك.",
     "feat_ach_title": "الإنجازات",
     "feat_ach_desc": "افتح إنجازات فريدة أثناء اللعب. اعرض شاراتك على ملفك الشخصي.",
     "games_eyebrow": "ألعابنا",
@@ -385,6 +372,41 @@
     "result_win": "فوز",
     "result_loss": "خسارة",
     "result_draw": "تعادل"
+  },
+  "achievements_page": {
+    "title": "الإنجازات",
+    "subtitle": "تابع الشارات المفتوحة وتقدّمك عبر جميع الأهداف.",
+    "loading": "جارٍ تحميل الإنجازات...",
+    "summary_unlocked": "تم الفتح",
+    "summary_completion": "نسبة الإنجاز",
+    "summary_xp": "نقاط الخبرة من الإنجازات",
+    "summary_rank": "الترتيب العالمي",
+    "status_all": "الكل",
+    "status_unlocked": "المفتوحة",
+    "status_locked": "المقفلة",
+    "category_all": "كل الفئات",
+    "tiers_title": "تقدّم المستويات",
+    "list_title": "قائمة الإنجازات",
+    "empty": "لا توجد إنجازات تطابق عوامل التصفية المحددة.",
+    "locked_label": "مقفل",
+    "unlocked_label": "مفتوح",
+    "unlocked_on": "تم الفتح في {{date}}",
+    "progress": "التقدم",
+    "progress_value": "{{current}} / {{threshold}}",
+    "tier": {
+      "bronze": "برونزي",
+      "silver": "فضي",
+      "gold": "ذهبي",
+      "platinum": "بلاتيني"
+    },
+    "category": {
+      "wins": "الانتصارات",
+      "games": "المباريات",
+      "streaks": "السلاسل",
+      "skill": "المهارة",
+      "social": "اجتماعي",
+      "milestone": "المحطات"
+    }
   },
   "lb": {
     "title": "🏓 لوحة متصدري Pong",

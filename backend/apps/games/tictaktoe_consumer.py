@@ -5,6 +5,8 @@ import logging
 import time
 from typing import Any
 
+from apps.analytics.achievement_service import check_achievements_after_game
+from apps.analytics.xp_service import award_xp_after_game
 from apps.games.consumers import BaseConsumer
 from apps.games.match_recording_service import record_match
 from apps.games.session import (
@@ -268,7 +270,9 @@ class TicTacToeConsumer(BaseConsumer):
                 session,
                 reason="draw" if session.engine.is_draw else "win",
             )
-            await record_match(session)
+            xp_awards = await award_xp_after_game(session)
+            await record_match(session, xp_awards=xp_awards)
+            await check_achievements_after_game(session)
 
     async def _handle_forfeit(self) -> None:
         session = self._session
@@ -289,7 +293,9 @@ class TicTacToeConsumer(BaseConsumer):
         await persist_session(session)
         await self._cancel_disconnect_tasks(session)
         await self._broadcast_game_over(session, reason="forfeit")
-        await record_match(session)
+        xp_awards = await award_xp_after_game(session)
+        await record_match(session, xp_awards=xp_awards)
+        await check_achievements_after_game(session)
 
     async def _handle_ping(self, content: dict[str, Any]) -> None:
         client_ts_ms = content.get("client_ts_ms")
@@ -401,7 +407,9 @@ class TicTacToeConsumer(BaseConsumer):
                 )
                 await self._broadcast_game_over(session, reason="disconnect_forfeit")
                 await self._cancel_disconnect_tasks(session)
-                await record_match(session)
+                xp_awards = await award_xp_after_game(session)
+                await record_match(session, xp_awards=xp_awards)
+                await check_achievements_after_game(session)
             elif session.status == SessionStatus.WAITING:
                 left_username = player.username
                 session.mark_abandoned(reason=FinishReason.CANCELED)

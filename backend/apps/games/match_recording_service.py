@@ -319,6 +319,22 @@ def _extract_metadata(session: GameSession) -> dict[str, Any]:
             "2": state.get("player2", {}).get("score", 0),
         }
         metadata["ball_speed"] = state.get("ball", {}).get("speed")
+        stats = state.get("stats", {})
+        if isinstance(stats, dict):
+            metadata["pong_stats"] = {
+                "max_rally_hits": int(stats.get("max_rally_hits", 0)),
+                "player_hits": stats.get("player_hits", {}),
+                "player_max_consecutive_blocks": stats.get(
+                    "player_max_consecutive_blocks",
+                    {},
+                ),
+                "player_misses": stats.get("player_misses", {}),
+                "player_max_deficit": stats.get("player_max_deficit", {}),
+                "player_scored_three_under_ten": stats.get(
+                    "player_scored_three_under_ten",
+                    {},
+                ),
+            }
 
     elif session.game_type == GameType.TICTACTOE:
         metadata["final_board"] = state.get("board", [])
@@ -328,6 +344,11 @@ def _extract_metadata(session: GameSession) -> dict[str, Any]:
         )
         metadata["is_draw"] = state.get("is_draw", False)
         metadata["winner_symbol"] = state.get("winner")
+        stats = state.get("stats", {})
+        if isinstance(stats, dict):
+            metadata["ttt_stats"] = {
+                "player_block_counts": stats.get("player_block_counts", {}),
+            }
 
     metadata["game_type"] = session.game_type.value
     metadata["ai_opponent"] = session.ai is not None

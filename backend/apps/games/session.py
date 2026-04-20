@@ -241,6 +241,17 @@ def _serialize_engine(game_type: GameType, engine: Any) -> dict[str, Any]:
                 "direction": engine.player2.paddle.direction.value,
                 "player_id": engine.player2.player_id,
             },
+            "stats": {
+                "current_rally_hits": engine.current_rally_hits,
+                "max_rally_hits": engine.max_rally_hits,
+                "player_hits": engine.player_hits,
+                "player_current_consecutive_blocks": engine.player_current_consecutive_blocks,
+                "player_max_consecutive_blocks": engine.player_max_consecutive_blocks,
+                "player_misses": engine.player_misses,
+                "player_max_deficit": engine.player_max_deficit,
+                "player_scored_three_under_ten": engine.player_scored_three_under_ten,
+                "player_point_timestamps": engine.player_point_timestamps,
+            },
         }
     if game_type == GameType.TICTACTOE and isinstance(engine, TicTacToeEngine):
         return {
@@ -262,6 +273,9 @@ def _serialize_engine(game_type: GameType, engine: Any) -> dict[str, Any]:
             "player2_id": engine.player2_id,
             "started_at": engine.started_at,
             "finished_at": engine.finished_at,
+            "stats": {
+                "player_block_counts": engine.player_block_counts,
+            },
         }
     raise ValueError(f"Unsupported game engine for serialization: {game_type}")
 
@@ -322,6 +336,78 @@ def _deserialize_pong_engine(payload: dict[str, Any]) -> PongEngine:
         player_id = p2.get("player_id")
         engine.player2.player_id = str(player_id) if player_id is not None else None
 
+    stats = payload.get("stats", {})
+    if isinstance(stats, dict):
+        engine.current_rally_hits = int(stats.get("current_rally_hits", 0))
+        engine.max_rally_hits = int(stats.get("max_rally_hits", 0))
+
+        def _deserialize_int_dict(raw: Any) -> dict[int, int]:
+            if not isinstance(raw, dict):
+                return {}
+            out: dict[int, int] = {}
+            for key, value in raw.items():
+                try:
+                    out[int(key)] = int(value)
+                except (TypeError, ValueError):
+                    continue
+            return out
+
+        def _deserialize_bool_dict(raw: Any) -> dict[int, bool]:
+            if not isinstance(raw, dict):
+                return {}
+            out: dict[int, bool] = {}
+            for key, value in raw.items():
+                try:
+                    out[int(key)] = bool(value)
+                except (TypeError, ValueError):
+                    continue
+            return out
+
+        def _deserialize_float_list_dict(raw: Any) -> dict[int, list[float]]:
+            if not isinstance(raw, dict):
+                return {}
+            out: dict[int, list[float]] = {}
+            for key, value in raw.items():
+                try:
+                    slot = int(key)
+                except (TypeError, ValueError):
+                    continue
+                if isinstance(value, list):
+                    out[slot] = [
+                        float(v)
+                        for v in value
+                        if isinstance(v, (int, float))
+                    ]
+            return out
+
+        engine.player_hits = {1: 0, 2: 0, **_deserialize_int_dict(stats.get("player_hits"))}
+        engine.player_current_consecutive_blocks = {
+            1: 0,
+            2: 0,
+            **_deserialize_int_dict(stats.get("player_current_consecutive_blocks")),
+        }
+        engine.player_max_consecutive_blocks = {
+            1: 0,
+            2: 0,
+            **_deserialize_int_dict(stats.get("player_max_consecutive_blocks")),
+        }
+        engine.player_misses = {1: 0, 2: 0, **_deserialize_int_dict(stats.get("player_misses"))}
+        engine.player_max_deficit = {
+            1: 0,
+            2: 0,
+            **_deserialize_int_dict(stats.get("player_max_deficit")),
+        }
+        engine.player_scored_three_under_ten = {
+            1: False,
+            2: False,
+            **_deserialize_bool_dict(stats.get("player_scored_three_under_ten")),
+        }
+        engine.player_point_timestamps = {
+            1: [],
+            2: [],
+            **_deserialize_float_list_dict(stats.get("player_point_timestamps")),
+        }
+
     return engine
 
 
@@ -372,6 +458,17 @@ def _deserialize_ttt_engine(payload: dict[str, Any]) -> TicTacToeEngine:
     engine.player2_id = str(player2_id) if player2_id is not None else None
     engine.started_at = payload.get("started_at")
     engine.finished_at = payload.get("finished_at")
+    stats = payload.get("stats", {})
+    if isinstance(stats, dict):
+        raw_blocks = stats.get("player_block_counts")
+        if isinstance(raw_blocks, dict):
+            block_counts: dict[int, int] = {1: 0, 2: 0}
+            for key, value in raw_blocks.items():
+                try:
+                    block_counts[int(key)] = int(value)
+                except (TypeError, ValueError):
+                    continue
+            engine.player_block_counts = block_counts
     return engine
 
 

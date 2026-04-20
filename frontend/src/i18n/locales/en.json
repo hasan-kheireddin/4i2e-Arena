@@ -41,6 +41,7 @@
     "search_placeholder": "Search players, games...",
     "notifications": "Notifications",
     "profile": "Profile",
+    "achievements": "Achievements",
     "settings": "Settings",
     "toggle_theme": "Toggle Theme",
     "sign_out": "Sign Out"
@@ -141,8 +142,7 @@
       "security": "Security",
       "notifications": "Notifications",
       "appearance": "Language",
-      "audio": "Audio",
-      "privacy": "Data Export/Import"
+      "audio": "Audio"
     },
     "profile": {
       "title": "Profile Information",
@@ -199,19 +199,6 @@
       "game_effects": "Game Effects",
       "music": "Music",
       "notifications": "Notifications"
-    },
-    "privacy": {
-      "export_title": "Export Your Data",
-      "export_desc": "Download all your activity events. Useful for backups or transferring data.",
-      "export_btn": "Download {{format}}",
-      "exporting": "Exporting...",
-      "import_title": "Import Data",
-      "import_desc": "Restore activity events from a previously exported file (JSON or CSV). Duplicate events are skipped automatically.",
-      "import_btn": "Choose File & Import",
-      "importing": "Importing...",
-      "import_imported": "Imported {{count}} events.",
-      "import_skipped": "Skipped {{count}} duplicates.",
-      "import_errors": "{{count}} error(s) — click to expand"
     }
   },
   "sidebar": {
@@ -323,7 +310,7 @@
     "feat_xp_title": "XP & Leveling",
     "feat_xp_desc": "Earn experience with every game. Level up and unlock exclusive rewards.",
     "feat_sec_title": "Secure & Private",
-    "feat_sec_desc": "JWT auth, 2FA support, and full data export control to protect your data.",
+    "feat_sec_desc": "JWT auth and 2FA support to keep your account secure.",
     "feat_ach_title": "Achievements",
     "feat_ach_desc": "Unlock unique achievements as you play. Show off your badges on your profile.",
     "games_eyebrow": "Our Games",
@@ -385,6 +372,41 @@
     "result_win": "Win",
     "result_loss": "Loss",
     "result_draw": "Draw"
+  },
+  "achievements_page": {
+    "title": "Achievements",
+    "subtitle": "Track your badge unlocks and progression across every milestone.",
+    "loading": "Loading achievements...",
+    "summary_unlocked": "Unlocked",
+    "summary_completion": "Completion",
+    "summary_xp": "XP from Achievements",
+    "summary_rank": "Global Rank",
+    "status_all": "All",
+    "status_unlocked": "Unlocked",
+    "status_locked": "Locked",
+    "category_all": "All Categories",
+    "tiers_title": "Tier Progress",
+    "list_title": "Achievement Catalog",
+    "empty": "No achievements match the selected filters.",
+    "locked_label": "Locked",
+    "unlocked_label": "Unlocked",
+    "unlocked_on": "Unlocked on {{date}}",
+    "progress": "Progress",
+    "progress_value": "{{current}} / {{threshold}}",
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    },
+    "category": {
+      "wins": "Wins",
+      "games": "Games",
+      "streaks": "Streaks",
+      "skill": "Skill",
+      "social": "Social",
+      "milestone": "Milestones"
+    }
   },
   "lb": {
     "title": "🏓 Pong Leaderboard",

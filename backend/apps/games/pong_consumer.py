@@ -312,9 +312,9 @@ class PongConsumer(BaseConsumer):
         await self._stop_tick_loop(session)
         await self._cancel_disconnect_tasks(session)
         await self._broadcast_game_over(session, reason="forfeit")
-        await check_achievements_after_game(session)
         xp_awards = await award_xp_after_game(session)
         await record_match(session, xp_awards=xp_awards)
+        await check_achievements_after_game(session)
 
     async def _tick_loop(self, session: GameSession) -> None:
         """Run the game engine at TICK_RATE Hz and broadcast snapshots."""
@@ -347,9 +347,9 @@ class PongConsumer(BaseConsumer):
                     await persist_session(session)
                     await self._cancel_disconnect_tasks(session)
                     await self._broadcast_game_over(session, reason="score")
-                    await check_achievements_after_game(session)
                     xp_awards = await award_xp_after_game(session)
                     await record_match(session, xp_awards=xp_awards)
+                    await check_achievements_after_game(session)
                     break
 
                 elapsed = time.monotonic() - tick_start
@@ -482,9 +482,9 @@ class PongConsumer(BaseConsumer):
                 )
                 await self._broadcast_game_over(session, reason="disconnect_forfeit")
                 await self._cancel_disconnect_tasks(session)
-                await check_achievements_after_game(session)
                 xp_awards = await award_xp_after_game(session)
                 await record_match(session, xp_awards=xp_awards)
+                await check_achievements_after_game(session)
             elif session.status == SessionStatus.WAITING:
                 session.mark_abandoned(reason=FinishReason.CANCELED)
                 await persist_session(session)

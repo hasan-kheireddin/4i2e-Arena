@@ -41,6 +41,7 @@
     "search_placeholder": "Rechercher des joueurs, des jeux...",
     "notifications": "Notifications",
     "profile": "Profil",
+    "achievements": "Succès",
     "settings": "Paramètres",
     "toggle_theme": "Changer le thème",
     "sign_out": "Se déconnecter"
@@ -141,8 +142,7 @@
       "security": "Sécurité",
       "notifications": "Notifications",
       "appearance": "Langue",
-      "audio": "Audio",
-      "privacy": "Export/Import de données"
+      "audio": "Audio"
     },
     "profile": {
       "title": "Informations du profil",
@@ -199,19 +199,6 @@
       "game_effects": "Effets de jeu",
       "music": "Musique",
       "notifications": "Notifications"
-    },
-    "privacy": {
-      "export_title": "Exporter vos données",
-      "export_desc": "Téléchargez tous vos événements d'activité. Utile pour les sauvegardes ou le transfert de données.",
-      "export_btn": "Télécharger {{format}}",
-      "exporting": "Exportation...",
-      "import_title": "Importer des données",
-      "import_desc": "Restaurez des événements à partir d'un fichier exporté (JSON ou CSV). Les doublons sont ignorés automatiquement.",
-      "import_btn": "Choisir un fichier et importer",
-      "importing": "Importation...",
-      "import_imported": "{{count}} événements importés.",
-      "import_skipped": "{{count}} doublon(s) ignoré(s).",
-      "import_errors": "{{count}} erreur(s) — cliquez pour développer"
     }
   },
   "sidebar": {
@@ -323,7 +310,7 @@
     "feat_xp_title": "XP et progression",
     "feat_xp_desc": "Gagnez de l'expérience à chaque partie. Montez de niveau et débloquez des récompenses.",
     "feat_sec_title": "Sécurisé et privé",
-    "feat_sec_desc": "Auth JWT, support 2FA et contrôle total de l'exportation de données.",
+    "feat_sec_desc": "Authentification JWT et support 2FA pour sécuriser votre compte.",
     "feat_ach_title": "Succès",
     "feat_ach_desc": "Débloquez des succès uniques en jouant. Montrez vos badges sur votre profil.",
     "games_eyebrow": "Nos jeux",
@@ -385,6 +372,41 @@
     "result_win": "Victoire",
     "result_loss": "Défaite",
     "result_draw": "Nul"
+  },
+  "achievements_page": {
+    "title": "Succès",
+    "subtitle": "Suivez vos badges débloqués et votre progression sur tous les objectifs.",
+    "loading": "Chargement des succès...",
+    "summary_unlocked": "Débloqués",
+    "summary_completion": "Complétion",
+    "summary_xp": "XP des succès",
+    "summary_rank": "Rang mondial",
+    "status_all": "Tous",
+    "status_unlocked": "Débloqués",
+    "status_locked": "Verrouillés",
+    "category_all": "Toutes les catégories",
+    "tiers_title": "Progression par palier",
+    "list_title": "Catalogue des succès",
+    "empty": "Aucun succès ne correspond aux filtres sélectionnés.",
+    "locked_label": "Verrouillé",
+    "unlocked_label": "Débloqué",
+    "unlocked_on": "Débloqué le {{date}}",
+    "progress": "Progression",
+    "progress_value": "{{current}} / {{threshold}}",
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Argent",
+      "gold": "Or",
+      "platinum": "Platine"
+    },
+    "category": {
+      "wins": "Victoires",
+      "games": "Parties",
+      "streaks": "Séries",
+      "skill": "Compétence",
+      "social": "Social",
+      "milestone": "Étapes"
+    }
   },
   "lb": {
     "title": "🏓 Classement Pong",

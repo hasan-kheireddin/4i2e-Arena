@@ -8,6 +8,7 @@ import {
   getMyMatches, getMyStats, getLeaderboard,
   type Match, type LeaderboardEntry, type UserStats,
 } from "../services/games";
+import { getMyXP, type UserXPDetail } from "../services/analytics";
 import {
   Gamepad2, Trophy, Zap, TrendingUp, Sword,
   Flame, ArrowRight, Clock,
@@ -46,6 +47,7 @@ export default function HomePage() {
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [xpDetail, setXpDetail] = useState<UserXPDetail | null>(null);
   const [recentMatches, setRecentMatches] = useState<Match[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
@@ -53,15 +55,17 @@ export default function HomePage() {
     let cancelled = false;
     async function fetchAll() {
       try {
-        const [statsData, matchesData, lbData] = await Promise.all([
+        const [statsData, matchesData, lbData, xpData] = await Promise.all([
           getMyStats(),
           getMyMatches({ page_size: 5 }),
           getLeaderboard({ game_type: "pong", metric: "wins", limit: 5 }),
+          getMyXP(),
         ]);
         if (!cancelled) {
           setStats(statsData);
           setRecentMatches(matchesData.results);
           setLeaderboard(lbData);
+          setXpDetail(xpData);
         }
       } catch { /* fallback to defaults */ }
       finally { if (!cancelled) setLoading(false); }
@@ -70,10 +74,13 @@ export default function HomePage() {
     return () => { cancelled = true; };
   }, []);
 
-  const totalXp    = stats?.overview.total_xp ?? 0;
-  const level      = Math.floor(totalXp / 200) + 1;
-  const xpToNext   = 200 - (totalXp % 200);
-  const xpProgress = ((200 - xpToNext) / 200) * 100;
+  const totalXp = xpDetail?.xp ?? stats?.overview.total_xp ?? 0;
+  const level = xpDetail?.level ?? user?.level ?? 1;
+  const xpInLevel = xpDetail?.level_info?.xp_in_level ?? 0;
+  const xpNeeded = xpDetail?.level_info?.xp_needed ?? 0;
+  const xpToNext = Math.max(xpNeeded - xpInLevel, 0);
+  const xpProgress = xpNeeded > 0 ? Math.min((xpInLevel / xpNeeded) * 100, 100) : 100;
+  const nextLevel = xpNeeded > 0 ? level + 1 : level;
   const totalWins  = stats?.overview.wins ?? 0;
   const totalGames = stats?.overview.total_matches ?? 0;
   const winRatePct = stats ? (stats.overview.win_rate * 100).toFixed(1) + "%" : "0.0%";
@@ -132,7 +139,7 @@ export default function HomePage() {
                   {t("home.level")} {level}
                 </span>
                 <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                  {totalXp.toLocaleString()} XP — {xpToNext} {t("home.xp_to_next_level")} {level + 1}
+                  {totalXp.toLocaleString()} XP — {xpToNext} {t("home.xp_to_next_level")} {nextLevel}
                 </span>
               </div>
               <div className="w-full max-w-xs h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>

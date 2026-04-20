@@ -3,29 +3,42 @@ import { getAccessToken, refreshAccessToken } from '../services/api';
 
 export type WsStatus = 'connecting' | 'open' | 'closed' | 'error' | 'reconnecting';
 
+export interface WsLatency {
+  rttMs: number | null;
+  clockOffsetMs: number | null;
+}
+
 interface UseGameSocketOptions {
   onMessage: (data: Record<string, unknown>) => void;
   onOpen?: () => void;
   onClose?: (event?: CloseEvent) => void;
   autoReconnect?: boolean;
+  enableLatencyProbe?: boolean;
+  onLatencyUpdate?: (latency: WsLatency) => void;
 }
 
 const BASE_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 5000;
+const LATENCY_PROBE_INTERVAL_MS = 5000;
 
 export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<number | null>(null);
+  const latencyProbeTimer = useRef<number | null>(null);
   const reconnectAttempts = useRef(0);
   const closedIntentionally = useRef(false);
   const optsRef = useRef(opts);
+  const latencyRef = useRef<WsLatency>({ rttMs: null, clockOffsetMs: null });
   const [status, setStatus] = useState<WsStatus>('closed');
+  const [latency, setLatency] = useState<WsLatency>({ rttMs: null, clockOffsetMs: null });
 
   optsRef.current = opts;
 
   useEffect(() => {
     if (!path) {
       setStatus('closed');
+      setLatency({ rttMs: null, clockOffsetMs: null });
+      latencyRef.current = { rttMs: null, clockOffsetMs: null };
       return;
     }
 
@@ -38,6 +51,23 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
         window.clearTimeout(reconnectTimer.current);
         reconnectTimer.current = null;
       }
+    };
+
+    const clearLatencyProbeTimer = () => {
+      if (latencyProbeTimer.current !== null) {
+        window.clearInterval(latencyProbeTimer.current);
+        latencyProbeTimer.current = null;
+      }
+    };
+
+    const updateLatency = (next: WsLatency) => {
+      latencyRef.current = next;
+      setLatency(next);
+      optsRef.current.onLatencyUpdate?.(next);
+    };
+
+    const resetLatency = () => {
+      updateLatency({ rttMs: null, clockOffsetMs: null });
     };
 
     const closeSocket = () => {
@@ -60,6 +90,16 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
       return `${protocol}://${window.location.host}${path}?token=${encodeURIComponent(token)}`;
     };
 
+    const sendLatencyProbe = (socket: WebSocket) => {
+      if (!optsRef.current.enableLatencyProbe) return;
+      if (ws.current !== socket || socket.readyState !== WebSocket.OPEN) return;
+      const probe = {
+        type: 'ping',
+        client_ts_ms: Date.now(),
+      };
+      socket.send(JSON.stringify(probe));
+    };
+
     const scheduleReconnect = (forceRefresh = false) => {
       if (cancelled || closedIntentionally.current || optsRef.current.autoReconnect === false) {
         setStatus('closed');
@@ -80,6 +120,7 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
 
     const connect = async (forceRefresh = false) => {
       clearReconnectTimer();
+      clearLatencyProbeTimer();
       closeSocket();
       setStatus(reconnectAttempts.current > 0 ? 'reconnecting' : 'connecting');
 
@@ -101,12 +142,44 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
         reconnectAttempts.current = 0;
         setStatus('open');
         optsRef.current.onOpen?.();
+        if (optsRef.current.enableLatencyProbe) {
+          sendLatencyProbe(socket);
+          latencyProbeTimer.current = window.setInterval(() => {
+            sendLatencyProbe(socket);
+          }, LATENCY_PROBE_INTERVAL_MS);
+        }
       };
 
       socket.onmessage = (event) => {
         if (cancelled || ws.current !== socket) return;
         try {
           const data = JSON.parse(event.data);
+          if (optsRef.current.enableLatencyProbe && data.type === 'pong') {
+            const echoedClientTs = Number(data.client_ts_ms);
+            if (Number.isFinite(echoedClientTs)) {
+              const now = Date.now();
+              const sampleRtt = Math.max(0, now - echoedClientTs);
+              const prev = latencyRef.current;
+              const smoothedRtt = prev.rttMs === null
+                ? sampleRtt
+                : prev.rttMs * 0.7 + sampleRtt * 0.3;
+
+              let nextClockOffset = prev.clockOffsetMs;
+              const serverTsMs = Number(data.server_ts_ms);
+              if (Number.isFinite(serverTsMs)) {
+                const sampleOffset = serverTsMs - (echoedClientTs + sampleRtt / 2);
+                nextClockOffset = prev.clockOffsetMs === null
+                  ? sampleOffset
+                  : prev.clockOffsetMs * 0.7 + sampleOffset * 0.3;
+              }
+
+              updateLatency({
+                rttMs: smoothedRtt,
+                clockOffsetMs: nextClockOffset,
+              });
+            }
+            return;
+          }
           optsRef.current.onMessage(data);
         } catch {
           // ignore malformed frames
@@ -122,6 +195,7 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
         if (ws.current === socket) {
           ws.current = null;
         }
+        clearLatencyProbeTimer();
         optsRef.current.onClose?.(event);
         if (cancelled || closedIntentionally.current) {
           setStatus('closed');
@@ -137,8 +211,10 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
       cancelled = true;
       closedIntentionally.current = true;
       clearReconnectTimer();
+      clearLatencyProbeTimer();
       closeSocket();
       setStatus('closed');
+      resetLatency();
     };
   }, [path]);
 
@@ -148,5 +224,5 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
     }
   }, []);
 
-  return { send, status };
+  return { send, status, latency };
 }

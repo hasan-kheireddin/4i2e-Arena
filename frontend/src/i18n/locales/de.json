@@ -41,6 +41,7 @@
     "search_placeholder": "Spieler, Spiele suchen...",
     "notifications": "Benachrichtigungen",
     "profile": "Profil",
+    "achievements": "Errungenschaften",
     "settings": "Einstellungen",
     "toggle_theme": "Design wechseln",
     "sign_out": "Abmelden"
@@ -141,8 +142,7 @@
       "security": "Sicherheit",
       "notifications": "Benachrichtigungen",
       "appearance": "Sprache",
-      "audio": "Audio",
-      "privacy": "Datenexport/-import"
+      "audio": "Audio"
     },
     "profile": {
       "title": "Profilinformationen",
@@ -199,19 +199,6 @@
       "game_effects": "Spieleffekte",
       "music": "Musik",
       "notifications": "Benachrichtigungen"
-    },
-    "privacy": {
-      "export_title": "Daten exportieren",
-      "export_desc": "Laden Sie alle Ihre Aktivitätsereignisse herunter. Nützlich für Backups oder Datenübertragungen.",
-      "export_btn": "{{format}} herunterladen",
-      "exporting": "Exportiere...",
-      "import_title": "Daten importieren",
-      "import_desc": "Stellen Sie Ereignisse aus einer exportierten Datei wieder her (JSON oder CSV). Duplikate werden automatisch übersprungen.",
-      "import_btn": "Datei auswählen und importieren",
-      "importing": "Importiere...",
-      "import_imported": "{{count}} Ereignisse importiert.",
-      "import_skipped": "{{count}} Duplikat(e) übersprungen.",
-      "import_errors": "{{count}} Fehler – zum Erweitern klicken"
     }
   },
   "sidebar": {
@@ -323,7 +310,7 @@
     "feat_xp_title": "XP & Level-System",
     "feat_xp_desc": "Verdiene Erfahrung mit jedem Spiel. Steige auf und schalte Belohnungen frei.",
     "feat_sec_title": "Sicher & Privat",
-    "feat_sec_desc": "JWT-Authentifizierung, 2FA-Unterstützung und vollständige Datenkontrolle.",
+    "feat_sec_desc": "JWT-Authentifizierung und 2FA-Unterstützung für ein sicheres Konto.",
     "feat_ach_title": "Errungenschaften",
     "feat_ach_desc": "Schalte einzigartige Errungenschaften frei. Zeige deine Abzeichen im Profil.",
     "games_eyebrow": "Unsere Spiele",
@@ -385,6 +372,41 @@
     "result_win": "Sieg",
     "result_loss": "Niederlage",
     "result_draw": "Unentschieden"
+  },
+  "achievements_page": {
+    "title": "Errungenschaften",
+    "subtitle": "Verfolge freigeschaltete Abzeichen und deinen Fortschritt bei allen Meilensteinen.",
+    "loading": "Errungenschaften werden geladen...",
+    "summary_unlocked": "Freigeschaltet",
+    "summary_completion": "Fortschritt",
+    "summary_xp": "XP aus Errungenschaften",
+    "summary_rank": "Weltrang",
+    "status_all": "Alle",
+    "status_unlocked": "Freigeschaltet",
+    "status_locked": "Gesperrt",
+    "category_all": "Alle Kategorien",
+    "tiers_title": "Stufenfortschritt",
+    "list_title": "Errungenschaftskatalog",
+    "empty": "Keine Errungenschaften entsprechen den ausgewählten Filtern.",
+    "locked_label": "Gesperrt",
+    "unlocked_label": "Freigeschaltet",
+    "unlocked_on": "Freigeschaltet am {{date}}",
+    "progress": "Fortschritt",
+    "progress_value": "{{current}} / {{threshold}}",
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silber",
+      "gold": "Gold",
+      "platinum": "Platin"
+    },
+    "category": {
+      "wins": "Siege",
+      "games": "Spiele",
+      "streaks": "Serien",
+      "skill": "Skill",
+      "social": "Sozial",
+      "milestone": "Meilensteine"
+    }
   },
   "lb": {
     "title": "🏓 Pong-Rangliste",

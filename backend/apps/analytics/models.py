@@ -191,12 +191,8 @@ class ActivityEvent(models.Model):
     The ``metadata`` JSONField stores event-specific context so the
     analytics engine can slice-and-dice without schema migrations.
 
-    Privacy controls:
-      * ``is_anonymised`` — set ``True`` when the user requests
-        data anonymisation (GDPR).  Metadata is wiped but the
-        aggregate row is preserved.
-      * The ``purge_before`` management command hard-deletes events
-        older than the configured retention window.
+    The ``purge_before`` management command hard-deletes events older
+    than the configured retention window.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -242,12 +238,6 @@ class ActivityEvent(models.Model):
         help_text="Browser / client user-agent string.",
     )
 
-    is_anonymised = models.BooleanField(
-        default=False,
-        db_index=True,
-        help_text="If True, metadata has been scrubbed for privacy.",
-    )
-
     created_at = models.DateTimeField(
         default=timezone.now,
         db_index=True,
@@ -279,14 +269,3 @@ class ActivityEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id} | {self.category}:{self.event_type} @ {self.created_at}"
-
-
-    def anonymise(self) -> None:
-        """Scrub PII from this event while keeping the aggregate row."""
-        self.metadata = {}
-        self.ip_address = None
-        self.user_agent = ""
-        self.is_anonymised = True
-        self.save(
-            update_fields=["metadata", "ip_address", "user_agent", "is_anonymised"],
-        )

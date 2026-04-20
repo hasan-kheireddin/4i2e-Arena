@@ -270,14 +270,6 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "is_anonymised",
-                    models.BooleanField(
-                        db_index=True,
-                        default=False,
-                        help_text="If True, metadata has been scrubbed for privacy.",
-                    ),
-                ),
-                (
                     "created_at",
                     models.DateTimeField(
                         db_index=True, default=django.utils.timezone.now

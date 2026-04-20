@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
@@ -8,16 +8,14 @@ import { Card as SurfaceCard } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { ProgressBar } from '../components/ui/ProgressBar';
-import { Select } from '../components/ui/Select';
 import { Spinner } from '../components/ui/Spinner';
 import { Tooltip } from '../components/ui/Tooltip';
-import { exportActivityData, importActivityData, type ExportFormat, type ImportResult } from '../services/analytics';
 import { useAuth } from '../context/AuthContext';
 import { twoFADisable, twoFAStatus, updateProfile } from '../services/auth';
 import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from '../i18n/language';
 import type { ApiError } from '../services/api';
 
-type SettingsTab = 'profile' | 'security' | 'appearance' | 'privacy';
+type SettingsTab = 'profile' | 'security' | 'appearance';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -80,14 +78,6 @@ export default function SettingsPage() {
     void i18n.changeLanguage(normalizedLang);
   };
 
-  // Privacy / data export-import state
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
-  const [exporting, setExporting] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // 2FA management state
   const [twoFALoading, setTwoFALoading] = useState(false);
   const [twoFAError, setTwoFAError] = useState<string | null>(null);
@@ -104,34 +94,6 @@ export default function SettingsPage() {
   const [disableCode, setDisableCode] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
   const [disableSuccess, setDisableSuccess] = useState<string | null>(null);
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      await exportActivityData(exportFormat);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    setImportResult(null);
-    setImportError(null);
-    try {
-      const result = await importActivityData(file);
-      setImportResult(result);
-    } catch (err: unknown) {
-      setImportError(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -224,7 +186,6 @@ export default function SettingsPage() {
     { key: 'profile', label: t('settings.tabs.profile') },
     { key: 'security', label: t('settings.tabs.security') },
     { key: 'appearance', label: t('settings.tabs.appearance') },
-    { key: 'privacy', label: t('settings.tabs.privacy') },
   ];
 
   const twoFAEnabled = twoFAInfo.is_2fa_enabled && twoFAInfo.confirmed;
@@ -241,11 +202,6 @@ export default function SettingsPage() {
   const profileCompletion = Math.round(
     (profileFields.filter((value) => value.trim().length > 0).length / profileFields.length) * 100
   );
-  const exportOptions = [
-    { value: 'json', label: 'JSON' },
-    { value: 'csv', label: 'CSV' },
-  ];
-
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="mb-6 font-display text-2xl font-bold text-primary">
@@ -511,84 +467,6 @@ export default function SettingsPage() {
             </>
           )}
 
-          {/* Privacy Tab */}
-          {tab === 'privacy' && (
-            <>
-              <SurfaceCard className="p-6">
-                <h2 className="mb-1 text-base font-semibold text-primary">
-                  {t('settings.privacy.export_title')}
-                </h2>
-                <p className="mb-4 text-sm text-secondary">
-                  {t('settings.privacy.export_desc')}
-                </p>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                  <div className="w-full max-w-xs">
-                    <Select
-                      label="Format"
-                      value={exportFormat}
-                      onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
-                      options={exportOptions}
-                    />
-                  </div>
-                  <Button onClick={handleExport} loading={exporting}>
-                    {t('settings.privacy.export_btn', { format: exportFormat.toUpperCase() })}
-                  </Button>
-                </div>
-              </SurfaceCard>
-
-              <SurfaceCard className="p-6">
-                <h2 className="mb-1 text-base font-semibold text-primary">
-                  {t('settings.privacy.import_title')}
-                </h2>
-                <p className="mb-4 text-sm text-secondary">
-                  {t('settings.privacy.import_desc')}
-                </p>
-                <div className="mb-4">
-                  <Badge variant="info">JSON and CSV supported</Badge>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json,.csv"
-                  className="hidden"
-                  onChange={handleImportFile}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={importing}
-                  variant="secondary"
-                >
-                  {importing ? t('settings.privacy.importing') : t('settings.privacy.import_btn')}
-                </Button>
-
-                {importResult && (
-                  <div className="mt-4 space-y-1 rounded-xl border border-border bg-input p-3 text-sm">
-                    <p className="text-success">
-                      {t('settings.privacy.import_imported', { count: importResult.imported })}
-                    </p>
-                    {importResult.skipped > 0 && (
-                      <p className="text-muted">
-                        {t('settings.privacy.import_skipped', { count: importResult.skipped })}
-                      </p>
-                    )}
-                    {importResult.errors.length > 0 && (
-                      <details>
-                        <summary className="cursor-pointer text-danger">
-                          {t('settings.privacy.import_errors', { count: importResult.errors.length })}
-                        </summary>
-                        <ul className="mt-2 list-disc space-y-0.5 pl-4 text-danger">
-                          {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
-                        </ul>
-                      </details>
-                    )}
-                  </div>
-                )}
-                {importError && (
-                  <p className="mt-3 text-sm text-danger">{importError}</p>
-                )}
-              </SurfaceCard>
-            </>
-          )}
         </div>
       </div>
 

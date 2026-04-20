@@ -129,8 +129,7 @@
       "security": "Beveiliging",
       "notifications": "Meldingen",
       "appearance": "Taal",
-      "audio": "Audio",
-      "privacy": "Gegevens exporteren/importeren"
+      "audio": "Audio"
     },
     "profile": {
       "title": "Profielinformatie",
@@ -184,19 +183,6 @@
       "game_effects": "Speleffecten",
       "music": "Muziek",
       "notifications": "Meldingen"
-    },
-    "privacy": {
-      "export_title": "Uw gegevens exporteren",
-      "export_desc": "Download alle activiteitsgebeurtenissen. Handig voor back-ups of gegevensoverdracht.",
-      "export_btn": "{{format}} downloaden",
-      "exporting": "Exporteren...",
-      "import_title": "Gegevens importeren",
-      "import_desc": "Herstel activiteitsgebeurtenissen uit een eerder geëxporteerd bestand (JSON of CSV). Duplicaten worden automatisch overgeslagen.",
-      "import_btn": "Bestand kiezen en importeren",
-      "importing": "Importeren...",
-      "import_imported": "{{count}} gebeurtenissen geïmporteerd.",
-      "import_skipped": "{{count}} duplicaten overgeslagen.",
-      "import_errors": "{{count}} fout(en) — klik om uit te vouwen"
     }
   },
   "sidebar": {
@@ -308,7 +294,7 @@
     "feat_xp_title": "XP & Levels",
     "feat_xp_desc": "Verdien ervaring bij elk spel. Level op en ontgrendel exclusieve beloningen.",
     "feat_sec_title": "Veilig & Privé",
-    "feat_sec_desc": "JWT-authenticatie, 2FA-ondersteuning en volledige controle over data-export.",
+    "feat_sec_desc": "JWT-authenticatie en 2FA-ondersteuning voor een veilig account.",
     "feat_ach_title": "Prestaties",
     "feat_ach_desc": "Ontgrendel unieke prestaties terwijl je speelt. Toon je badges op je profiel.",
     "games_eyebrow": "Onze spellen",

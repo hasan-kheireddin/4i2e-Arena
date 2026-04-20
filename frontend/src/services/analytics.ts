@@ -49,6 +49,15 @@ export interface AchievementStats {
   recent_unlocks: AchievementUnlock[];
 }
 
+export interface LevelInfo {
+  level: number;
+  current_xp: number;
+  xp_for_current_level: number;
+  xp_for_next_level: number;
+  xp_in_level: number;
+  xp_needed: number;
+}
+
 /** Entry returned by /api/analytics/leaderboard/ */
 export interface AnalyticsLeaderboardEntry {
   id: string;
@@ -58,7 +67,7 @@ export interface AnalyticsLeaderboardEntry {
   xp: number;
   level: number;
   rank: number;
-  xp_to_next_level?: number;
+  xp_to_next_level?: LevelInfo;
 }
 
 export interface UserXPDetail {
@@ -67,7 +76,7 @@ export interface UserXPDetail {
   display_name: string;
   xp: number;
   level: number;
-  level_info: Record<string, unknown>;
+  level_info: LevelInfo;
   rank: number;
   total_players: number;
 }

@@ -188,6 +188,17 @@ class PongEngine:
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
 
+        # Match analytics (used by progression/achievements)
+        self.current_rally_hits: int = 0
+        self.max_rally_hits: int = 0
+        self.player_hits: dict[int, int] = {1: 0, 2: 0}
+        self.player_current_consecutive_blocks: dict[int, int] = {1: 0, 2: 0}
+        self.player_max_consecutive_blocks: dict[int, int] = {1: 0, 2: 0}
+        self.player_misses: dict[int, int] = {1: 0, 2: 0}
+        self.player_max_deficit: dict[int, int] = {1: 0, 2: 0}
+        self.player_point_timestamps: dict[int, list[float]] = {1: [], 2: []}
+        self.player_scored_three_under_ten: dict[int, bool] = {1: False, 2: False}
+
     # ------------------------------------------------------------------
     # Player management
     # ------------------------------------------------------------------
@@ -302,6 +313,16 @@ class PongEngine:
             },
             "winner": self.winner,
             "serve_cooldown": self.serve_cooldown,
+            "stats": {
+                "current_rally_hits": self.current_rally_hits,
+                "max_rally_hits": self.max_rally_hits,
+                "player_hits": self.player_hits,
+                "player_current_consecutive_blocks": self.player_current_consecutive_blocks,
+                "player_max_consecutive_blocks": self.player_max_consecutive_blocks,
+                "player_misses": self.player_misses,
+                "player_max_deficit": self.player_max_deficit,
+                "player_scored_three_under_ten": self.player_scored_three_under_ten,
+            },
         }
 
     # ------------------------------------------------------------------
@@ -383,6 +404,8 @@ class PongEngine:
             return
 
         # --- Collision confirmed ---
+        hitter = 1 if is_left else 2
+        self._on_paddle_hit(hitter)
 
         # Compute hit position normalised to [-1, 1]
         #   -1 = top edge of paddle, 0 = center, +1 = bottom edge
@@ -415,20 +438,26 @@ class PongEngine:
         Detect if the ball has passed a paddle and award a point.
         """
         scored = False
+        scorer: int | None = None
 
         if self.ball.x - BALL_RADIUS <= 0:
             # Ball past left edge → Player 2 scores
             self.player2.score += 1
             self.last_scorer = 2
             scored = True
+            scorer = 2
         elif self.ball.x + BALL_RADIUS >= self.field_width:
             # Ball past right edge → Player 1 scores
             self.player1.score += 1
             self.last_scorer = 1
             scored = True
+            scorer = 1
 
         if not scored:
             return
+
+        if scorer is not None:
+            self._on_point_scored(scorer)
 
         # Check for win
         if self.player1.score >= self.win_score:
@@ -456,6 +485,43 @@ class PongEngine:
         self.ball.speed = BALL_INITIAL_SPEED
         self.ball.vx = 0.0
         self.ball.vy = 0.0
+        self.current_rally_hits = 0
+
+    def _on_paddle_hit(self, slot: int) -> None:
+        self.current_rally_hits += 1
+        self.max_rally_hits = max(self.max_rally_hits, self.current_rally_hits)
+
+        self.player_hits[slot] = self.player_hits.get(slot, 0) + 1
+        self.player_current_consecutive_blocks[slot] = (
+            self.player_current_consecutive_blocks.get(slot, 0) + 1
+        )
+        other = 2 if slot == 1 else 1
+        self.player_current_consecutive_blocks[other] = 0
+
+        self.player_max_consecutive_blocks[slot] = max(
+            self.player_max_consecutive_blocks.get(slot, 0),
+            self.player_current_consecutive_blocks[slot],
+        )
+
+    def _on_point_scored(self, scorer: int) -> None:
+        loser = 2 if scorer == 1 else 1
+        self.player_misses[loser] = self.player_misses.get(loser, 0) + 1
+        self.player_current_consecutive_blocks[1] = 0
+        self.player_current_consecutive_blocks[2] = 0
+        self.current_rally_hits = 0
+
+        now = time.time()
+        points = self.player_point_timestamps.setdefault(scorer, [])
+        points.append(now)
+        cutoff = now - 10.0
+        self.player_point_timestamps[scorer] = [ts for ts in points if ts >= cutoff]
+        if len(self.player_point_timestamps[scorer]) >= 3:
+            self.player_scored_three_under_ten[scorer] = True
+
+        s1 = self.player1.score
+        s2 = self.player2.score
+        self.player_max_deficit[1] = max(self.player_max_deficit.get(1, 0), max(0, s2 - s1))
+        self.player_max_deficit[2] = max(self.player_max_deficit.get(2, 0), max(0, s1 - s2))
 
     def _serve(self) -> None:
         """
