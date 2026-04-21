@@ -34,9 +34,14 @@ logger = logging.getLogger("games.stats")
 STATS_CACHE_TTL = 300  # 5 minutes
 LEADERBOARD_CACHE_TTL = 600  # 10 minutes
 
-def _user_stats_key(user_id: UUID | int, game_type: Optional[str] = None) -> str:
-    suffix = f":{game_type}" if game_type else ":all"
-    return f"stats:user:{user_id}{suffix}"
+def _user_stats_key(
+    user_id: UUID | int,
+    game_type: Optional[str] = None,
+    mode: Optional[str] = None,
+) -> str:
+    gt_suffix = game_type or "all"
+    mode_suffix = mode or "all"
+    return f"stats:user:{user_id}:{gt_suffix}:{mode_suffix}"
 
 
 def _h2h_key(user_id: UUID | int, opponent_id: UUID | int) -> str:
@@ -62,9 +67,9 @@ def invalidate_user_stats(user_id: UUID | int) -> None:
     recomputes fresh numbers.
     """
     keys = [
-        _user_stats_key(user_id, None),
-        _user_stats_key(user_id, "pong"),
-        _user_stats_key(user_id, "tictactoe"),
+        _user_stats_key(user_id, game_type, mode)
+        for game_type in [None, "pong", "tictactoe"]
+        for mode in [None, "pvp", "pva", "local"]
     ]
     cache.delete_many(keys)
 
@@ -80,6 +85,7 @@ def invalidate_user_stats(user_id: UUID | int) -> None:
 def get_user_stats(
     user_id: UUID | int,
     game_type: Optional[str] = None,
+    mode: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Return comprehensive statistics for a user.
@@ -94,12 +100,12 @@ def get_user_stats(
         Optional filter: ``"pong"`` or ``"tictactoe"``.
         If ``None``, stats cover all game types.
     """
-    cache_key = _user_stats_key(user_id, game_type)
+    cache_key = _user_stats_key(user_id, game_type, mode)
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    stats = _compute_user_stats(user_id, game_type)
+    stats = _compute_user_stats(user_id, game_type, mode)
     cache.set(cache_key, stats, STATS_CACHE_TTL)
     return stats
 
@@ -107,12 +113,29 @@ def get_user_stats(
 def _compute_user_stats(
     user_id: UUID | int,
     game_type: Optional[str] = None,
+    mode: Optional[str] = None,
 ) -> dict[str, Any]:
     """Heavy lifting — aggregate DB queries for one player."""
 
     base_qs = MatchPlayer.objects.filter(user_id=user_id).select_related("match")
     if game_type:
         base_qs = base_qs.filter(match__game_type=game_type)
+    if mode == "local":
+        base_qs = base_qs.filter(
+            match__game_session_id__startswith="local-",
+        ).filter(
+            Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
+        )
+    elif mode == "pvp":
+        base_qs = base_qs.filter(
+            match__game_mode="pvp",
+        ).exclude(
+            match__game_session_id__startswith="local-",
+        )
+    elif mode == "pva":
+        base_qs = base_qs.filter(
+            Q(match__game_mode__in=["pva", "pve"]) | ~Q(match__ai_difficulty=""),
+        )
 
     # --- Overview -----------------------------------------------------------
     overview = base_qs.aggregate(
@@ -243,6 +266,7 @@ def _compute_user_stats(
     return {
         "user_id": str(user_id),
         "game_type_filter": game_type,
+        "mode_filter": mode,
         "overview": {
             "total_matches": total,
             "wins": wins,

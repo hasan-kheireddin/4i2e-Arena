@@ -3,13 +3,14 @@ import logging
 import secrets
 from urllib.parse import urlencode
 import requests
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login as django_login
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import OAuthAccount, TOTPDevice
 from .oauth_serializers import OAuthCallbackSerializer
 from .oauth_providers import get_provider
+from .safety import non_blocking
 from .serializers import UserProfileSerializer, get_tokens_for_user
 from .twofa_views import _issue_temp_token
 from apps.analytics.tracking_service import (
@@ -20,6 +21,7 @@ from apps.analytics.tracking_service import (
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+safe_track_oauth_login = non_blocking(track_oauth_login)
 
 class OAuthInitiateView(APIView):
     """
@@ -97,8 +99,15 @@ class OAuthCallbackView(APIView):
         state = serializer.validated_data["state"]
 
         # CSRF: compare with session state
-        expected_state = request.session.pop(f"oauth_state_{provider}", None)
-        if not expected_state or not secrets.compare_digest(expected_state, state):
+        expected_state = request.session.get(f"oauth_state_{provider}")
+        if not expected_state:
+            return Response(
+                {"detail": "OAuth session expired. Please retry login."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.session.pop(f"oauth_state_{provider}", None)
+        if not secrets.compare_digest(expected_state, state):
             return Response(
                 {"detail": "Invalid or expired state parameter."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -128,6 +137,7 @@ class OAuthCallbackView(APIView):
 
         # ---- Find or create User + OAuthAccount -------------------------------
         user = self._get_or_create_user(provider, provider_user_id, mapped, access_token)
+        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
         # ---- Enforce 2FA before issuing final JWTs ----------------------------
         if user.is_2fa_enabled:
@@ -136,6 +146,8 @@ class OAuthCallbackView(APIView):
                 confirmed=True,
             ).exists()
             if has_confirmed_device:
+                request.session["2fa_user_id"] = str(user.id)
+                request.session.modified = True
                 return Response(
                     {
                         "requires_2fa": True,
@@ -160,14 +172,14 @@ class OAuthCallbackView(APIView):
         tokens = get_tokens_for_user(user)
         user_data = UserProfileSerializer(user).data
 
-        # Track OAuth login event
-        track_oauth_login(
+        # Track OAuth login event (non-blocking)
+        safe_track_oauth_login(
             user.pk,
             provider=provider,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
         )
-        
+
         return Response(
             {"user": user_data, "tokens": tokens},
             status=status.HTTP_200_OK,

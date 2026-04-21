@@ -17,7 +17,6 @@ import base64
 import pyotp
 import qrcode
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -25,6 +24,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
 from .models import TOTPDevice
+from .safety import non_blocking, safe_cache_delete, safe_cache_get, safe_cache_set
 from .serializers import UserProfileSerializer, get_tokens_for_user
 from .twofa_serializers import (
     TwoFactorConfirmSerializer,
@@ -39,6 +39,7 @@ from apps.analytics.tracking_service import (
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+safe_track_2fa_verified = non_blocking(track_2fa_verified)
 
 TOTP_ISSUER = "ft_transcendence"
 TWOFA_ATTEMPT_LIMIT = 5
@@ -84,16 +85,16 @@ def _attempt_cache_key(scope: str, user_id) -> str:
 
 
 def _is_rate_limited(key: str) -> bool:
-    return int(cache.get(key, 0)) >= TWOFA_ATTEMPT_LIMIT
+    return int(safe_cache_get(key, 0) or 0) >= TWOFA_ATTEMPT_LIMIT
 
 
 def _record_failed_attempt(key: str) -> None:
-    current = int(cache.get(key, 0))
-    cache.set(key, current + 1, timeout=TWOFA_ATTEMPT_WINDOW)
+    current = int(safe_cache_get(key, 0) or 0)
+    safe_cache_set(key, current + 1, timeout=TWOFA_ATTEMPT_WINDOW)
 
 
 def _clear_failed_attempts(key: str) -> None:
-    cache.delete(key)
+    safe_cache_delete(key)
 
 
 # ---------------------------------------------------------------------------
@@ -232,17 +233,39 @@ class TwoFactorVerifyView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        logger.info("STEP: entering 2FA login verify")
+        logger.info(
+            "STEP: 2FA request context user=%s authenticated=%s session_keys=%s",
+            getattr(request.user, "pk", None),
+            bool(getattr(request.user, "is_authenticated", False)),
+            list(request.session.keys()) if hasattr(request, "session") else [],
+        )
+
         serializer = TwoFactorVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         temp_token = serializer.validated_data["temp_token"]
         code = serializer.validated_data["code"]
 
+        session_user_id = request.session.get("2fa_user_id")
+        if not session_user_id:
+            return Response(
+                {"detail": "2FA session expired. Please log in again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Resolve user from temp token
         user = _user_from_temp_token(temp_token)
         if user is None:
             return Response(
                 {"detail": "Invalid or expired temporary token."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if str(user.pk) != str(session_user_id):
+            request.session.pop("2fa_user_id", None)
+            return Response(
+                {"detail": "2FA session mismatch. Please log in again."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -275,14 +298,15 @@ class TwoFactorVerifyView(APIView):
         _clear_failed_attempts(rate_key)
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
-        
-        # Track 2FA verification event
-        track_2fa_verified(
+
+        # Track 2FA verification event (non-blocking)
+        safe_track_2fa_verified(
             user.pk,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
         )
-        
+
+        request.session.pop("2fa_user_id", None)
         return Response(
             {"user": profile, "tokens": tokens},
             status=status.HTTP_200_OK,

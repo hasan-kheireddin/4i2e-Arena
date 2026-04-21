@@ -435,6 +435,7 @@ class UserStatsView(APIView):
 
     Query parameters:
       - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
+      - ``mode`` — optional: ``"pvp"``, ``"pva"``, or ``"local"``
 
     Results are cached for 5 minutes and invalidated automatically
     when a new match is recorded.
@@ -447,7 +448,8 @@ class UserStatsView(APIView):
         query.is_valid(raise_exception=True)
 
         game_type = query.validated_data.get("game_type")
-        stats = get_user_stats(request.user.pk, game_type=game_type)
+        mode = query.validated_data.get("mode")
+        stats = get_user_stats(request.user.pk, game_type=game_type, mode=mode)
         return Response(stats, status=status.HTTP_200_OK)
 
 class PublicUserStatsView(APIView):
@@ -458,6 +460,7 @@ class PublicUserStatsView(APIView):
 
     Query parameters:
       - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
+      - ``mode`` — optional: ``"pvp"``, ``"pva"``, or ``"local"``
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -467,7 +470,8 @@ class PublicUserStatsView(APIView):
         query.is_valid(raise_exception=True)
 
         game_type = query.validated_data.get("game_type")
-        stats = get_user_stats(user_id, game_type=game_type)
+        mode = query.validated_data.get("mode")
+        stats = get_user_stats(user_id, game_type=game_type, mode=mode)
 
         # Remove AI-mode data from public view
         stats.get("by_game_mode", {}).pop("pva", None)

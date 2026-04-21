@@ -175,6 +175,18 @@ class ChangePasswordSerializer(serializers.Serializer):
     )
     new_password2 = serializers.CharField(write_only=True)
 
+    def to_internal_value(self, data):
+        """
+        Accept alternate field names used by some clients while keeping
+        the canonical API contract.
+        """
+        payload = data.copy()
+        if "old_password" not in payload and "current_password" in payload:
+            payload["old_password"] = payload["current_password"]
+        if "new_password2" not in payload and "confirm_password" in payload:
+            payload["new_password2"] = payload["confirm_password"]
+        return super().to_internal_value(payload)
+
     def validate_new_password(self, value):
         validate_password(value)
         return value

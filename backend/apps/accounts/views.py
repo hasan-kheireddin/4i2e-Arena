@@ -1,5 +1,6 @@
 import logging
 
+from django.contrib.auth import logout as django_logout
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -9,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.contrib.auth import get_user_model
 from .models import EmailVerificationToken, TOTPDevice
+from .safety import non_blocking
 from .twofa_views import _issue_temp_token
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,10 @@ from apps.analytics.tracking_service import (
     track_profile_updated,
     track_registration,
 )
+safe_track_registration = non_blocking(track_registration)
+safe_track_login = non_blocking(track_login)
+safe_track_logout = non_blocking(track_logout)
+safe_track_profile_updated = non_blocking(track_profile_updated)
 
 class RegisterView(APIView):
     """
@@ -61,8 +67,8 @@ class RegisterView(APIView):
         except Exception:
             logger.exception("Failed to send OTP email to %s during registration", user.email)
 
-        # Track registration event
-        track_registration(
+        # Track registration event (non-blocking)
+        safe_track_registration(
             user.pk,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
@@ -111,6 +117,8 @@ class LoginView(APIView):
                 user.is_2fa_enabled = False
                 user.save(update_fields=["is_2fa_enabled"])
             else:
+                request.session["2fa_user_id"] = str(user.id)
+                request.session.modified = True
                 return Response(
                     {
                         "requires_2fa": True,
@@ -122,8 +130,8 @@ class LoginView(APIView):
 
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
-        # Track login event
-        track_login(
+        # Track login event (non-blocking)
+        safe_track_login(
             user.pk,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
@@ -163,12 +171,14 @@ class LogoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Track logout event
-        track_logout(
-            request.user.pk,
+        user_pk = request.user.pk
+        # Track logout event (non-blocking)
+        safe_track_logout(
+            user_pk,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
         )
+        django_logout(request)
 
         return Response(
             {"detail": "Successfully logged out."},
@@ -227,7 +237,7 @@ class ProfileUpdateView(generics.UpdateAPIView):
     def perform_update(self, serializer):
         instance = serializer.save()
         changed = list(serializer.validated_data.keys())
-        track_profile_updated(
+        safe_track_profile_updated(
             instance.pk,
             fields_changed=changed,
             ip_address=get_client_ip(self.request),

@@ -238,6 +238,12 @@ class ActivityEvent(models.Model):
         help_text="Browser / client user-agent string.",
     )
 
+    is_anonymised = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether user-identifying fields were anonymized for retention/privacy.",
+    )
+
     created_at = models.DateTimeField(
         default=timezone.now,
         db_index=True,

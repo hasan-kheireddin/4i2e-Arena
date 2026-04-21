@@ -11,6 +11,11 @@ class StatsQuerySerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    mode = serializers.ChoiceField(
+        choices=["pvp", "pva", "local"],
+        required=False,
+        allow_null=True,
+    )
 
 
 class LeaderboardQuerySerializer(serializers.Serializer):
