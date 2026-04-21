@@ -171,10 +171,10 @@ export default function RegisterPage() {
 
         {/* Form side - full height */}
         <div
-          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto animate-slideInRight"
+          className="flex-1 flex flex-col justify-center px-8 xl:px-12 overflow-y-auto animate-slideInRight"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
-          <div className="max-w-md mx-auto w-full py-12">
+          <div className="max-w-sm mx-auto w-full py-8">
             <FormContent
               formData={formData}
               errors={errors}
@@ -199,10 +199,10 @@ export default function RegisterPage() {
       <div className="flex lg:hidden flex-col w-full h-full overflow-y-auto">
         {/* Form */}
         <div
-          className="flex-1 flex items-center justify-center px-6 py-10"
+          className="flex-1 flex items-center justify-center px-5 py-8"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
-          <div className="max-w-md w-full">
+          <div className="max-w-sm w-full">
             <FormContent
               formData={formData}
               errors={errors}
@@ -277,9 +277,9 @@ function FormContent({
       </div>
 
       {/* Title */}
-      <div className="mb-8 text-center">
+      <div className="mb-6 text-center">
         <h1
-          className="text-4xl font-bold mb-3"
+          className="text-3xl font-bold mb-2"
           style={{ color: "var(--color-text-primary)" }}
         >
           {t("register.title", "Create an account")}
@@ -293,7 +293,7 @@ function FormContent({
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           type="text"
           name="username"

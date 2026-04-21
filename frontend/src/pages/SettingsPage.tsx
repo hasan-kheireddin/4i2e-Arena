@@ -17,39 +17,13 @@ import type { ApiError } from '../services/api';
 
 type SettingsTab = 'profile' | 'security' | 'appearance';
 
-function Toggle({
-  checked,
-  onChange,
-  isRTL,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  isRTL: boolean;
-}) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-5 w-10 rounded-full transition-colors ${checked ? 'bg-brand' : 'bg-border'}`}
-    >
-      <div
-        className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
-        style={{
-          insetInlineStart: '0.125rem',
-          transform: checked ? `translateX(${isRTL ? '-20px' : '20px'})` : 'translateX(0)',
-        }}
-      />
-    </button>
-  );
-}
-
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const [tab, setTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
+  const [signOutLoading, setSignOutLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Profile state — read-only fields from server
@@ -61,25 +35,8 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [bio, setBio] = useState('');
 
-  // Dark Mode - synced with localStorage
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved !== null ? saved === "true" : true;
-  });
-
   // Language - synced with i18n and user preferred_language
   const [language, setLanguage] = useState(() => normalizeLanguage(user?.preferred_language || i18n.language));
-  const isRTL = i18n.dir(language) === 'rtl';
-
-  // Apply dark mode changes
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("darkMode", isDark.toString());
-  }, [isDark]);
 
   // Apply language changes
   const handleLanguageChange = (lang: string) => {
@@ -190,6 +147,12 @@ export default function SettingsPage() {
     } finally {
       setDisableLoading(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    setSignOutLoading(true);
+    await logout();
+    navigate('/login');
   };
 
   const tabs: { key: SettingsTab; label: string }[] = [
@@ -412,20 +375,20 @@ export default function SettingsPage() {
               </SurfaceCard>
 
               <SurfaceCard className="p-6">
-                <h2 className="mb-2 text-base font-semibold text-danger">
-                  {t('settings.security.danger_zone')}
+                <h2 className="mb-2 text-base font-semibold text-primary">
+                  {t('settings.security.sign_out')}
                 </h2>
                 <p className="mb-4 text-sm text-secondary">
-                  {t('settings.security.danger_desc')}
+                  {t('settings.security.sign_out_desc')}
                 </p>
-                <div className="flex gap-3">
-                  <Button variant="danger" size="sm">
-                    {t('settings.security.sign_out_all')}
-                  </Button>
-                  <Button variant="danger" size="sm">
-                    {t('settings.security.delete_account')}
-                  </Button>
-                </div>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={signOutLoading}
+                  onClick={() => { void handleSignOut(); }}
+                >
+                  {t('settings.security.sign_out')}
+                </Button>
               </SurfaceCard>
             </>
           )}
@@ -433,25 +396,6 @@ export default function SettingsPage() {
           {/* Appearance Tab */}
           {tab === 'appearance' && (
             <>
-              <SurfaceCard className="p-6">
-                <h2 className="mb-4 text-base font-semibold text-primary">
-                  {t('settings.appearance.theme')}
-                </h2>
-                <div className="mb-4 flex items-center justify-between rounded-xl border border-border bg-input p-4">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-primary">
-                        {t('settings.appearance.dark_mode')}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {isDark ? t('settings.appearance.dark_mode_on') : t('settings.appearance.dark_mode_off')}
-                      </p>
-                    </div>
-                  </div>
-                  <Toggle checked={isDark} onChange={(v) => setIsDark(v)} isRTL={isRTL} />
-                </div>
-              </SurfaceCard>
-
               <SurfaceCard className="p-6">
                 <h2 className="mb-4 text-base font-semibold text-primary">
                   {t('settings.appearance.language')}

@@ -52,9 +52,9 @@ export default function TicTacToePage() {
   const localP2Label = localPlayerNames.p2.trim() || t('ttt.player2');
 
   const positionNames = [
-    'top-left','top-center','top-right',
-    'mid-left','center','mid-right',
-    'bot-left','bot-center','bot-right',
+    'top_left','top_center','top_right',
+    'mid_left','center','mid_right',
+    'bot_left','bot_center','bot_right',
   ];
 
   // ── Online mode state ─────────────────────────────────────────────────────
@@ -88,7 +88,13 @@ export default function TicTacToePage() {
       next[i] = mark;
       setBoard(next);
       setIsXTurn(!isXTurn);
-      setMoves((prev) => [...prev, `${mark} → ${positionNames[i]}`]);
+      setMoves((prev) => [
+        ...prev,
+        t('ttt.move_entry', {
+          mark,
+          position: t(`ttt.position_${positionNames[i]}`),
+        }),
+      ]);
       
       const result = checkWinner(next);
       if (result.winner === 'X')     setScores((s) => ({ ...s, X: s.X + 1 }));

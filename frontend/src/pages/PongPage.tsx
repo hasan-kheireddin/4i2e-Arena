@@ -122,6 +122,8 @@ export default function PongPage() {
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
+  const gameOverRef = useRef(false);
+  const matchSavedRef = useRef(false);
   const [localPlayerNames, setLocalPlayerNames] = useState({ p1: '', p2: '' });
   const [localNamesReady, setLocalNamesReady] = useState(mode !== 'local');
 
@@ -133,6 +135,10 @@ export default function PongPage() {
   });
 
   const keysRef = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    gameOverRef.current = gameOver;
+  }, [gameOver]);
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
@@ -181,7 +187,7 @@ export default function PongPage() {
     const gs = gameState.current;
     const keys = keysRef.current;
 
-    if (!gameOver) {
+    if (!gameOverRef.current) {
       // Player 1 (left / blue): W / S or Arrow keys in AI mode
       if (keys['w'] || keys['W'] || (mode === 'ai' && keys['ArrowUp'])) gs.p1.y = Math.max(40, gs.p1.y - PADDLE_SPEED);
       if (keys['s'] || keys['S'] || (mode === 'ai' && keys['ArrowDown'])) gs.p1.y = Math.min(canvas.height - 40, gs.p1.y + PADDLE_SPEED);
@@ -210,24 +216,49 @@ export default function PongPage() {
       }
 
       if (gs.ball.x < 0) {
-        setScore((prev) => { const next = { ...prev, p2: prev.p2 + 1 }; if (next.p2 >= WIN_SCORE) setGameOver(true); return next; });
-        const resetSpeed = getBallSpeed(-BASE_BALL_VX, BASE_BALL_VY);
-        gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
-      }
-      if (gs.ball.x > canvas.width) {
-        setScore((prev) => { const next = { ...prev, p1: prev.p1 + 1 }; if (next.p1 >= WIN_SCORE) setGameOver(true); return next; });
-        const resetSpeed = getBallSpeed(BASE_BALL_VX, -BASE_BALL_VY);
-        gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
+        let didEndGame = false;
+        setScore((prev) => {
+          if (gameOverRef.current) return prev;
+          const nextScore = Math.min(prev.p2 + 1, WIN_SCORE);
+          const next = { ...prev, p2: nextScore };
+          if (nextScore >= WIN_SCORE) {
+            didEndGame = true;
+            gameOverRef.current = true;
+            setGameOver(true);
+          }
+          return next;
+        });
+        if (!didEndGame) {
+          const resetSpeed = getBallSpeed(-BASE_BALL_VX, BASE_BALL_VY);
+          gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
+        }
+      } else if (gs.ball.x > canvas.width) {
+        let didEndGame = false;
+        setScore((prev) => {
+          if (gameOverRef.current) return prev;
+          const nextScore = Math.min(prev.p1 + 1, WIN_SCORE);
+          const next = { ...prev, p1: nextScore };
+          if (nextScore >= WIN_SCORE) {
+            didEndGame = true;
+            gameOverRef.current = true;
+            setGameOver(true);
+          }
+          return next;
+        });
+        if (!didEndGame) {
+          const resetSpeed = getBallSpeed(BASE_BALL_VX, -BASE_BALL_VY);
+          gs.ball = { x: canvas.width / 2, y: canvas.height / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
+        }
       }
     }
 
     drawFrame(ctx, canvas, gs.p1.y, gs.p2.y, gs.ball);
     
     // Only continue loop if game is not over
-    if (!gameOver) {
+    if (!gameOverRef.current) {
       requestAnimationFrame(animate);
     }
-  }, [mode, gameOver, difficulty, localNamesReady]);
+  }, [mode, difficulty, localNamesReady]);
 
   useEffect(() => {
     // Don't start loop if game is over or in online mode
@@ -242,7 +273,8 @@ export default function PongPage() {
 
   // ── Save match history when game ends (local/AI modes) ──
   useEffect(() => {
-    if (!gameOver || mode === 'online' || !gameStartTime) return;
+    if (!gameOver || mode === 'online' || !gameStartTime || matchSavedRef.current) return;
+    matchSavedRef.current = true;
     
     const saveMatch = async () => {
       const durationSeconds = Math.round((Date.now() - gameStartTime) / 1000);
@@ -549,6 +581,8 @@ export default function PongPage() {
   const resetGame = () => {
     setScore({ p1: 0, p2: 0 });
     setGameOver(false);
+    gameOverRef.current = false;
+    matchSavedRef.current = false;
     setGameStartTime(null); // Reset timer for new game
     if (mode === 'local') {
       setLocalPlayerNames({ p1: '', p2: '' });
@@ -623,7 +657,7 @@ export default function PongPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="max-w-5xl w-full space-y-4">
+      <div className="max-w-[54rem] w-full space-y-4">
 
         {/* HUD */}
         <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>

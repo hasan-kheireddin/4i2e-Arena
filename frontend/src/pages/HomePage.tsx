@@ -544,7 +544,7 @@ function GameCard({
         </div>
 
         {/* Play button overlay on hover */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute inset-0 flex items-end justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <div className="px-5 py-2 rounded-lg font-bold text-sm text-white flex items-center gap-2"
             style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
             {t("home.play_now")} <ArrowRight className="w-4 h-4" />

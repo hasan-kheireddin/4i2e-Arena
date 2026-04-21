@@ -1,6 +1,6 @@
 import {
   ChevronDown, LogOut, User, Settings,
-  Sun, Gamepad2, Home, BarChart3, History, Menu, X,
+  Gamepad2, Home, BarChart3, History, Menu, X,
   Award,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -64,25 +64,27 @@ export function Navbar() {
         </Link>
 
         {/* ── Desktop Nav Links ── */}
-        <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-          {NAV_ITEMS.map(({ label, to, icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 outline-none",
-                  isActive
-                    ? "text-brand bg-brand/10"
-                    : "text-secondary hover:text-primary hover:bg-surface-hover"
-                )
-              }
-            >
-              {icon}
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="hidden md:flex flex-1 justify-center min-w-0 px-4">
+          <nav className="flex items-center gap-1">
+            {NAV_ITEMS.map(({ label, to, icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 outline-none whitespace-nowrap",
+                    isActive
+                      ? "text-brand bg-brand/10"
+                      : "text-secondary hover:text-primary hover:bg-surface-hover"
+                  )
+                }
+              >
+                {icon}
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
 
         {/* ── Right Zone ── */}
         <div className="flex items-center gap-2 shrink-0">
@@ -117,7 +119,6 @@ export function Navbar() {
                 <div className="py-1">
                   <DropdownItem icon={<User className="w-4 h-4" />} label={t("navbar.profile")} to="/profile" onClick={() => setUserMenuOpen(false)} />
                   <DropdownItem icon={<Settings className="w-4 h-4" />} label={t("navbar.settings")} to="/settings" onClick={() => setUserMenuOpen(false)} />
-                  <DropdownItem icon={<Sun className="w-4 h-4" />} label={t("navbar.toggle_theme")} />
                 </div>
                 <div className="py-1 border-t">
                   <DropdownItem icon={<LogOut className="w-4 h-4" />} label={t("navbar.sign_out")} danger onClick={handleLogout} />

@@ -168,10 +168,8 @@
       "authenticator_app": "Application d'authentification",
       "enabled": "Activé",
       "manage": "Gérer",
-      "danger_zone": "Zone dangereuse",
-      "danger_desc": "Actions irréversibles et destructives",
-      "sign_out_all": "Déconnecter tous les appareils",
-      "delete_account": "Supprimer le compte"
+      "sign_out": "Se déconnecter",
+      "sign_out_desc": "Déconnectez-vous de votre session actuelle."
     },
     "notifications": {
       "title": "Préférences de notification",

@@ -89,7 +89,7 @@ export default function LandingPage() {
           WebkitBackdropFilter: "blur(12px)",
         }}
       >
-        <div className="container mx-auto px-6 h-full flex items-center justify-between">
+        <div className="w-full px-2 sm:px-3 lg:px-4 h-full flex items-center justify-between">
           <BrandLogo />
           <div className="flex items-center gap-2">
             <LanguageSwitcher />

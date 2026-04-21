@@ -126,10 +126,10 @@ export default function LoginPage() {
       <div className="hidden lg:flex w-full h-full">
         {/* Form side - full height */}
         <div
-          className="flex-1 flex flex-col justify-center px-16 overflow-y-auto animate-slideInLeft"
+          className="flex-1 flex flex-col justify-center px-10 xl:px-14 overflow-y-auto animate-slideInLeft"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
-          <div className="max-w-md mx-auto w-full py-12">
+          <div className="max-w-sm mx-auto w-full py-8">
             <FormContent
               formData={formData}
               errors={errors}
@@ -162,10 +162,10 @@ export default function LoginPage() {
       <div className="flex lg:hidden flex-col w-full h-full overflow-y-auto">
         {/* Form */}
         <div
-          className="flex-1 flex items-center justify-center px-6 py-10"
+          className="flex-1 flex items-center justify-center px-5 py-8"
           style={{ backgroundColor: "var(--color-bg)" }}
         >
-          <div className="max-w-md w-full">
+          <div className="max-w-sm w-full">
             <FormContent
               formData={formData}
               errors={errors}
@@ -227,15 +227,15 @@ function FormContent({
       </div>
 
       {/* Title */}
-      <div className="mb-8 text-center">
+      <div className="mb-6 text-center">
         <h1
-          className="text-4xl font-bold mb-3"
+          className="text-3xl font-bold mb-2"
           style={{ color: "var(--color-text-primary)" }}
         >
           {t("login.title", "Welcome Back")}
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {t("login.subtitle", "Enter your username or email below to login to your account")}
+          {t("login.subtitle", "Enter your username or email below to log in to your account")}
         </p>
       </div>
        {/* Server error banner */}
@@ -253,7 +253,7 @@ function FormContent({
         className="mb-6 w-full"
         icon={<span className="text-lg font-bold leading-none">42</span>}
       >
-        {t("login.42", "Login with 42")}
+        {t("login.42", "Log in with 42")}
       </Button>
 
       {/* Divider */}
@@ -266,7 +266,7 @@ function FormContent({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           type="text"
           name="username"
@@ -333,7 +333,7 @@ function FormContent({
           className="font-medium hover:underline"
           style={{ color: "var(--color-text-link)" }}
         >
-          {t("login.sign_up", "Sign up")}
+          {t("login.sign_up", "Register")}
         </Link>
       </p>
     </>

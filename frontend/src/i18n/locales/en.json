@@ -1,7 +1,7 @@
 {
   "login": {
     "title": "Welcome Back",
-    "subtitle": "Enter your email below to login to your account",
+    "subtitle": "Enter your email below to log in to your account",
     "username": "Username or Email",
     "username_placeholder": "username or m@example.com",
     "email": "Email",
@@ -10,9 +10,9 @@
     "hide_password": "Hide password",
     "submit": "Log in",
     "no_account": "Don't have an account?",
-    "sign_up": "Sign up",
+    "sign_up": "Register",
     "or": "or",
-    "42": "Login with 42",
+    "42": "Log in with 42",
     "forgot": "Forgot password?",
     "back_home": "Back to Home",
     "hero_image_alt": "Sports arena illustration"
@@ -168,10 +168,8 @@
       "authenticator_app": "Authenticator App",
       "enabled": "Enabled",
       "manage": "Manage",
-      "danger_zone": "Danger Zone",
-      "danger_desc": "Irreversible and destructive actions",
-      "sign_out_all": "Sign Out All Devices",
-      "delete_account": "Delete Account"
+      "sign_out": "Sign Out",
+      "sign_out_desc": "Sign out from your current session."
     },
     "notifications": {
       "title": "Notification Preferences",

@@ -168,10 +168,8 @@
       "authenticator_app": "تطبيق المصادقة",
       "enabled": "مفعّل",
       "manage": "إدارة",
-      "danger_zone": "منطقة الخطر",
-      "danger_desc": "إجراءات لا رجعة فيها",
-      "sign_out_all": "تسجيل الخروج من جميع الأجهزة",
-      "delete_account": "حذف الحساب"
+      "sign_out": "تسجيل الخروج",
+      "sign_out_desc": "سجّل الخروج من جلستك الحالية."
     },
     "notifications": {
       "title": "تفضيلات الإشعارات",

@@ -270,7 +270,16 @@ export default function PlayPage() {
         {step === 3 && (
           <div className={slideClass}>
             <div className="text-center mb-8">
-              <div className="text-3xl mb-2">🤖</div>
+              <div
+                className="w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center"
+                style={{
+                  backgroundColor: 'rgba(249,115,22,0.12)',
+                  border: '1px solid rgba(249,115,22,0.28)',
+                  color: '#f97316',
+                }}
+              >
+                <Bot className="w-6 h-6" />
+              </div>
               <h1 className="text-3xl font-extrabold mb-2" style={{ color: 'var(--color-text-primary)' }}>
                 {t('play.choose_difficulty')}
               </h1>
@@ -279,10 +288,11 @@ export default function PlayPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {DIFFICULTIES.map((d) => {
                 const meta = DIFF_META[d];
                 const selected = difficulty === d;
+                const strength = d === 'easy' ? 1 : d === 'medium' ? 2 : 3;
                 return (
                   <button
                     key={d}
@@ -296,8 +306,18 @@ export default function PlayPage() {
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = meta.color; }}
                     onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = 'var(--color-border)'; }}
                   >
-                    <div className="text-2xl mb-2">
-                      {d === 'easy' ? '😊' : d === 'medium' ? '😐' : '😤'}
+                    <div className="flex items-end justify-center gap-1.5 mb-3 h-6">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="w-2 rounded-sm"
+                          style={{
+                            height: `${10 + i * 4}px`,
+                            backgroundColor: i < strength ? meta.color : 'var(--color-border)',
+                            opacity: i < strength ? 1 : 0.6,
+                          }}
+                        />
+                      ))}
                     </div>
                     <h3 className="text-sm font-bold mb-1" style={{ color: meta.color }}>{meta.label}</h3>
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{meta.desc}</p>
