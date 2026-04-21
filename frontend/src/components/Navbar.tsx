@@ -50,7 +50,7 @@ export function Navbar() {
   }, [navigate]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-surface border-b backdrop-blur-[12px]">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-surface border-b backdrop-blur-[12px] backdrop-fallback">
       <div className="flex items-center justify-between h-full px-4 lg:px-8 max-w-screen-2xl mx-auto">
 
         {/* ── Logo ── */}
@@ -106,7 +106,10 @@ export function Navbar() {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute top-full mt-2 w-56 rounded-xl shadow-lg py-1 right-0 bg-surface border z-50">
+              <div
+                className="absolute top-full mt-2 w-56 rounded-xl shadow-lg py-1 bg-surface border z-50"
+                style={{ insetInlineEnd: 0 }}
+              >
                 <div className="px-4 py-3 border-b">
                   <p className="text-sm font-semibold text-primary">{user?.display_name || user?.username}</p>
                   <p className="text-xs text-muted">{user?.email}</p>

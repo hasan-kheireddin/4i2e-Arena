@@ -180,8 +180,11 @@ def _compute_user_stats(
 
     # --- By game mode breakdown ---------------------------------------------
     by_game_mode = {}
-    for gm in ["pvp", "pve"]:
-        gm_agg = base_qs.filter(match__game_mode=gm).aggregate(
+    for gm, gm_filter in (
+        ("pvp", Q(match__game_mode="pvp")),
+        ("pva", Q(match__game_mode__in=["pva", "pve"])),
+    ):
+        gm_agg = base_qs.filter(gm_filter).aggregate(
             total=Count("id"),
             wins=Count("id", filter=Q(outcome="win")),
             losses=Count("id", filter=Q(outcome="loss")),
@@ -653,7 +656,7 @@ def _compute_leaderboard(
             "user_id": str(row["user_id"]),
             "username": row["user__username"],
             "display_name": row["user__display_name"],
-            "total_matches": row["wins"],
+            "total_matches": row["total"],
             "wins": row["wins"],
             "losses": row["losses"],
             "draws": row["draws"],

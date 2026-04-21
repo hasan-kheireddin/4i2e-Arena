@@ -51,7 +51,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
 
   const navItems: NavItemDef[] = [
-    { label: t('sidebar.dashboard'),    icon: <Home className="w-5 h-5" />,     to: '/Home' },
+    { label: t('sidebar.dashboard'),    icon: <Home className="w-5 h-5" />,     to: '/home' },
     { label: t('sidebar.games'),         icon: <Gamepad2 className="w-5 h-5" />, to: '/games/playpage' },
     { label: t('sidebar.leaderboard'),   icon: <BarChart3 className="w-5 h-5" />,to: '/leaderboard' },
     { label: t('sidebar.match_history'), icon: <History className="w-5 h-5" />,  to: '/history' },
@@ -63,26 +63,28 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed top-16 left-0 h-[calc(100vh-64px)] z-40 transition-all duration-250 flex flex-col',
-        'bg-surface border-r',
+        'fixed top-16 h-[calc(100vh-64px)] z-40 transition-all duration-250 flex flex-col',
+        'bg-surface',
         collapsed ? 'w-16' : 'w-60'
       )}
+      style={{ insetInlineStart: 0, borderInlineEnd: '1px solid var(--color-border)' }}
     >
       {/* Collapse Toggle */}
       <button
         onClick={onToggle}
-        className="absolute top-6 -right-3 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10 bg-surface border text-muted hover:text-primary hover:bg-surface-hover"
+        className="absolute top-6 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10 bg-surface border text-muted hover:text-primary hover:bg-surface-hover"
+        style={{ insetInlineEnd: '-0.75rem' }}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        <CollapseIcon className="w-3.5 h-3.5" />
+        <CollapseIcon className="w-3.5 h-3.5 icon-directional" />
       </button>
 
       {/* Nav Items */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto" aria-label="Sidebar">
         {navItems.map((item) => {
           const isActive =
-            item.to === '/dashboard'
-              ? location.pathname === '/dashboard'
+            item.to === '/home'
+              ? location.pathname === '/home'
               : location.pathname.startsWith(item.to);
           const hasChildren = item.children && item.children.length > 0;
           const isExpanded = expandedItem === item.label;
@@ -98,7 +100,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <span className="shrink-0">{item.icon}</span>
                   {!collapsed && (
                     <>
-                      <span className="flex-1 text-left">{item.label}</span>
+                      <span className="flex-1" style={{ textAlign: 'start' }}>{item.label}</span>
                       <ChevronRight
                         className={cn(
                           'w-4 h-4 transition-transform duration-150',
@@ -121,7 +123,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
               {/* Sub-items */}
               {hasChildren && isExpanded && !collapsed && (
-                <div className="mt-1 space-y-0.5 ml-5">
+                <div className="mt-1 space-y-0.5" style={{ marginInlineStart: '1.25rem' }}>
                   {item.children!.map((child) => {
                     const childActive = location.pathname === child.to;
                     return (

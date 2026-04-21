@@ -8,9 +8,16 @@ import {
   getMyMatches, getMyStats, getLeaderboard,
   type Match, type LeaderboardEntry, type UserStats,
 } from "../services/games";
-import { getMyXP, type UserXPDetail } from "../services/analytics";
 import {
-  Gamepad2, Trophy, Zap, TrendingUp, Sword,
+  getMyXP,
+  getActivitySummary,
+  getRecentActivity,
+  type UserXPDetail,
+  type ActivitySummary,
+  type RecentActivityEvent,
+} from "../services/analytics";
+import {
+  Gamepad2, Trophy, Zap, TrendingUp, Sword, BarChart3,
   Flame, ArrowRight, Clock,
 } from "lucide-react";
 
@@ -40,6 +47,10 @@ function normalizeUsername(username: string | undefined): string {
   return username?.trim().toLowerCase() || "";
 }
 
+function formatEventType(eventType: string): string {
+  return eventType.replace(/_/g, " ");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { t } = useTranslation();
@@ -50,25 +61,31 @@ export default function HomePage() {
   const [xpDetail, setXpDetail] = useState<UserXPDetail | null>(null);
   const [recentMatches, setRecentMatches] = useState<Match[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivityEvent[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     async function fetchAll() {
-      try {
-        const [statsData, matchesData, lbData, xpData] = await Promise.all([
+      const [statsRes, matchesRes, lbRes, xpRes, activitySummaryRes, recentActivityRes] =
+        await Promise.allSettled([
           getMyStats(),
           getMyMatches({ page_size: 5 }),
           getLeaderboard({ game_type: "pong", metric: "wins", limit: 5 }),
           getMyXP(),
+          getActivitySummary(),
+          getRecentActivity({ limit: 5 }),
         ]);
-        if (!cancelled) {
-          setStats(statsData);
-          setRecentMatches(matchesData.results);
-          setLeaderboard(lbData);
-          setXpDetail(xpData);
-        }
-      } catch { /* fallback to defaults */ }
-      finally { if (!cancelled) setLoading(false); }
+
+      if (cancelled) return;
+
+      if (statsRes.status === "fulfilled") setStats(statsRes.value);
+      if (matchesRes.status === "fulfilled") setRecentMatches(matchesRes.value.results);
+      if (lbRes.status === "fulfilled") setLeaderboard(lbRes.value);
+      if (xpRes.status === "fulfilled") setXpDetail(xpRes.value);
+      if (activitySummaryRes.status === "fulfilled") setActivitySummary(activitySummaryRes.value);
+      if (recentActivityRes.status === "fulfilled") setRecentActivity(recentActivityRes.value);
+      setLoading(false);
     }
     fetchAll();
     return () => { cancelled = true; };
@@ -89,6 +106,8 @@ export default function HomePage() {
   const myDisplayName = pickDisplayName(user?.display_name, user?.username, t("home.anonymous_player"));
   const myEntry    = leaderboard.find((e) => normalizeUsername(e.username) === myUsername);
   const myRank     = myEntry ? `#${myEntry.rank}` : "#–";
+  const eventsToday = activitySummary?.events_today ?? activitySummary?.today_count ?? 0;
+  const eventsThisWeek = activitySummary?.events_this_week ?? activitySummary?.week_count ?? 0;
 
   if (loading) {
     return (
@@ -339,7 +358,7 @@ export default function HomePage() {
                       </div>
                         <span className="text-sm truncate flex-1 font-medium" style={{ color: "var(--color-text-primary)" }}>
                           {player.username}
-                        {isMe && <span className="ml-1 text-xs" style={{ color: "#f97316" }}>{t("home.you")}</span>}
+                        {isMe && <span className="text-xs" style={{ color: "#f97316", marginInlineStart: '0.25rem' }}>{t("home.you")}</span>}
                         </span>
                       <span className="text-xs font-mono shrink-0" style={{ color: "var(--color-primary)" }}>
                         {player.total_xp.toLocaleString()} XP
@@ -347,6 +366,70 @@ export default function HomePage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </Section>
+
+          <Section title={t("home.activity_insights")} icon={<BarChart3 className="w-4 h-4" />}>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="rounded-lg p-2.5" style={{ backgroundColor: "var(--color-bg-input)" }}>
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--color-text-muted)" }}>
+                  {t("home.activity_today")}
+                </p>
+                <p className="text-lg font-bold" style={{ color: "var(--color-text-primary)" }}>
+                  {eventsToday}
+                </p>
+              </div>
+              <div className="rounded-lg p-2.5" style={{ backgroundColor: "var(--color-bg-input)" }}>
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--color-text-muted)" }}>
+                  {t("home.activity_week")}
+                </p>
+                <p className="text-lg font-bold" style={{ color: "var(--color-text-primary)" }}>
+                  {eventsThisWeek}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-xs space-y-1 mb-3" style={{ color: "var(--color-text-secondary)" }}>
+              <p>
+                {t("home.activity_peak_day")}:{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>
+                  {activitySummary?.most_active_day ?? "—"}
+                </strong>
+              </p>
+              <p>
+                {t("home.activity_peak_hour")}:{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>
+                  {activitySummary?.most_active_hour !== null && activitySummary?.most_active_hour !== undefined
+                    ? `${activitySummary.most_active_hour}:00`
+                    : "—"}
+                </strong>
+              </p>
+            </div>
+
+            <p className="text-xs font-semibold mb-2" style={{ color: "var(--color-text-muted)" }}>
+              {t("home.recent_activity")}
+            </p>
+            {recentActivity.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+                {t("home.no_activity")}
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {recentActivity.map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-lg px-2.5 py-2"
+                    style={{ backgroundColor: "var(--color-bg-input)" }}
+                  >
+                    <p className="text-xs font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                      {formatEventType(event.event_type)}
+                    </p>
+                    <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                      {event.category} • {timeAgo(event.created_at, t)}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </Section>

@@ -215,6 +215,21 @@ textarea {
   word-spacing: 0 !important;
 }
 
+/* Make directional text utility classes mirror correctly in RTL */
+[dir="rtl"] .text-left,
+[dir="rtl"] .sm\:text-left,
+[dir="rtl"] .md\:text-left,
+[dir="rtl"] .lg\:text-left {
+  text-align: right !important;
+}
+
+[dir="rtl"] .text-right,
+[dir="rtl"] .sm\:text-right,
+[dir="rtl"] .md\:text-right,
+[dir="rtl"] .lg\:text-right {
+  text-align: left !important;
+}
+
 /* Text inside inputs/textareas should align right in RTL */
 [dir="rtl"] input,
 [dir="rtl"] textarea {

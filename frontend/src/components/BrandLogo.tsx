@@ -19,7 +19,12 @@ export function BrandLogo({ className, compact = false, showWordmark = true }: B
 
       {showWordmark && (
         <span className={cn("font-extrabold tracking-tight", compact ? "text-lg" : "text-xl")}>
-          <span className="text-white drop-shadow-[0_0_6px_rgba(249,115,22,0.45)] mr-1">42</span>
+          <span
+            className="text-white drop-shadow-[0_0_6px_rgba(249,115,22,0.45)]"
+            style={{ marginInlineEnd: '0.25rem' }}
+          >
+            42
+          </span>
           <span
             style={{
               background: "linear-gradient(135deg, #f97316 0%, #ef4444 65%, #f59e0b 100%)",

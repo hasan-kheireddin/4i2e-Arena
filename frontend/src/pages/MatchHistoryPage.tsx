@@ -311,18 +311,19 @@ export default function MatchHistoryPage() {
 
         <div className="flex-1 relative">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            style={{ color: 'var(--color-text-muted)' }}
+            className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2"
+            style={{ color: 'var(--color-text-muted)', insetInlineStart: '0.75rem' }}
           />
           <input
             placeholder={t('match_history.search_placeholder')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full rounded-lg px-4 py-2 pl-10 text-sm outline-none transition-all"
+            className="w-full rounded-lg px-4 py-2 text-sm outline-none transition-all"
             style={{
               backgroundColor: 'var(--color-bg-input)',
               border: '1px solid var(--color-border)',
               color: 'var(--color-text-primary)',
+              paddingInlineStart: '2.5rem',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = 'var(--color-primary)';
@@ -442,7 +443,7 @@ export default function MatchHistoryPage() {
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="shrink-0" style={{ textAlign: 'end' }}>
                     <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
                       {timeAgo(match.finished_at, t)}
                     </p>

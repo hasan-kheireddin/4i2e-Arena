@@ -17,7 +17,15 @@ import type { ApiError } from '../services/api';
 
 type SettingsTab = 'profile' | 'security' | 'appearance';
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  checked,
+  onChange,
+  isRTL,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  isRTL: boolean;
+}) {
   return (
     <button
       role="switch"
@@ -26,9 +34,10 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       className={`relative h-5 w-10 rounded-full transition-colors ${checked ? 'bg-brand' : 'bg-border'}`}
     >
       <div
-        className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+        className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
         style={{
-          transform: checked ? 'translateX(20px)' : 'translateX(0)',
+          insetInlineStart: '0.125rem',
+          transform: checked ? `translateX(${isRTL ? '-20px' : '20px'})` : 'translateX(0)',
         }}
       />
     </button>
@@ -60,6 +69,7 @@ export default function SettingsPage() {
 
   // Language - synced with i18n and user preferred_language
   const [language, setLanguage] = useState(() => normalizeLanguage(user?.preferred_language || i18n.language));
+  const isRTL = i18n.dir(language) === 'rtl';
 
   // Apply dark mode changes
   useEffect(() => {
@@ -270,7 +280,8 @@ export default function SettingsPage() {
                     <Tooltip content="Avatar uploads are not wired yet.">
                       <button
                         type="button"
-                        className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white opacity-0 shadow-card transition-opacity group-hover:opacity-100"
+                        className="absolute bottom-0 flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white opacity-0 shadow-card transition-opacity group-hover:opacity-100"
+                        style={{ insetInlineEnd: 0 }}
                       >
                         +
                       </button>
@@ -305,7 +316,7 @@ export default function SettingsPage() {
                 </div>
               </SurfaceCard>
               {saveError && (
-                <p className="text-right text-sm text-danger">{saveError}</p>
+                <p className="text-sm text-danger" style={{ textAlign: 'start' }}>{saveError}</p>
               )}
               <div className="flex justify-end">
                 <Button
@@ -437,7 +448,7 @@ export default function SettingsPage() {
                       </p>
                     </div>
                   </div>
-                  <Toggle checked={isDark} onChange={(v) => setIsDark(v)} />
+                  <Toggle checked={isDark} onChange={(v) => setIsDark(v)} isRTL={isRTL} />
                 </div>
               </SurfaceCard>
 
@@ -450,12 +461,13 @@ export default function SettingsPage() {
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageChange(lang.code)}
-                      className="flex items-center gap-3 rounded-xl border bg-input p-3 text-left transition-all"
+                      className="flex items-center gap-3 rounded-xl border bg-input p-3 transition-all"
                       style={{
                         borderColor: language === lang.code ? 'rgb(var(--color-primary-rgb))' : 'rgb(var(--color-border-rgb))',
                         backgroundColor: language === lang.code ? 'rgb(var(--color-primary-rgb) / 0.1)' : undefined,
                         color: language === lang.code ? 'rgb(var(--color-primary-rgb))' : 'rgb(var(--color-text-secondary-rgb))',
                         direction: lang.direction,
+                        textAlign: 'start',
                       }}
                     >
                       <span className="text-xl">{lang.flag}</span>

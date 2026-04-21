@@ -13,6 +13,11 @@ function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
       { threshold: 0.12 }
@@ -76,7 +81,7 @@ export default function LandingPage() {
 
       {/* ── NAVBAR ───────────────────────────────────────────────────────────── */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 h-14"
+        className="fixed top-0 left-0 right-0 z-50 h-14 backdrop-fallback"
         style={{
           backgroundColor: "var(--color-bg)",
           borderBottom: "1px solid var(--color-border)",
@@ -261,8 +266,10 @@ export default function LandingPage() {
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 12px 40px ${c1}30`; }}
                   onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
                 >
-                  <div className="absolute top-5 right-5 px-3 py-1 rounded-full text-xs font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
+                  <div
+                    className="absolute top-5 px-3 py-1 rounded-full text-xs font-bold text-white"
+                    style={{ background: `linear-gradient(135deg, ${c1}, ${c2})`, insetInlineEnd: '1.25rem' }}
+                  >
                     {t(badgeKey)}
                   </div>
 

@@ -404,10 +404,19 @@ class LevelTableView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        max_display = min(
-            int(request.query_params.get("max_level", 50)),
-            MAX_LEVEL,
-        )
+        try:
+            max_display = _parse_bounded_int_param(
+                request,
+                name="max_level",
+                default=50,
+                min_value=1,
+                max_value=MAX_LEVEL,
+            )
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         levels = []
         for lvl in range(1, max_display + 1):
             xp_required = get_xp_for_level(lvl)
@@ -456,6 +465,26 @@ from .aggregation_service import (
 from .tracking_service import get_client_ip, get_user_agent, track_page_view
 
 
+def _parse_bounded_int_param(
+    request,
+    *,
+    name: str,
+    default: int,
+    min_value: int,
+    max_value: int,
+):
+    raw = request.query_params.get(name)
+    if raw is None:
+        return default
+    try:
+        parsed = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError(f"'{name}' must be an integer.")
+    if parsed < min_value:
+        raise ValueError(f"'{name}' must be >= {min_value}.")
+    return min(parsed, max_value)
+
+
 # ---------------------------------------------------------------------------
 # GET /api/analytics/activity/summary/ — User activity summary
 # ---------------------------------------------------------------------------
@@ -492,7 +521,19 @@ class ActivityTimelineView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        days = min(int(request.query_params.get("days", 30)), 365)
+        try:
+            days = _parse_bounded_int_param(
+                request,
+                name="days",
+                default=30,
+                min_value=1,
+                max_value=365,
+            )
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         category = request.query_params.get("category")
 
         data = get_activity_timeline(
@@ -537,7 +578,19 @@ class RecentActivityView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        limit = min(int(request.query_params.get("limit", 20)), 100)
+        try:
+            limit = _parse_bounded_int_param(
+                request,
+                name="limit",
+                default=20,
+                min_value=1,
+                max_value=100,
+            )
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         category = request.query_params.get("category")
 
         data = get_recent_activity(
@@ -563,7 +616,7 @@ class TrackEventView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        path = request.data.get("path", "")
+        path = str(request.data.get("path", "")).strip()
         if not path:
             return Response(
                 {"detail": "path is required."},

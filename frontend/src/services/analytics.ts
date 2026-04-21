@@ -2,6 +2,14 @@ import { apiFetch, getAccessToken } from './api';
 
 const A = '/api/analytics';
 
+function buildQuery(params: Record<string, string | number | undefined>): string {
+  const q = Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+  return q ? `?${q}` : '';
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Achievement {
@@ -89,14 +97,47 @@ export interface PaginatedLeaderboard {
 }
 
 export interface ActivitySummary {
+  user_id: string;
   total_events: number;
+  events_today: number;
+  events_this_week: number;
   today_count: number;
   week_count: number;
   by_category: Record<string, number>;
   by_type: Record<string, number>;
+  top_event_types: Array<{ event_type: string; count: number }>;
+  latest_event: { event_type: string; created_at: string } | null;
+  latest_event_at: string | null;
   most_active_hour: number | null;
   most_active_day: string | null;
-  latest_event: string | null;
+}
+
+export interface ActivityTimelinePoint {
+  date: string;
+  count: number;
+}
+
+export interface ActivityHeatmapCell {
+  day: number;
+  hour: number;
+  count: number;
+}
+
+export interface RecentActivityEvent {
+  id: string;
+  category: string;
+  event_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface GlobalActivitySummary {
+  total_events: number;
+  active_users_24h: number;
+  active_users_7d: number;
+  active_users_30d: number;
+  by_category: Record<string, number>;
+  top_event_types: Array<{ event_type: string; count: number }>;
 }
 
 export type ExportFormat = 'json' | 'csv';
@@ -160,6 +201,32 @@ export function getActivitySummary(): Promise<ActivitySummary> {
   return apiFetch<ActivitySummary>(`${A}/activity/summary/`);
 }
 
+/** GET /api/analytics/activity/timeline/ */
+export function getActivityTimeline(params: {
+  days?: number;
+  category?: string;
+} = {}): Promise<ActivityTimelinePoint[]> {
+  return apiFetch<ActivityTimelinePoint[]>(`${A}/activity/timeline/${buildQuery(params)}`);
+}
+
+/** GET /api/analytics/activity/heatmap/ */
+export function getActivityHeatmap(): Promise<ActivityHeatmapCell[]> {
+  return apiFetch<ActivityHeatmapCell[]>(`${A}/activity/heatmap/`);
+}
+
+/** GET /api/analytics/activity/recent/ */
+export function getRecentActivity(params: {
+  limit?: number;
+  category?: string;
+} = {}): Promise<RecentActivityEvent[]> {
+  return apiFetch<RecentActivityEvent[]>(`${A}/activity/recent/${buildQuery(params)}`);
+}
+
+/** GET /api/analytics/activity/global/ (admin only) */
+export function getGlobalActivitySummary(): Promise<GlobalActivitySummary> {
+  return apiFetch<GlobalActivitySummary>(`${A}/activity/global/`);
+}
+
 /** POST /api/analytics/activity/track/ — track a page view */
 export function trackPageView(path: string): Promise<{ detail: string }> {
   return apiFetch(`${A}/activity/track/`, {
@@ -174,6 +241,10 @@ function authHeaders(): HeadersInit {
   const token = getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+type LegacyNavigator = Navigator & {
+  msSaveOrOpenBlob?: (blob: Blob, defaultName?: string) => boolean;
+};
 
 /**
  * Download the user's activity export as a file.
@@ -203,8 +274,20 @@ export async function exportActivityData(format: ExportFormat = 'json'): Promise
   const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
   const filename = filenameMatch ? filenameMatch[1] : `activity_export.${format}`;
 
+  const legacyNavigator = window.navigator as LegacyNavigator;
+  if (typeof legacyNavigator.msSaveOrOpenBlob === 'function') {
+    legacyNavigator.msSaveOrOpenBlob(blob, filename);
+    return;
+  }
+
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
+  if (!('download' in anchor)) {
+    window.location.assign(url);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    return;
+  }
+
   anchor.href = url;
   anchor.download = filename;
   anchor.style.display = 'none';

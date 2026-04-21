@@ -24,6 +24,7 @@ export function Select({
   ...props
 }: SelectProps) {
   const selectId = id || label?.toLowerCase().replace(/\s+/g, '-');
+  const { style: selectStyle, ...selectProps } = props;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -37,7 +38,7 @@ export function Select({
           id={selectId}
           className={cn(
             'h-11 w-full appearance-none rounded-xl border border-border bg-input text-primary shadow-sm transition-all duration-150 outline-none',
-            'pl-3 pr-9 cursor-pointer',
+            'cursor-pointer',
             error
               ? 'border-danger focus:ring-2 focus:ring-danger/20'
               : 'focus:border-brand focus:ring-2 focus:ring-brand/20',
@@ -45,7 +46,12 @@ export function Select({
             className
           )}
           aria-invalid={Boolean(error)}
-          {...props}
+          style={{
+            paddingInlineStart: '0.75rem',
+            paddingInlineEnd: '2.25rem',
+            ...selectStyle,
+          }}
+          {...selectProps}
         >
           {placeholder && (
             <option value="" disabled>
@@ -58,7 +64,10 @@ export function Select({
             </option>
           ))}
         </select>
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+        <span
+          className="absolute top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+          style={{ insetInlineEnd: '0.75rem' }}
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>

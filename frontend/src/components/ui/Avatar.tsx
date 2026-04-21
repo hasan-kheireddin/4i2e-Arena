@@ -46,10 +46,11 @@ export function Avatar({ src, name, size = 'md', online, className }: AvatarProp
       {online !== undefined && (
         <span
           className={cn(
-            'absolute bottom-0 right-0 rounded-full border-2 border-surface',
+            'absolute bottom-0 rounded-full border-2 border-surface',
             s.dot,
             online ? 'bg-success' : 'bg-muted'
           )}
+          style={{ insetInlineEnd: 0 }}
         />
       )}
     </div>

@@ -32,7 +32,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-base/85 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-base/85 backdrop-blur-sm backdrop-fallback animate-fade-in"
         onClick={onClose}
       />
       {/* Panel */}

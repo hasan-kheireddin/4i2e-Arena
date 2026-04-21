@@ -124,12 +124,12 @@ export default function PlayPage() {
               {/* Pong card */}
               <button
                 onClick={() => selectGame('pong')}
-                className="group relative overflow-hidden p-8 rounded-2xl text-left transition-all duration-300 hover:-translate-y-2 outline-none"
-                style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+                className="group relative overflow-hidden p-8 rounded-2xl transition-all duration-300 hover:-translate-y-2 outline-none"
+                style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)', textAlign: 'start' }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(249,115,22,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <div className="absolute top-4 right-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none">🏓</div>
+                <div className="absolute top-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none" style={{ insetInlineEnd: '1rem' }}>🏓</div>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-3xl"
                   style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)' }}>
                   🏓
@@ -147,19 +147,19 @@ export default function PlayPage() {
                   ))}
                 </div>
                 <div className="mt-4 flex items-center gap-1 text-sm font-semibold" style={{ color: '#f97316' }}>
-                  {t('play.select')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  {t('play.select')} <ArrowRight className="w-4 h-4 icon-directional transition-transform" />
                 </div>
               </button>
 
               {/* TicTacToe card */}
               <button
                 onClick={() => selectGame('tictactoe')}
-                className="group relative overflow-hidden p-8 rounded-2xl text-left transition-all duration-300 hover:-translate-y-2 outline-none"
-                style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+                className="group relative overflow-hidden p-8 rounded-2xl transition-all duration-300 hover:-translate-y-2 outline-none"
+                style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)', textAlign: 'start' }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(245,158,11,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <div className="absolute top-4 right-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none">⭕</div>
+                <div className="absolute top-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none" style={{ insetInlineEnd: '1rem' }}>⭕</div>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-3xl"
                   style={{ background: 'linear-gradient(135deg,#f59e0b,#f97316)' }}>
                   ⭕
@@ -177,7 +177,7 @@ export default function PlayPage() {
                   ))}
                 </div>
                 <div className="mt-4 flex items-center gap-1 text-sm font-semibold" style={{ color: '#f59e0b' }}>
-                  {t('play.select')} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  {t('play.select')} <ArrowRight className="w-4 h-4 icon-directional transition-transform" />
                 </div>
               </button>
             </div>
@@ -238,7 +238,7 @@ export default function PlayPage() {
                   style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                   onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                   onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}>
-                  <ArrowLeft className="w-4 h-4" /> {t('play.back')}
+                  <ArrowLeft className="w-4 h-4 icon-directional" /> {t('play.back')}
                 </button>
                 <button
                   onClick={launch}
@@ -247,7 +247,7 @@ export default function PlayPage() {
                   style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)', boxShadow: '0 4px 20px rgba(249,115,22,0.35)' }}>
                   <Gamepad2 className="w-5 h-5" />
                   {t('play.play_now')}
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 icon-directional transition-transform" />
                 </button>
               </div>
             )}
@@ -259,7 +259,7 @@ export default function PlayPage() {
                   style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                   onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                   onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}>
-                  <ArrowLeft className="w-4 h-4" /> {t('play.back')}
+                  <ArrowLeft className="w-4 h-4 icon-directional" /> {t('play.back')}
                 </button>
               </div>
             )}
@@ -311,7 +311,7 @@ export default function PlayPage() {
                 style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}>
-                <ArrowLeft className="w-4 h-4" /> {t('play.back')}
+                <ArrowLeft className="w-4 h-4 icon-directional" /> {t('play.back')}
               </button>
               <button
                 onClick={launch}
@@ -319,7 +319,7 @@ export default function PlayPage() {
                 style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)', boxShadow: '0 4px 20px rgba(249,115,22,0.35)' }}>
                 <Gamepad2 className="w-5 h-5" />
                 {t('play.start_game')}
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 icon-directional transition-transform" />
               </button>
             </div>
           </div>

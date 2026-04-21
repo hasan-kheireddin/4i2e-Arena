@@ -108,8 +108,10 @@ export default function ProfilePage() {
         <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <div className="relative shrink-0">
             <Avatar name={user?.display_name || user?.username || ""} size="xl" online />
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)" }}>
+            <div
+              className="absolute -bottom-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+              style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", insetInlineEnd: '-0.25rem' }}
+            >
               {level}
             </div>
           </div>

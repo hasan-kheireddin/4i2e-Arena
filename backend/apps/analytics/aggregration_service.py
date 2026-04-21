@@ -34,6 +34,7 @@ def invalidate_user_activity_cache(user_id: UUID | int) -> None:
     keys = [
         _user_summary_key(user_id),
         _user_heatmap_key(user_id),
+        "analytics:global_summary",
     ]
     # Timeline keys for common day ranges
     for days in [7, 14, 30, 90]:
@@ -74,12 +75,17 @@ def get_user_activity_summary(user_id: UUID | int) -> dict[str, Any]:
     for row in cat_qs:
         by_category[row["category"]] = row["count"]
 
-    # By event type (top 10)
-    top_event_types = list(
+    # By event type
+    event_type_rows = list(
         base_qs.values("event_type")
         .annotate(count=Count("id"))
-        .order_by("-count")[:10]
+        .order_by("-count")
     )
+    top_event_types = event_type_rows[:10]
+    by_type = {
+        row["event_type"]: row["count"]
+        for row in event_type_rows
+    }
 
     # Most recent event
     latest = base_qs.order_by("-created_at").values("event_type", "created_at").first()
@@ -114,7 +120,11 @@ def get_user_activity_summary(user_id: UUID | int) -> dict[str, Any]:
         "total_events": total,
         "events_today": today_count,
         "events_this_week": week_count,
+        # Backward-compatible aliases for older clients.
+        "today_count": today_count,
+        "week_count": week_count,
         "by_category": by_category,
+        "by_type": by_type,
         "top_event_types": [
             {"event_type": r["event_type"], "count": r["count"]}
             for r in top_event_types
@@ -123,6 +133,7 @@ def get_user_activity_summary(user_id: UUID | int) -> dict[str, Any]:
             "event_type": latest["event_type"],
             "created_at": latest["created_at"].isoformat(),
         } if latest else None,
+        "latest_event_at": latest["created_at"].isoformat() if latest else None,
         "most_active_hour": most_active_hour,
         "most_active_day": most_active_day,
     }

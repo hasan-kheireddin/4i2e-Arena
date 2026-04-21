@@ -20,6 +20,7 @@ export function Input({
   ...props
 }: InputProps) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
+  const { style: inputStyle, ...inputProps } = props;
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
@@ -29,7 +30,10 @@ export function Input({
       )}
       <div className="relative">
         {icon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+          <span
+            className="absolute top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            style={{ insetInlineStart: '0.75rem' }}
+          >
             {icon}
           </span>
         )}
@@ -37,20 +41,26 @@ export function Input({
           id={inputId}
           className={cn(
             'h-11 w-full rounded-xl border border-border bg-input text-primary placeholder-muted shadow-sm transition-all duration-150 outline-none',
-            icon ? 'pl-10' : 'pl-3',
-            trailing ? 'pr-10' : 'pr-3',
             error
               ? 'border-danger focus:ring-2 focus:ring-danger/20'
               : 'focus:border-brand focus:ring-2 focus:ring-brand/20',
-            props.readOnly && 'cursor-default bg-base text-muted',
-            props.disabled && 'opacity-50 cursor-not-allowed',
+            inputProps.readOnly && 'cursor-default bg-base text-muted',
+            inputProps.disabled && 'opacity-50 cursor-not-allowed',
             className
           )}
           aria-invalid={Boolean(error)}
-          {...props}
+          style={{
+            paddingInlineStart: icon ? '2.5rem' : '0.75rem',
+            paddingInlineEnd: trailing ? '2.5rem' : '0.75rem',
+            ...inputStyle,
+          }}
+          {...inputProps}
         />
         {trailing && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
+          <span
+            className="absolute top-1/2 -translate-y-1/2 text-muted"
+            style={{ insetInlineEnd: '0.75rem' }}
+          >
             {trailing}
           </span>
         )}

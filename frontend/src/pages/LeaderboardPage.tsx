@@ -4,6 +4,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { getLeaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../services/games';
 
+type LeaderboardGameFilter = 'all' | 'pong' | 'tictactoe';
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-xl">👑</span>;
@@ -16,13 +17,15 @@ export default function LeaderboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [period, setPeriod] = useState<LeaderboardPeriod>('weekly');
+  const [gameFilter, setGameFilter] = useState<LeaderboardGameFilter>('all');
   const [players, setPlayers] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<{ rank: number | null; wins: number }>({ rank: null, wins: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getLeaderboard({ game_type: 'pong', metric: 'wins', period, limit: 50 }).then((lb) => {
+    const gameType = gameFilter === 'all' ? undefined : gameFilter;
+    getLeaderboard({ game_type: gameType, metric: 'wins', period, limit: 50 }).then((lb) => {
       setPlayers(lb);
       const myEntry = lb.find((p) => p.user_id === user?.id);
       setMyStats({
@@ -30,7 +33,7 @@ export default function LeaderboardPage() {
         wins: myEntry?.wins ?? 0,
       });
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [period, user?.id]);
+  }, [period, gameFilter, user?.id]);
 
   const hasPodium = players.length >= 3;
   const top3 = hasPodium ? players.slice(0, 3) : [];
@@ -87,6 +90,33 @@ export default function LeaderboardPage() {
         })}
       </div>
 
+      {/* Game filters */}
+      <div className="flex gap-2">
+        {(
+          [
+            { key: 'all', label: t('lb.game_all') },
+            { key: 'pong', label: t('lb.game_pong') },
+            { key: 'tictactoe', label: t('lb.game_tictactoe') },
+          ] as const
+        ).map(({ key, label }) => {
+          const selected = gameFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setGameFilter(key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: selected ? 'var(--color-primary)' : 'var(--color-bg-card)',
+                color: selected ? '#fff' : 'var(--color-text-secondary)',
+                border: selected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div className="text-center py-12"><span className="text-4xl block mb-3">⏳</span><p style={{ color: 'var(--color-text-secondary)' }}>{t('lb.loading')}</p></div>
       ) : (
@@ -122,7 +152,7 @@ export default function LeaderboardPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {[t('lb.col_rank'), t('lb.col_player'), t('lb.col_wins'), t('lb.col_xp')].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-3" style={{ color: 'var(--color-text-muted)' }}>{h}</th>
+                    <th key={h} className="text-xs font-semibold uppercase tracking-wider py-3 px-3" style={{ color: 'var(--color-text-muted)', textAlign: 'start' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -142,7 +172,7 @@ export default function LeaderboardPage() {
                         </div>
                       </td>
                       <td className="py-3 px-3 text-sm font-semibold" style={{ color: 'var(--color-success)' }}>{player.wins}</td>
-                      <td className="py-3 px-3 text-right text-sm font-mono font-semibold" style={{ color: 'var(--color-primary)' }}>{player.total_xp.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-sm font-mono font-semibold" style={{ color: 'var(--color-primary)', textAlign: 'end' }}>{player.total_xp.toLocaleString()}</td>
                     </tr>
                   );
                 })}

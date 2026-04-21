@@ -349,8 +349,11 @@ class MatchSummaryView(APIView):
 
         # --- By game mode ---
         by_game_mode = {}
-        for gm in ["pvp", "pve"]:
-            gm_qs = participations.filter(match__game_mode=gm)
+        for gm, gm_filter in (
+            ("pvp", Q(match__game_mode="pvp")),
+            ("pva", Q(match__game_mode__in=["pva", "pve"])),
+        ):
+            gm_qs = participations.filter(gm_filter)
             gm_total = gm_qs.count()
             if gm_total > 0:
                 by_game_mode[gm] = {
@@ -466,7 +469,8 @@ class PublicUserStatsView(APIView):
         game_type = query.validated_data.get("game_type")
         stats = get_user_stats(user_id, game_type=game_type)
 
-        # Remove PvE data from public view
+        # Remove AI-mode data from public view
+        stats.get("by_game_mode", {}).pop("pva", None)
         stats.get("by_game_mode", {}).pop("pve", None)
 
         return Response(stats, status=status.HTTP_200_OK)
@@ -494,7 +498,7 @@ class LeaderboardView(APIView):
       - ``period``    — ``"daily"``, ``"weekly"``, ``"monthly"``, ``"all"``
       - ``limit``     — max entries (1–100, default 50)
 
-    Only online Pong PvP matches are considered.
+    Only online PvP matches are considered.
     All players with qualifying matches are included.
     Results are cached for 10 minutes.
     """
@@ -505,13 +509,6 @@ class LeaderboardView(APIView):
         query = LeaderboardQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
 
-        requested_game_type = query.validated_data.get("game_type")
-        if requested_game_type and requested_game_type != "pong":
-            return Response(
-                {"detail": "Only online Pong leaderboard is supported."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         metric = query.validated_data.get("metric", "wins")
         if metric != "wins":
             return Response(
@@ -519,7 +516,7 @@ class LeaderboardView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        game_type = "pong"
+        game_type = query.validated_data.get("game_type")
         period = query.validated_data.get("period", "all")
         limit = query.validated_data.get("limit", 50)
 
@@ -554,9 +551,10 @@ class CreateLocalMatchView(APIView):
         if game_type not in ("pong", "tictactoe"):
             return Response({"error": "Invalid game_type"}, status=status.HTTP_400_BAD_REQUEST)
 
-        game_mode_str = data.get("game_mode", "pvp")
-        if game_mode_str not in ("pvp", "pve"):
+        game_mode_input = data.get("game_mode", "pvp")
+        if game_mode_input not in ("pvp", "pva", "pve"):
             return Response({"error": "Invalid game_mode"}, status=status.HTTP_400_BAD_REQUEST)
+        game_mode_str = "pva" if game_mode_input in ("pva", "pve") else "pvp"
 
         # Extract result
         winner = data.get("winner")  # "X", "O", or None for draw
@@ -575,7 +573,7 @@ class CreateLocalMatchView(APIView):
         winner_user = None
         player_outcome = MatchOutcome.DRAW
         
-        if game_mode_str == "pve":
+        if game_mode_str == "pva":
             # Player is always slot 1 (X), AI is slot 2 (O)
             if winner == "X":
                 winner_user = user

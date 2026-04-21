@@ -14,6 +14,7 @@ export default function Setup2FAPage() {
   const [step, setStep] = useState<"qr" | "verify">("qr");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [copyError, setCopyError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [setupLoading, setSetupLoading] = useState(true);
@@ -45,9 +46,30 @@ export default function Setup2FAPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setShowToast(true);
+  const copyToClipboard = async (text: string) => {
+    setCopyError("");
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        if (!copied) {
+          throw new Error("execCommand-copy-failed");
+        }
+      }
+      setShowToast(true);
+    } catch {
+      setCopyError(t("2fa.copy_failed", "Couldn't copy automatically. Please copy manually."));
+    }
   };
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -137,20 +159,25 @@ export default function Setup2FAPage() {
                   >
                     {secretKey}
                   </code>
-                  <button
-                    onClick={() => copyToClipboard(secretKey)}
-                    className="px-3 py-2 rounded text-sm font-medium transition-colors"
-                    style={{
-                      backgroundColor: "var(--color-bg-input)",
+                    <button
+                      onClick={() => { void copyToClipboard(secretKey); }}
+                      className="px-3 py-2 rounded text-sm font-medium transition-colors"
+                      style={{
+                        backgroundColor: "var(--color-bg-input)",
                       color: "var(--color-text-link)",
                       border: "1px solid var(--color-border)",
                     }}
                   >
-                    {t("2fa.copy", "Copy")}
-                  </button>
+                      {t("2fa.copy", "Copy")}
+                    </button>
+                  </div>
+                  {copyError && (
+                    <p className="mt-2 text-sm" style={{ color: "var(--color-error)" }}>
+                      {copyError}
+                    </p>
+                  )}
                 </div>
               </div>
-            </div>
 
             {/* Continue */}
             <button

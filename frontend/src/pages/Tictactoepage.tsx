@@ -367,7 +367,7 @@ export default function TicTacToePage() {
               <span className="text-sm font-semibold" style={{ color: '#3B82F6' }}>
                 {mode === 'online' ? t('ttt.you') : localP1Label}
               </span>
-              <span className="ml-2 text-xs font-bold" style={{ color: '#3B82F6' }}>
+              <span className="text-xs font-bold" style={{ color: '#3B82F6', marginInlineStart: '0.5rem' }}>
                 ({mode === 'online' ? mySymbol ?? '?' : 'X'})
               </span>
             </div>
@@ -422,7 +422,7 @@ export default function TicTacToePage() {
               <span className="text-sm font-semibold" style={{ color: '#EF4444' }}>
                 {mode === 'online' ? opponentName : localP2Label}
               </span>
-              <span className="ml-2 text-xs font-bold" style={{ color: '#EF4444' }}>
+              <span className="text-xs font-bold" style={{ color: '#EF4444', marginInlineStart: '0.5rem' }}>
                 ({mode === 'online' ? (mySymbol === 'X' ? 'O' : mySymbol === 'O' ? 'X' : '?') : 'O'})
               </span>
             </div>

@@ -13,7 +13,10 @@ export default function Toast({ message, onClose, duration = 2000 }: ToastProps)
   }, [onClose, duration]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
+    <div
+      className="fixed z-50 animate-slideUp"
+      style={{ bottom: '1.5rem', insetInlineEnd: '1.5rem' }}
+    >
       <div
         className="px-4 py-3 rounded-lg shadow-lg flex items-center gap-3"
         style={{

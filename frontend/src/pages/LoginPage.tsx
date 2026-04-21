@@ -116,7 +116,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative h-screen w-screen flex overflow-hidden">
-      <div className="absolute right-4 top-4 z-20">
+      <div className="absolute top-4 z-20" style={{ insetInlineEnd: '1rem' }}>
         <LanguageSwitcher />
       </div>
       {/* ─────────────────────────────────────────
