@@ -101,6 +101,13 @@
     "sending": "Envoi...",
     "resetting": "Réinitialisation..."
   },
+  "oauth": {
+    "completing": "Finalisation de l'authentification...",
+    "auth_failed_title": "Échec de l'authentification",
+    "auth_failed": "L'authentification a échoué. Veuillez réessayer.",
+    "invalid_callback": "Paramètres de rappel invalides. Code d'autorisation ou état manquant.",
+    "back_to_login": "Retour à la connexion"
+  },
   "errors": {
     "email_required": "L'email est requis",
     "email_invalid": "L'email est invalide",
@@ -348,6 +355,7 @@
   },
   "profile": {
     "global_rank": "Rang mondial",
+    "game_analytics": "Analyses des jeux",
     "pong_analytics": "Analyses Pong",
     "wins": "Victoires",
     "draws": "Nuls",
@@ -365,6 +373,8 @@
     "from_games": "Des parties",
     "win_bonus": "Bonus de victoire",
     "streak_bonus": "Bonus de série",
+    "recent_matches": "Matchs récents",
+    "no_matches": "Aucun match pour l'instant.",
     "recent_pong": "Derniers matchs Pong",
     "no_pong": "Aucun match Pong pour l'instant.",
     "achievements": "Succès",
@@ -502,6 +512,16 @@
     "back_to_games": "Retour aux jeux",
     "move_history": "Historique des coups",
     "no_moves": "Aucun coup joué",
+    "move_entry": "{{mark}} -> {{position}}",
+    "position_top_left": "haut-gauche",
+    "position_top_center": "haut-centre",
+    "position_top_right": "haut-droite",
+    "position_mid_left": "milieu-gauche",
+    "position_center": "centre",
+    "position_mid_right": "milieu-droite",
+    "position_bot_left": "bas-gauche",
+    "position_bot_center": "bas-centre",
+    "position_bot_right": "bas-droite",
     "reset_game": "Réinitialiser",
     "game_status": "État du jeu",
     "your_turn_status": "C'est votre tour !",

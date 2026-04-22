@@ -44,11 +44,11 @@ export default function ProfilePage() {
     async function load() {
       try {
         const [statsRes, xpRes, achRes, unlocksRes, matchRes] = await Promise.all([
-          getMyStats("pong"),
+          getMyStats(undefined, "pvp"),
           getMyXP(),
           getAchievementStats(),
           getUnlockedAchievements(),
-          getMyMatches({ game_type: "pong", page_size: 8 }),
+          getMyMatches({ mode: "pvp", page_size: 8 }),
         ]);
         if (cancelled) return;
         setStats(statsRes);
@@ -66,13 +66,13 @@ export default function ProfilePage() {
     return () => { cancelled = true; };
   }, []);
 
-  const pongStats = stats?.by_game_type?.["pong"];
-  const totalGames    = pongStats?.total ?? 0;
-  const wins          = pongStats?.wins  ?? 0;
-  const losses        = pongStats?.losses ?? 0;
-  const draws         = pongStats?.draws ?? 0;
-  const winRate       = pongStats ? Math.round(pongStats.win_rate * 100) : 0;
-  const avgScore      = pongStats ? pongStats.avg_score.toFixed(1) : "0.0";
+  const overview = stats?.overview;
+  const totalGames    = overview?.total_matches ?? 0;
+  const wins          = overview?.wins ?? 0;
+  const losses        = overview?.losses ?? 0;
+  const draws         = overview?.draws ?? 0;
+  const winRate       = overview ? Math.round(overview.win_rate * 100) : 0;
+  const avgScore      = overview ? overview.avg_score.toFixed(1) : "0.0";
   const streak        = stats?.streaks.current.count ?? 0;
   const streakType    = stats?.streaks.current.type ?? "none";
   const longestWin    = stats?.streaks.longest_win ?? 0;
@@ -102,15 +102,18 @@ export default function ProfilePage() {
       {/* ── Profile Header ─────────────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden rounded-2xl p-8"
-        style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12) 0%, rgba(236,72,153,0.08) 100%)", border: "1px solid rgba(168,85,247,0.2)" }}
+        style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.14) 0%, rgba(239,68,68,0.1) 100%)", border: "1px solid rgba(249,115,22,0.25)" }}
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl pointer-events-none"
+          style={{ backgroundColor: "rgba(249,115,22,0.18)" }}
+        />
         <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <div className="relative shrink-0">
             <Avatar name={user?.display_name || user?.username || ""} size="xl" online />
             <div
               className="absolute -bottom-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", insetInlineEnd: '-0.25rem' }}
+              style={{ background: "linear-gradient(135deg,#f97316,#ef4444)", insetInlineEnd: '-0.25rem' }}
             >
               {level}
             </div>
@@ -130,16 +133,16 @@ export default function ProfilePage() {
               </div>
               <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${xpProgress}%`, background: "linear-gradient(90deg,#a855f7,#ec4899)" }} />
+                  style={{ width: `${xpProgress}%`, background: "linear-gradient(90deg,#f97316,#ef4444)" }} />
               </div>
             </div>
           </div>
 
           {/* Rank badge */}
           <div className="text-center shrink-0 px-6 py-4 rounded-xl"
-            style={{ backgroundColor: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)" }}>
+            style={{ backgroundColor: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)" }}>
             <div className="text-3xl font-extrabold"
-              style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              style={{ background: "linear-gradient(135deg,#f97316,#ef4444)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
               #{xp?.rank ?? "–"}
             </div>
             <div className="text-xs font-medium mt-0.5" style={{ color: "var(--color-text-muted)" }}>{t("profile.global_rank")}</div>
@@ -147,18 +150,18 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Pong Analytics Grid ─────────────────────────────────────────────── */}
+      {/* ── Game Analytics Grid ─────────────────────────────────────────────── */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-5 rounded-full" style={{ background: "linear-gradient(#a855f7,#ec4899)" }} />
+          <div className="w-1 h-5 rounded-full" style={{ background: "linear-gradient(#f97316,#ef4444)" }} />
           <h2 className="text-base font-bold uppercase tracking-wider" style={{ color: "var(--color-text-primary)" }}>
-            {t("profile.pong_analytics")}
+            {t("profile.game_analytics")}
           </h2>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <AnalyticCard icon={<Trophy className="w-5 h-5" />} label={t("profile.wins")} value={String(wins)} sub={t("profile.of_games", { total: totalGames })} color="#a855f7" />
-          <AnalyticCard icon={<TrendingUp className="w-5 h-5" />} label={t("profile.win_rate")} value={`${winRate}%`} sub={`${losses}L · ${draws}D`} color="#ec4899" />
+          <AnalyticCard icon={<Trophy className="w-5 h-5" />} label={t("profile.wins")} value={String(wins)} sub={t("profile.of_games", { total: totalGames })} color="#f97316" />
+          <AnalyticCard icon={<TrendingUp className="w-5 h-5" />} label={t("profile.win_rate")} value={`${winRate}%`} sub={`${losses}L · ${draws}D`} color="#ef4444" />
           <AnalyticCard icon={<Flame className="w-5 h-5" />} label={t("profile.current_streak")} value={String(streak)} sub={streakType !== "none" ? streakType : t("profile.no_streak")} color={streakType === "win" ? "#22c55e" : streakType === "loss" ? "#ef4444" : "#71717a"} />
           <AnalyticCard icon={<Target className="w-5 h-5" />} label={t("profile.avg_score")} value={avgScore} sub={t("profile.best_streak", { count: longestWin })} color="#06b6d4" />
         </div>
@@ -170,7 +173,7 @@ export default function ProfilePage() {
           <div className="p-5 rounded-xl md:col-span-2"
             style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
             <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--color-text-primary)" }}>
-              <Sword className="w-4 h-4" style={{ color: "#a855f7" }} /> {t("profile.match_breakdown")}
+              <Sword className="w-4 h-4" style={{ color: "#f97316" }} /> {t("profile.match_breakdown")}
             </h3>
             {totalGames === 0 ? (
               <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{t("profile.no_games")}</p>
@@ -231,8 +234,8 @@ export default function ProfilePage() {
             </h3>
             <div className="space-y-3">
               {[
-                { labelKey: "profile.from_games",    val: wins * 50 + losses * 10, max: Math.max(wins * 50 + losses * 10, 100), color: "#a855f7" },
-                { labelKey: "profile.win_bonus",     val: wins * 25,               max: Math.max(wins * 25, 50),               color: "#ec4899" },
+                { labelKey: "profile.from_games",    val: wins * 50 + losses * 10, max: Math.max(wins * 50 + losses * 10, 100), color: "#f97316" },
+                { labelKey: "profile.win_bonus",     val: wins * 25,               max: Math.max(wins * 25, 50),               color: "#ef4444" },
                 { labelKey: "profile.streak_bonus",  val: streak * 15,             max: Math.max(streak * 15, 30),             color: "#f97316" },
               ].map(({ labelKey, val, max, color }) => (
                 <div key={labelKey}>
@@ -254,14 +257,14 @@ export default function ProfilePage() {
       {/* ── Bottom Grid ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Recent Pong Matches */}
+        {/* Recent Matches */}
         <div className="p-5 rounded-xl"
           style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--color-text-primary)" }}>
-            <Clock className="w-4 h-4" style={{ color: "#a855f7" }} /> {t("profile.recent_pong")}
+            <Clock className="w-4 h-4" style={{ color: "#f97316" }} /> {t("profile.recent_matches")}
           </h3>
           {matches.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{t("profile.no_pong")}</p>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{t("profile.no_matches")}</p>
           ) : (
             <div className="space-y-2">
               {matches.map((m) => {
@@ -271,6 +274,7 @@ export default function ProfilePage() {
                 const score = `${m.player1_score}–${m.player2_score}`;
                 const xpEarned = me?.xp_earned ?? 0;
                 const resultColor = result === "win" ? "#22c55e" : result === "draw" ? "#f59e0b" : "#ef4444";
+                const gameLabel = m.game_type === "tictactoe" ? t("home.game_ttt") : t("home.game_pong");
                 return (
                   <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-lg"
                     style={{ border: "1px solid var(--color-border)" }}
@@ -279,6 +283,10 @@ export default function ProfilePage() {
                     <span className="px-2 py-0.5 rounded text-xs font-bold text-white uppercase shrink-0"
                       style={{ backgroundColor: resultColor }}>
                       {t(`profile.result_${result}`, result)}
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded shrink-0"
+                      style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-secondary)" }}>
+                      {gameLabel}
                     </span>
                     <span className="text-sm flex-1 truncate" style={{ color: "var(--color-text-primary)" }}>
                       vs <strong>{opp?.username ?? t("profile.unknown")}</strong>

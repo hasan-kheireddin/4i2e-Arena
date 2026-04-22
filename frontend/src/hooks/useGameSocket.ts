@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAccessToken, refreshAccessToken } from '../services/api';
+import { getAccessToken, getRefreshToken, refreshAccessToken } from '../services/api';
 
 export type WsStatus = 'connecting' | 'open' | 'closed' | 'error' | 'reconnecting';
 
@@ -20,6 +20,51 @@ interface UseGameSocketOptions {
 const BASE_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 5000;
 const LATENCY_PROBE_INTERVAL_MS = 5000;
+const TOKEN_REFRESH_SKEW_SECONDS = 15;
+
+function parseJwtExp(token: string): number | null {
+  const payloadPart = token.split('.')[1];
+  if (!payloadPart) return null;
+
+  try {
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const payload = JSON.parse(window.atob(padded)) as { exp?: unknown };
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+function tokenNeedsRefresh(token: string | null, forceRefresh: boolean): boolean {
+  if (forceRefresh || !token) return true;
+  const exp = parseJwtExp(token);
+  if (exp === null) return true;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return exp <= nowSeconds + TOKEN_REFRESH_SKEW_SECONDS;
+}
+
+function getSocketBaseUrl(): string {
+  const configured = import.meta.env.VITE_WS_URL;
+  if (typeof configured === 'string') {
+    const trimmed = configured.trim();
+    if (trimmed) {
+      if (/^wss?:\/\//i.test(trimmed)) return trimmed;
+      if (/^https?:\/\//i.test(trimmed)) {
+        const httpUrl = new URL(trimmed);
+        httpUrl.protocol = httpUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+        return httpUrl.toString();
+      }
+      if (trimmed.startsWith('/')) {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        return `${protocol}://${window.location.host}${trimmed}`;
+      }
+      return `ws://${trimmed}`;
+    }
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${protocol}://${window.location.host}`;
+}
 
 export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
   const ws = useRef<WebSocket | null>(null);
@@ -80,14 +125,19 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
 
     const getSocketUrl = async (forceRefresh = false) => {
       let token = getAccessToken();
-      if ((!token || forceRefresh) && !(await refreshAccessToken())) {
-        return null;
+      if (tokenNeedsRefresh(token, forceRefresh)) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          token = getAccessToken();
+        } else {
+          token = getAccessToken();
+          if (tokenNeedsRefresh(token, false)) return null;
+        }
       }
-      token = getAccessToken();
       if (!token) return null;
-
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      return `${protocol}://${window.location.host}${path}?token=${encodeURIComponent(token)}`;
+      const url = new URL(path, getSocketBaseUrl());
+      url.searchParams.set('token', token);
+      return url.toString();
     };
 
     const sendLatencyProbe = (socket: WebSocket) => {
@@ -126,7 +176,11 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
 
       const url = await getSocketUrl(forceRefresh);
       if (!url) {
-        setStatus('closed');
+        if (!getAccessToken() && !getRefreshToken()) {
+          setStatus('closed');
+          return;
+        }
+        scheduleReconnect(true);
         return;
       }
       if (cancelled || closedIntentionally.current) {
@@ -135,10 +189,12 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
       }
 
       const socket = new WebSocket(url);
+      let opened = false;
       ws.current = socket;
 
       socket.onopen = () => {
         if (cancelled || ws.current !== socket) return;
+        opened = true;
         reconnectAttempts.current = 0;
         setStatus('open');
         optsRef.current.onOpen?.();
@@ -201,7 +257,7 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
           setStatus('closed');
           return;
         }
-        scheduleReconnect(event.code === 4401);
+        scheduleReconnect(event.code === 4401 || !opened);
       };
     };
 

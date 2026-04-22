@@ -1,7 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
-import GamificationNotifications from "./GamificationNotifications";
 import { trackPageView } from "../services/analytics";
 
 interface LayoutProps {
@@ -21,7 +20,6 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
       <Navbar />
-      <GamificationNotifications />
       <main className="pt-16">
         <div className="p-6 max-w-screen-2xl mx-auto">
           {children}

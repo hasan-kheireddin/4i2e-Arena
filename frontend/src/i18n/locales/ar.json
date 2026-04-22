@@ -101,6 +101,13 @@
     "sending": "جارٍ الإرسال...",
     "resetting": "جارٍ إعادة التعيين..."
   },
+  "oauth": {
+    "completing": "جارٍ إكمال المصادقة...",
+    "auth_failed_title": "فشلت المصادقة",
+    "auth_failed": "فشلت المصادقة. يرجى المحاولة مرة أخرى.",
+    "invalid_callback": "معلمات الاستدعاء غير صالحة. رمز التفويض أو الحالة مفقودة.",
+    "back_to_login": "العودة إلى تسجيل الدخول"
+  },
   "errors": {
     "email_required": "البريد الإلكتروني مطلوب",
     "email_invalid": "البريد الإلكتروني غير صالح",
@@ -348,6 +355,7 @@
   },
   "profile": {
     "global_rank": "الترتيب العالمي",
+    "game_analytics": "إحصاءات الألعاب",
     "pong_analytics": "إحصاءات بونج",
     "wins": "انتصارات",
     "draws": "تعادلات",
@@ -365,6 +373,8 @@
     "from_games": "من المباريات",
     "win_bonus": "مكافأة الفوز",
     "streak_bonus": "مكافأة السلسلة",
+    "recent_matches": "المباريات الأخيرة",
+    "no_matches": "لا توجد مباريات بعد.",
     "recent_pong": "مباريات بونج الأخيرة",
     "no_pong": "لا توجد مباريات بونج بعد.",
     "achievements": "الإنجازات",
@@ -502,6 +512,16 @@
     "back_to_games": "العودة إلى الألعاب",
     "move_history": "سجل الحركات",
     "no_moves": "لا توجد حركات بعد",
+    "move_entry": "{{mark}} -> {{position}}",
+    "position_top_left": "أعلى اليسار",
+    "position_top_center": "أعلى الوسط",
+    "position_top_right": "أعلى اليمين",
+    "position_mid_left": "وسط اليسار",
+    "position_center": "الوسط",
+    "position_mid_right": "وسط اليمين",
+    "position_bot_left": "أسفل اليسار",
+    "position_bot_center": "أسفل الوسط",
+    "position_bot_right": "أسفل اليمين",
     "reset_game": "إعادة تعيين اللعبة",
     "game_status": "حالة اللعبة",
     "your_turn_status": "دورك الآن!",

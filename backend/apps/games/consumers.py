@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from typing import Any
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -10,6 +11,21 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 logger = logging.getLogger("channels.consumer")
 
 MAX_MESSAGE_SIZE: int = 65_536
+
+
+def _channel_safe(value: Any) -> Any:
+    """Convert payloads to channel-layer-safe values (msgpack strict keys)."""
+    if isinstance(value, dict):
+        return {str(k): _channel_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_channel_safe(v) for v in value]
+    if isinstance(value, tuple):
+        return [_channel_safe(v) for v in value]
+    if isinstance(value, set):
+        return [_channel_safe(v) for v in value]
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    return value
 
 
 class BaseConsumer(AsyncWebsocketConsumer):
@@ -201,6 +217,7 @@ class BaseConsumer(AsyncWebsocketConsumer):
         """
         self._require_channel_layer()
         payload = {k: v for k, v in data.items() if k != "type"}
+        payload = _channel_safe(payload)
         payload["type"] = handler
         await self.channel_layer.group_send(group, payload)
 

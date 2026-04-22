@@ -101,6 +101,13 @@
     "sending": "Sending...",
     "resetting": "Resetting..."
   },
+  "oauth": {
+    "completing": "Completing authentication...",
+    "auth_failed_title": "Authentication Failed",
+    "auth_failed": "Authentication failed. Please try again.",
+    "invalid_callback": "Invalid callback parameters. Missing authorization code or state.",
+    "back_to_login": "Back to Login"
+  },
   "errors": {
     "email_required": "Email is required",
     "email_invalid": "Email is invalid",
@@ -348,6 +355,7 @@
   },
   "profile": {
     "global_rank": "Global Rank",
+    "game_analytics": "Game Analytics",
     "pong_analytics": "Pong Analytics",
     "wins": "Wins",
     "draws": "Draws",
@@ -365,6 +373,8 @@
     "from_games": "From Games",
     "win_bonus": "Win Bonus",
     "streak_bonus": "Streak Bonus",
+    "recent_matches": "Recent Matches",
+    "no_matches": "No matches yet.",
     "recent_pong": "Recent Pong Matches",
     "no_pong": "No pong matches yet.",
     "achievements": "Achievements",
@@ -502,6 +512,16 @@
     "back_to_games": "Back to Games",
     "move_history": "Move History",
     "no_moves": "No moves yet",
+    "move_entry": "{{mark}} -> {{position}}",
+    "position_top_left": "top-left",
+    "position_top_center": "top-center",
+    "position_top_right": "top-right",
+    "position_mid_left": "middle-left",
+    "position_center": "center",
+    "position_mid_right": "middle-right",
+    "position_bot_left": "bottom-left",
+    "position_bot_center": "bottom-center",
+    "position_bot_right": "bottom-right",
     "reset_game": "Reset Game",
     "game_status": "Game Status",
     "your_turn_status": "It's your turn!",

@@ -22,12 +22,14 @@ import SettingsPage from "./pages/SettingsPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
 import AchievementsPage from "./pages/AchievementsPage";
+import GamificationNotifications from "./components/GamificationNotifications";
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <DarkModeToggle />
+        <GamificationNotifications />
         <Routes>
           {/* ========== PUBLIC ROUTES (No Layout) ========== */}
           <Route path="/" element={<LandingPage />} />

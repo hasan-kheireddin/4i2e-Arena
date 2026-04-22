@@ -101,6 +101,13 @@
     "sending": "Senden...",
     "resetting": "Zurücksetzen..."
   },
+  "oauth": {
+    "completing": "Authentifizierung wird abgeschlossen...",
+    "auth_failed_title": "Authentifizierung fehlgeschlagen",
+    "auth_failed": "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "invalid_callback": "Ungültige Callback-Parameter. Autorisierungscode oder Status fehlt.",
+    "back_to_login": "Zurück zur Anmeldung"
+  },
   "errors": {
     "email_required": "E-Mail ist erforderlich",
     "email_invalid": "E-Mail ist ungültig",
@@ -348,6 +355,7 @@
   },
   "profile": {
     "global_rank": "Weltrang",
+    "game_analytics": "Spiel-Analytik",
     "pong_analytics": "Pong-Analytik",
     "wins": "Siege",
     "draws": "Unentschieden",
@@ -365,6 +373,8 @@
     "from_games": "Aus Spielen",
     "win_bonus": "Siegbonus",
     "streak_bonus": "Strähnenbonus",
+    "recent_matches": "Letzte Spiele",
+    "no_matches": "Noch keine Spiele.",
     "recent_pong": "Letzte Pong-Spiele",
     "no_pong": "Noch keine Pong-Spiele.",
     "achievements": "Errungenschaften",
@@ -502,6 +512,16 @@
     "back_to_games": "Zurück zu Spielen",
     "move_history": "Zugverlauf",
     "no_moves": "Noch keine Züge",
+    "move_entry": "{{mark}} -> {{position}}",
+    "position_top_left": "oben-links",
+    "position_top_center": "oben-mitte",
+    "position_top_right": "oben-rechts",
+    "position_mid_left": "mitte-links",
+    "position_center": "mitte",
+    "position_mid_right": "mitte-rechts",
+    "position_bot_left": "unten-links",
+    "position_bot_center": "unten-mitte",
+    "position_bot_right": "unten-rechts",
     "reset_game": "Spiel zurücksetzen",
     "game_status": "Spielstatus",
     "your_turn_status": "Du bist dran!",

@@ -9,9 +9,8 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
-import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../context/AuthContext';
-import { twoFADisable, twoFAStatus, updateProfile } from '../services/auth';
+import { changePassword, twoFADisable, twoFAStatus, updateProfile } from '../services/auth';
 import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from '../i18n/language';
 import type { ApiError } from '../services/api';
 
@@ -25,6 +24,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [signOutLoading, setSignOutLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   // Profile state — read-only fields from server
   const username = user?.username ?? '';
@@ -34,6 +36,9 @@ export default function SettingsPage() {
   // Editable profile fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [bio, setBio] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Language - synced with i18n and user preferred_language
   const [language, setLanguage] = useState(() => normalizeLanguage(user?.preferred_language || i18n.language));
@@ -155,6 +160,44 @@ export default function SettingsPage() {
     navigate('/login');
   };
 
+  const getApiErrorMessage = (err: ApiError, fallback: string) => {
+    if (err.detail) return err.detail;
+    if (err.fieldErrors) {
+      for (const messages of Object.values(err.fieldErrors)) {
+        if (messages.length > 0) return messages[0];
+      }
+    }
+    return fallback;
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All password fields are required.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const response = await changePassword({
+        old_password: currentPassword,
+        new_password: newPassword,
+        new_password2: confirmPassword,
+      });
+      setPasswordSuccess(response.detail);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setPasswordError(getApiErrorMessage(apiErr, 'Failed to update password.'));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: t('settings.tabs.profile') },
     { key: 'security', label: t('settings.tabs.security') },
@@ -238,27 +281,17 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="mb-6 flex items-center gap-4">
-                  <div className="group relative">
+                  <div>
                     <Avatar name={displayName || username} size="lg" />
-                    <Tooltip content="Avatar uploads are not wired yet.">
-                      <button
-                        type="button"
-                        className="absolute bottom-0 flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white opacity-0 shadow-card transition-opacity group-hover:opacity-100"
-                        style={{ insetInlineEnd: 0 }}
-                      >
-                        +
-                      </button>
-                    </Tooltip>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-primary">{displayName || username}</p>
                     <p className="text-xs text-muted">{email}</p>
-                    <p className="mt-1 text-xs text-brand">{t('settings.profile.change_avatar')}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <Input label={t('settings.profile.username')} value={username} readOnly />
-                  <Input label={t('settings.profile.email')} type="email" value={email} readOnly />
+                  <Input label={t('settings.profile.username')} value={username} readOnly disabled />
+                  <Input label={t('settings.profile.email')} type="email" value={email} readOnly disabled />
                   <Input
                     label={t('settings.profile.display_name')}
                     value={displayName}
@@ -310,11 +343,31 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <div className="space-y-4">
-                      <Input label={t('settings.security.current_password')} type="password" placeholder="••••••••" />
-                      <Input label={t('settings.security.new_password')} type="password" placeholder="••••••••" />
-                      <Input label={t('settings.security.confirm_password')} type="password" placeholder="••••••••" />
+                      <Input
+                        label={t('settings.security.current_password')}
+                        type="password"
+                        placeholder="••••••••"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                      />
+                      <Input
+                        label={t('settings.security.new_password')}
+                        type="password"
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <Input
+                        label={t('settings.security.confirm_password')}
+                        type="password"
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
                     </div>
-                    <Button className="mt-4">
+                    {passwordError && <p className="mt-3 text-sm text-danger">{passwordError}</p>}
+                    {passwordSuccess && <p className="mt-3 text-sm text-success">{passwordSuccess}</p>}
+                    <Button className="mt-4" onClick={handleChangePassword} loading={passwordLoading}>
                       {t('settings.security.update_password')}
                     </Button>
                   </>

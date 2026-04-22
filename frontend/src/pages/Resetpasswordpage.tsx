@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import reset from "../images/loginimg.png";
+import resetImg from "../images/loginimg.png";
 import resetDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";
@@ -133,7 +133,7 @@ export default function ResetPasswordPage() {
           {/* Image side - full height */}
           <div className="w-[45%] flex-shrink-0 h-full ">
             <img
-              src={isDark ? resetDark : reset}
+              src={isDark ? resetDark : resetImg}
               alt="Sport"
               className="w-full h-full object-cover"
             />
@@ -153,7 +153,7 @@ export default function ResetPasswordPage() {
 
           <div className="h-64 w-full flex-shrink-0">
             <img
-              src={isDark ? resetDark : reset}
+              src={isDark ? resetDark : resetImg}
               alt="Sport"
               className="w-full h-full object-cover"
             />
@@ -195,7 +195,7 @@ export default function ResetPasswordPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
-            src={isDark ? resetDark : reset}
+            src={isDark ? resetDark : resetImg}
             alt="Sport"
             className="w-full h-full object-cover"
           />

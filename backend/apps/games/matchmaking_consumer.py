@@ -6,12 +6,20 @@ from typing import Any
 
 from apps.games.consumers import BaseConsumer
 from apps.games.matchmaking import MatchmakingService, get_redis_client
-from apps.games.session import GameType
+from apps.games.pong_engine import PongEngine
+from apps.games.session import GameType, create_session_async, get_session_async
+from apps.games.tictactoe_engine import TicTacToeEngine
 
 logger = logging.getLogger("gamesmatchmaking")
 
 # How often the consumer polls for a match and sends position updates.
 MATCH_POLL_INTERVAL: float = 2.0  # seconds
+
+# How often queued consumers attempt to pair players.
+MATCH_ATTEMPT_INTERVAL: float = 0.5  # seconds
+
+# Per-queue short lock so many queued clients don't race try_match.
+MATCH_ATTEMPT_LOCK_TTL: int = 1  # seconds
 
 # How often we run the disconnected-player cleanup sweep.
 CLEANUP_INTERVAL: float = 30.0  # seconds
@@ -117,6 +125,12 @@ class MatchmakingConsumer(BaseConsumer):
         user_id: int = self.user.pk
         username: str = getattr(self.user, "username", "anon")
 
+        logger.info(
+            "User searching for match: user_id=%s game_type=%s",
+            user_id,
+            game_type,
+        )
+
         # Join a per-user channel-layer group so match_found can reach
         # us even if the pairing happens from a different consumer's
         # try_match call.
@@ -133,9 +147,7 @@ class MatchmakingConsumer(BaseConsumer):
         # Immediate match attempt — the only moment a match becomes
         # possible is when someone joins, so we try right away rather
         # than polling.
-        match = await self._service.try_match(game_type)
-        if match is not None:
-            await self._notify_match(match)
+        await self._try_match_with_lock(game_type)
 
         # Send initial queue info (may already be 0 if we just matched)
         info = await self._service.get_queue_info(user_id, game_type)
@@ -146,7 +158,7 @@ class MatchmakingConsumer(BaseConsumer):
             **info,
         })
 
-        # Start the position-update loop (no try_match inside)
+        # Start periodic queue updates and fallback match attempts.
         self._match_task = asyncio.create_task(
             self._queue_update_loop(game_type),
         )
@@ -186,22 +198,39 @@ class MatchmakingConsumer(BaseConsumer):
         })
 
     async def _queue_update_loop(self, game_type: str) -> None:
-        """Send periodic position updates while the player is queued."""
+        """Send periodic queue updates and fallback match attempts."""
         try:
+            last_try_match = 0.0
+            last_position_update = 0.0
             while True:
                 still_queued = await self._service.is_queued(self.user.pk)
                 if not still_queued:
                     break  # matched or dequeued
 
-                info = await self._service.get_queue_info(
-                    self.user.pk, game_type,
-                )
-                await self.send_json({
-                    "type": "queue_update",
-                    **info,
-                })
+                now = time.time()
 
-                await asyncio.sleep(MATCH_POLL_INTERVAL)
+                # Retry matching while queued (covers join races/reconnects).
+                if now - last_try_match >= MATCH_ATTEMPT_INTERVAL:
+                    last_try_match = now
+                    queue_len = await self._service.queue_length(game_type)
+                    if queue_len >= 2:
+                        match = await self._try_match_with_lock(game_type)
+                        if match is not None:
+                            break  # matched, exit loop
+
+                # Send position updates periodically (every 2s)
+                if now - last_position_update >= MATCH_POLL_INTERVAL:
+                    last_position_update = now
+                    info = await self._service.get_queue_info(
+                        self.user.pk, game_type,
+                    )
+                    await self.send_json({
+                        "type": "queue_update",
+                        **info,
+                    })
+
+                # Small sleep to prevent tight loop
+                await asyncio.sleep(0.1)
 
         except asyncio.CancelledError:
             pass
@@ -214,6 +243,10 @@ class MatchmakingConsumer(BaseConsumer):
         p2 = match["player2"]
         game_id = match["game_id"]
         game_type = match["game_type"]
+
+        # Pre-create the game session before notifying clients so concurrent
+        # joins cannot race each other on initial session creation.
+        await self._ensure_game_session(game_id, game_type)
 
         # Notify player 1
         p1_group = f"matchmaking_user_{p1['user_id']}"
@@ -238,6 +271,69 @@ class MatchmakingConsumer(BaseConsumer):
                 "username": p1["username"],
             },
         })
+
+    async def _ensure_game_session(self, game_id: str, game_type: str) -> None:
+        """Best-effort pre-creation of a matched game session."""
+        existing = await get_session_async(game_id)
+        if existing is not None:
+            return
+
+        try:
+            if game_type == GameType.PONG.value:
+                await create_session_async(
+                    game_type=GameType.PONG,
+                    engine=PongEngine(),
+                    game_id=game_id,
+                )
+            elif game_type == GameType.TICTACTOE.value:
+                await create_session_async(
+                    game_type=GameType.TICTACTOE,
+                    engine=TicTacToeEngine(),
+                    game_id=game_id,
+                )
+            else:
+                logger.error(
+                    "Unsupported game_type for session pre-create: %s",
+                    game_type,
+                )
+        except ValueError:
+            # Another worker/consumer created it concurrently.
+            return
+        except Exception:
+            logger.exception(
+                "Failed to pre-create game session: game_id=%s game_type=%s",
+                game_id,
+                game_type,
+            )
+
+    async def _try_match_with_lock(self, game_type: str) -> dict[str, Any] | None:
+        """Try matchmaking while holding a short per-queue leader lock."""
+        lock_key = f"matchmaking:match_lock:{game_type}"
+        lock_owner = self.channel_name
+        acquired = await self._redis.set(
+            lock_key,
+            lock_owner,
+            nx=True,
+            ex=MATCH_ATTEMPT_LOCK_TTL,
+        )
+        if not acquired:
+            return None
+
+        try:
+            match = await self._service.try_match(game_type)
+            if match is not None:
+                await self._notify_match(match)
+            return match
+        finally:
+            # Best-effort unlock only if we still own the lock.
+            current_owner = await self._redis.get(lock_key)
+            owner = (
+                current_owner.decode()
+                if isinstance(current_owner, bytes)
+                else current_owner
+            )
+            if owner == lock_owner:
+                await self._redis.delete(lock_key)
 
     async def _cleanup_loop_leader(self) -> None:
         """Run cleanup only if we hold the Redis leader lock.

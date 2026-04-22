@@ -5,6 +5,7 @@ import logging
 import os
 import secrets
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -44,7 +45,7 @@ class SessionStatus(str, enum.Enum):
 @dataclass
 class PlayerSlot:
     """Tracks a player connected to a session."""
-    user_id: int
+    user_id: int | str | uuid.UUID
     username: str
     channel_name: str
     slot: int                           # 1 or 2
@@ -85,7 +86,7 @@ class GameSession:
     created_at: float = field(default_factory=time.time)
     finished_at: float | None = None
     finish_reason: FinishReason | None = None
-    winner_id: int | None = None
+    winner_id: int | str | uuid.UUID | None = None
     paused: bool = False
     pause_reason: str | None = None
     tick_task: Any = None
@@ -113,7 +114,7 @@ class GameSession:
         required = 1 if self.ai is not None else 2
         return self.player_count >= required
 
-    def get_player_slot(self, user_id: int) -> Optional[int]:
+    def get_player_slot(self, user_id: int | str | uuid.UUID) -> Optional[int]:
         """Return the slot number for a given user, or ``None``."""
         for slot, ps in self.players.items():
             if ps.user_id == user_id:
@@ -126,7 +127,7 @@ class GameSession:
     def mark_finished(
         self,
         reason: FinishReason | None = None,
-        winner_id: int | None = None,
+        winner_id: int | str | uuid.UUID | None = None,
     ) -> None:
         """Transition status to FINISHED and record timestamp."""
         self.status = SessionStatus.FINISHED
@@ -486,14 +487,18 @@ def _serialize_session(session: GameSession) -> dict[str, Any]:
             if session.finish_reason is not None
             else None
         ),
-        "winner_id": session.winner_id,
+        "winner_id": (
+            str(session.winner_id)
+            if session.winner_id is not None
+            else None
+        ),
         "paused": session.paused,
         "pause_reason": session.pause_reason,
         "both_connected_sent": session.both_connected_sent,
         "ready_slots": sorted(int(slot) for slot in session.ready_slots),
         "players": {
             str(slot): {
-                "user_id": ps.user_id,
+                "user_id": str(ps.user_id),
                 "username": ps.username,
                 "channel_name": ps.channel_name,
                 "slot": ps.slot,
@@ -549,11 +554,16 @@ def _deserialize_session(payload: dict[str, Any]) -> GameSession:
             session.finish_reason = FinishReason(reason_raw)
         except ValueError:
             session.finish_reason = None
-    session.winner_id = (
-        int(payload["winner_id"])
-        if isinstance(payload.get("winner_id"), int)
-        else None
-    )
+    winner_id_raw = payload.get("winner_id")
+    if isinstance(winner_id_raw, str):
+        try:
+            session.winner_id = uuid.UUID(winner_id_raw)
+        except ValueError:
+            session.winner_id = winner_id_raw
+    elif isinstance(winner_id_raw, int):
+        session.winner_id = winner_id_raw
+    else:
+        session.winner_id = None
     session.paused = bool(payload.get("paused", False))
     pause_reason = payload.get("pause_reason")
     session.pause_reason = str(pause_reason) if isinstance(pause_reason, str) else None
@@ -578,8 +588,16 @@ def _deserialize_session(payload: dict[str, Any]) -> GameSession:
             except ValueError:
                 continue
             user_id_raw = value.get("user_id")
-            if not isinstance(user_id_raw, int):
+            if not isinstance(user_id_raw, (int, str)):
                 continue
+            user_id: int | str | uuid.UUID
+            if isinstance(user_id_raw, str):
+                try:
+                    user_id = uuid.UUID(user_id_raw)
+                except ValueError:
+                    user_id = user_id_raw
+            else:
+                user_id = user_id_raw
             username = value.get("username")
             if not isinstance(username, str):
                 continue
@@ -592,7 +610,7 @@ def _deserialize_session(payload: dict[str, Any]) -> GameSession:
                 else None
             )
             players[slot] = PlayerSlot(
-                user_id=user_id_raw,
+                user_id=user_id,
                 username=username,
                 channel_name=(
                     str(channel_name)

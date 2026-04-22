@@ -18,6 +18,46 @@ const TIER_STYLES: Record<string, { color: string; bg: string; border: string }>
   platinum: { color: "#06b6d4", bg: "rgba(6,182,212,0.12)", border: "rgba(6,182,212,0.35)" },
 };
 
+function categoryGlyph(category: Achievement["category"]): string {
+  switch (category) {
+    case "wins":
+      return "M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3z";
+    case "games":
+      return "M7 8h10a2 2 0 012 2v4a2 2 0 01-2 2H7a2 2 0 01-2-2v-4a2 2 0 012-2zm1 2v4m8-4v4m-9 0h10";
+    case "streaks":
+      return "M13 2L6 13h5l-1 9 8-12h-5l0-8z";
+    case "skill":
+      return "M12 3l8 4v5c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V7l8-4z";
+    case "social":
+      return "M8 12a3 3 0 100-6 3 3 0 000 6zm8 1a2.5 2.5 0 10-2.5-2.5A2.5 2.5 0 0016 13zM3.5 19a4.5 4.5 0 019 0m2 0a3.5 3.5 0 017 0";
+    case "milestone":
+      return "M5 4h14v3H5V4zm2 3h10l-1 11H8L7 7zm2-3V2h6v2";
+    default:
+      return "M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3z";
+  }
+}
+
+function AchievementSvgIcon({
+  color,
+  category,
+}: {
+  color: string;
+  category: Achievement["category"];
+}) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" fill={color} opacity="0.16" />
+      <path
+        d={categoryGlyph(category)}
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function AchievementsPage() {
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -250,7 +290,7 @@ export default function AchievementsPage() {
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-lg"
                         style={{ backgroundColor: tierStyle.bg, color: tierStyle.color }}
                       >
-                        {achievement.icon || "🏆"}
+                        <AchievementSvgIcon color={tierStyle.color} category={achievement.category} />
                       </div>
                       <div>
                         <p className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>

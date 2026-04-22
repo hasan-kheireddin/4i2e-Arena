@@ -69,8 +69,8 @@ export default function HomePage() {
     async function fetchAll() {
       const [statsRes, matchesRes, lbRes, xpRes, activitySummaryRes, recentActivityRes] =
         await Promise.allSettled([
-          getMyStats(),
-          getMyMatches({ page_size: 5 }),
+          getMyStats(undefined, "pvp"),
+          getMyMatches({ mode: "pvp", page_size: 5 }),
           getLeaderboard({ game_type: "pong", metric: "wins", limit: 5 }),
           getMyXP(),
           getActivitySummary(),
@@ -170,17 +170,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            <Link
-              to="/games/playpage"
-              className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
-              style={{ background: "linear-gradient(135deg,#f97316,#ef4444)", boxShadow: "0 4px 20px rgba(249,115,22,0.35)" }}
-            >
-              <Gamepad2 className="w-4 h-4" />
-              {t("home.quick_play")}
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
         </div>
       </div>
 

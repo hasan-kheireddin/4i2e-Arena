@@ -114,11 +114,29 @@ class PongConsumer(BaseConsumer):
 
         session = await get_session_async(game_id)
         if session is None:
-            session = await create_session_async(
-                game_type=GameType.PONG,
-                engine=PongEngine(),
-                game_id=game_id,
+            try:
+                session = await create_session_async(
+                    game_type=GameType.PONG,
+                    engine=PongEngine(),
+                    game_id=game_id,
+                )
+            except ValueError:
+                # Another concurrent join created this session first.
+                session = await get_session_async(game_id)
+
+        if session is None:
+            await self.send_error(
+                "session_unavailable",
+                "Game session is temporarily unavailable. Please retry.",
             )
+            return
+
+        if session.game_type != GameType.PONG:
+            await self.send_error(
+                "invalid_game_type",
+                "This game session does not belong to Pong.",
+            )
+            return
 
         if session.status in (SessionStatus.FINISHED, SessionStatus.ABANDONED):
             await self.send_error("game_over", "This game has already ended")

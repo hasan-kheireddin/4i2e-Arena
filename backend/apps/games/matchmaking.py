@@ -206,21 +206,29 @@ class MatchmakingService:
         p2_status = self._candidate_status(p2_meta, now)
 
         if p1_status != "ready" or p2_status != "ready":
-            # Keep queue order stable: restore any non-stale candidates to
-            # the front in original order.
-            restore_ids: list[str] = []
-            if p1_status in ("ready", "waiting"):
-                restore_ids.append(str(p1_id))
+            # Ready players are restored to the front; disconnected-but-valid
+            # players are moved to the back so they don't block the queue head.
+            restore_front_ids: list[str] = []
+            restore_back_ids: list[str] = []
+
+            if p1_status == "ready":
+                restore_front_ids.append(str(p1_id))
+            elif p1_status == "waiting":
+                restore_back_ids.append(str(p1_id))
             else:
                 await self._cleanup_player_keys(p1_id)
 
-            if p2_status in ("ready", "waiting"):
-                restore_ids.append(str(p2_id))
+            if p2_status == "ready":
+                restore_front_ids.append(str(p2_id))
+            elif p2_status == "waiting":
+                restore_back_ids.append(str(p2_id))
             else:
                 await self._cleanup_player_keys(p2_id)
 
-            if restore_ids:
-                await self._redis.lpush(queue_key, *reversed(restore_ids))
+            if restore_front_ids:
+                await self._redis.lpush(queue_key, *reversed(restore_front_ids))
+            if restore_back_ids:
+                await self._redis.rpush(queue_key, *restore_back_ids)
             return None
 
         game_id = generate_game_id()

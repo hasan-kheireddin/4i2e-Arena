@@ -147,13 +147,27 @@ export function getUserMatches(userId: string, filters: { game_type?: string; pa
 }
 
 /** GET /api/games/stats/me/ */
-export function getMyStats(game_type?: string): Promise<UserStats> {
-  return apiFetch<UserStats>(`${G}/stats/me/${game_type ? `?game_type=${game_type}` : ''}`);
+export function getMyStats(game_type?: string, mode?: 'pvp' | 'pva' | 'local'): Promise<UserStats> {
+  return apiFetch<UserStats>(
+    `${G}/stats/me/${buildQuery({
+      game_type,
+      mode,
+    })}`
+  );
 }
 
 /** GET /api/games/stats/user/<uuid>/ */
-export function getUserStats(userId: string, game_type?: string): Promise<UserStats> {
-  return apiFetch<UserStats>(`${G}/stats/user/${userId}/${game_type ? `?game_type=${game_type}` : ''}`);
+export function getUserStats(
+  userId: string,
+  game_type?: string,
+  mode?: 'pvp' | 'pva' | 'local',
+): Promise<UserStats> {
+  return apiFetch<UserStats>(
+    `${G}/stats/user/${userId}/${buildQuery({
+      game_type,
+      mode,
+    })}`
+  );
 }
 
 /** GET /api/games/stats/head-to-head/<uuid>/ */

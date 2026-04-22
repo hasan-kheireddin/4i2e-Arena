@@ -142,28 +142,7 @@ ACHIEVEMENTS: list[AchievementDef] = [
         threshold=100,
         ordering_priority=11,
     ),
-    AchievementDef(
-        key="pong_champion",
-        name="Champion",
-        description="Reach top 10 on the online Pong leaderboard.",
-        category="milestone",
-        tier="gold",
-        icon="medal",
-        xp_reward=500,
-        threshold=1,
-        ordering_priority=12,
-    ),
-    AchievementDef(
-        key="pong_legend",
-        name="Legend",
-        description="Reach #1 on the online Pong leaderboard.",
-        category="milestone",
-        tier="platinum",
-        icon="trophy",
-        xp_reward=800,
-        threshold=1,
-        ordering_priority=13,
-    ),
+
     # ---------------------------------------------------------------------
     # Tic-Tac-Toe achievements (online PvP only)
     # ---------------------------------------------------------------------
@@ -277,28 +256,7 @@ ACHIEVEMENTS: list[AchievementDef] = [
         threshold=1,
         ordering_priority=30,
     ),
-    AchievementDef(
-        key="ttt_champion",
-        name="Champion",
-        description="Reach top 10 on the online Tic-Tac-Toe leaderboard.",
-        category="milestone",
-        tier="gold",
-        icon="medal",
-        xp_reward=500,
-        threshold=1,
-        ordering_priority=31,
-    ),
-    AchievementDef(
-        key="ttt_legend",
-        name="Legend",
-        description="Reach #1 on the online Tic-Tac-Toe leaderboard.",
-        category="milestone",
-        tier="platinum",
-        icon="trophy",
-        xp_reward=800,
-        threshold=1,
-        ordering_priority=32,
-    ),
+
 ]
 
 ACHIEVEMENT_MAP: dict[str, AchievementDef] = {a.key: a for a in ACHIEVEMENTS}

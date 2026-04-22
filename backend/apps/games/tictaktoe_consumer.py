@@ -107,11 +107,29 @@ class TicTacToeConsumer(BaseConsumer):
 
         session = await get_session_async(game_id)
         if session is None:
-            session = await create_session_async(
-                game_type=GameType.TICTACTOE,
-                engine=TicTacToeEngine(),
-                game_id=game_id,
+            try:
+                session = await create_session_async(
+                    game_type=GameType.TICTACTOE,
+                    engine=TicTacToeEngine(),
+                    game_id=game_id,
+                )
+            except ValueError:
+                # Another concurrent join created this session first.
+                session = await get_session_async(game_id)
+
+        if session is None:
+            await self.send_error(
+                "session_unavailable",
+                "Game session is temporarily unavailable. Please retry.",
             )
+            return
+
+        if session.game_type != GameType.TICTACTOE:
+            await self.send_error(
+                "invalid_game_type",
+                "This game session does not belong to Tic-Tac-Toe.",
+            )
+            return
 
         if session.status in (SessionStatus.FINISHED, SessionStatus.ABANDONED):
             await self.send_error("game_over", "This game has already ended")

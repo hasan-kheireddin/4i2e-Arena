@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { clearPendingTwoFA, isTwoFARequired, oauthCallback } from "../services/auth";
 import { clearTokens } from "../services/api";
@@ -8,6 +9,7 @@ import type { ApiError } from "../services/api";
 export default function OAuthCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +26,7 @@ export default function OAuthCallbackPage() {
     const state = searchParams.get("state");
 
     if (!code || !state) {
-      setError("Invalid callback parameters. Missing authorization code or state.");
+      setError(t("oauth.invalid_callback"));
       return;
     }
 
@@ -41,12 +43,12 @@ export default function OAuthCallbackPage() {
         }
       } catch (err: unknown) {
         const apiErr = err as ApiError;
-        setError(apiErr.detail ?? "Authentication failed. Please try again.");
+        setError(apiErr.detail ?? t("oauth.auth_failed"));
       }
     };
 
     handleCallback();
-  }, [searchParams, navigate, setUser]);
+  }, [searchParams, navigate, setUser, t]);
 
   if (error) {
     return (
@@ -79,7 +81,7 @@ export default function OAuthCallbackPage() {
             className="text-2xl font-bold mb-2"
             style={{ color: "var(--color-text-primary)" }}
           >
-            Authentication Failed
+            {t("oauth.auth_failed_title")}
           </h1>
           <p className="text-sm mb-6" style={{ color: "var(--color-text-muted)" }}>
             {error}
@@ -93,7 +95,7 @@ export default function OAuthCallbackPage() {
               color: "#ffffff",
             }}
           >
-            Back to Login
+            {t("oauth.back_to_login")}
           </button>
         </div>
       </div>
@@ -115,7 +117,7 @@ export default function OAuthCallbackPage() {
           }}
         />
         <p className="text-lg" style={{ color: "var(--color-text-secondary)" }}>
-          Completing authentication...
+          {t("oauth.completing")}
         </p>
       </div>
     </div>
