@@ -44,7 +44,9 @@
     "achievements": "الإنجازات",
     "settings": "الإعدادات",
     "toggle_theme": "تبديل المظهر",
-    "sign_out": "تسجيل الخروج"
+    "sign_out": "تسجيل الخروج",
+    "open_menu": "فتح القائمة",
+    "close_menu": "إغلاق القائمة"
   },
   "2fa": {
     "verify_title": "المصادقة الثنائية",
@@ -212,7 +214,19 @@
     "leaderboard": "لوحة المتصدرين",
     "match_history": "سجل المباريات",
     "settings": "الإعدادات",
-    "online": "متصل"
+    "online": "متصل",
+    "expand": "توسيع الشريط الجانبي",
+    "collapse": "طي الشريط الجانبي",
+    "navigation": "تنقل الشريط الجانبي"
+  },
+  "modal": {
+    "close": "إغلاق"
+  },
+  "notifications": {
+    "achievement_fallback_name": "إنجاز",
+    "achievement_unlocked": "تم فتح إنجاز: {{name}} (+{{xp}} نقطة XP)",
+    "xp_gained": "+{{xp}} نقطة XP مكتسبة",
+    "level_up": "ارتقاء مستوى! لقد وصلت إلى المستوى {{level}}"
   },
   "home": {
     "welcome_back": "مرحباً بعودتك،",
@@ -483,7 +497,18 @@
     "local_player1_name": "اسم اللاعب 1",
     "local_player2_name": "اسم اللاعب 2",
     "start_local_match": "ابدأ المباراة",
-    "local_player_wins": "{{name}} يفوز!"
+    "local_player_wins": "{{name}} يفوز!",
+    "opponent": "المنافس",
+    "reconnecting": "جارٍ إعادة الاتصال…",
+    "paused": "متوقف مؤقتاً",
+    "phase_idle": "خامل",
+    "phase_over": "انتهت",
+    "network_latency": "RTT {{value}}",
+    "player1_short": "ل1",
+    "player2_short": "ل2",
+    "controls_p1": "W / S",
+    "controls_p2": "↑ / ↓",
+    "controls_shared": "W / S أو ↑ / ↓"
   },
   "ttt": {
     "title": "⭕ Tic-Tac-Toe",

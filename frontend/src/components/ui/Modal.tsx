@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ModalProps {
   open: boolean;
@@ -12,6 +13,7 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +54,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             <button
               onClick={onClose}
               className="rounded-lg p-1.5 text-muted transition-colors outline-none hover:bg-surface-hover hover:text-primary focus-visible:ring-2 focus-visible:ring-brand"
-              aria-label="Close"
+              aria-label={t('modal.close')}
             >
               <X className="w-5 h-5" />
             </button>

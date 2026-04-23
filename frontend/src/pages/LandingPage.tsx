@@ -81,7 +81,7 @@ export default function LandingPage() {
 
       {/* ── NAVBAR ───────────────────────────────────────────────────────────── */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 h-14 backdrop-fallback"
+        className="fixed top-0 inset-x-0 z-50 h-14 backdrop-fallback"
         style={{
           backgroundColor: "var(--color-bg)",
           borderBottom: "1px solid var(--color-border)",

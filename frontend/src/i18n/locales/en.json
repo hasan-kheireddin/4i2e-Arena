@@ -44,7 +44,9 @@
     "achievements": "Achievements",
     "settings": "Settings",
     "toggle_theme": "Toggle Theme",
-    "sign_out": "Sign Out"
+    "sign_out": "Sign Out",
+    "open_menu": "Open menu",
+    "close_menu": "Close menu"
   },
   "2fa": {
     "verify_title": "Two-Factor Authentication",
@@ -212,7 +214,19 @@
     "leaderboard": "Leaderboard",
     "match_history": "Match History",
     "settings": "Settings",
-    "online": "Online"
+    "online": "Online",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "navigation": "Sidebar navigation"
+  },
+  "modal": {
+    "close": "Close"
+  },
+  "notifications": {
+    "achievement_fallback_name": "Achievement",
+    "achievement_unlocked": "Achievement unlocked: {{name}} (+{{xp}} XP)",
+    "xp_gained": "+{{xp}} XP gained",
+    "level_up": "Level up! You reached level {{level}}"
   },
   "home": {
     "welcome_back": "Welcome back,",
@@ -483,7 +497,18 @@
     "local_player1_name": "Player 1 name",
     "local_player2_name": "Player 2 name",
     "start_local_match": "Start Match",
-    "local_player_wins": "{{name}} Wins!"
+    "local_player_wins": "{{name}} Wins!",
+    "opponent": "Opponent",
+    "reconnecting": "Reconnecting…",
+    "paused": "Paused",
+    "phase_idle": "Idle",
+    "phase_over": "Finished",
+    "network_latency": "RTT {{value}}",
+    "player1_short": "P1",
+    "player2_short": "P2",
+    "controls_p1": "W / S",
+    "controls_p2": "↑ / ↓",
+    "controls_shared": "W / S or ↑ / ↓"
   },
   "ttt": {
     "title": "⭕ Tic-Tac-Toe",

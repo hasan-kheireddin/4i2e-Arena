@@ -74,13 +74,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         onClick={onToggle}
         className="absolute top-6 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10 bg-surface border text-muted hover:text-primary hover:bg-surface-hover"
         style={{ insetInlineEnd: '-0.75rem' }}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
       >
         <CollapseIcon className="w-3.5 h-3.5 icon-directional" />
       </button>
 
       {/* Nav Items */}
-      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto" aria-label="Sidebar">
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto" aria-label={t('sidebar.navigation')}>
         {navItems.map((item) => {
           const isActive =
             item.to === '/home'
@@ -103,7 +103,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <span className="flex-1" style={{ textAlign: 'start' }}>{item.label}</span>
                       <ChevronRight
                         className={cn(
-                          'w-4 h-4 transition-transform duration-150',
+                          'w-4 h-4 icon-directional transition-transform duration-150',
                           isExpanded && 'rotate-90',
                         )}
                       />

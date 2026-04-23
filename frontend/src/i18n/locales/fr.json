@@ -44,7 +44,9 @@
     "achievements": "Succès",
     "settings": "Paramètres",
     "toggle_theme": "Changer le thème",
-    "sign_out": "Se déconnecter"
+    "sign_out": "Se déconnecter",
+    "open_menu": "Ouvrir le menu",
+    "close_menu": "Fermer le menu"
   },
   "2fa": {
     "verify_title": "Authentification à deux facteurs",
@@ -212,7 +214,19 @@
     "leaderboard": "Classement",
     "match_history": "Historique",
     "settings": "Paramètres",
-    "online": "En ligne"
+    "online": "En ligne",
+    "expand": "Développer la barre latérale",
+    "collapse": "Réduire la barre latérale",
+    "navigation": "Navigation latérale"
+  },
+  "modal": {
+    "close": "Fermer"
+  },
+  "notifications": {
+    "achievement_fallback_name": "Succès",
+    "achievement_unlocked": "Succès débloqué : {{name}} (+{{xp}} XP)",
+    "xp_gained": "+{{xp}} XP gagnés",
+    "level_up": "Niveau supérieur ! Vous avez atteint le niveau {{level}}"
   },
   "home": {
     "welcome_back": "Bon retour,",
@@ -483,7 +497,18 @@
     "local_player1_name": "Nom du joueur 1",
     "local_player2_name": "Nom du joueur 2",
     "start_local_match": "Commencer la partie",
-    "local_player_wins": "{{name}} gagne !"
+    "local_player_wins": "{{name}} gagne !",
+    "opponent": "Adversaire",
+    "reconnecting": "Reconnexion…",
+    "paused": "En pause",
+    "phase_idle": "Inactif",
+    "phase_over": "Terminé",
+    "network_latency": "RTT {{value}}",
+    "player1_short": "J1",
+    "player2_short": "J2",
+    "controls_p1": "W / S",
+    "controls_p2": "↑ / ↓",
+    "controls_shared": "W / S ou ↑ / ↓"
   },
   "ttt": {
     "title": "⭕ Tic-Tac-Toe",

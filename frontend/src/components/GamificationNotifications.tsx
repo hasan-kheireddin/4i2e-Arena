@@ -39,14 +39,13 @@ export default function GamificationNotifications() {
 
       if (type === "achievement_unlocked") {
         const achievement = (data.achievement as AchievementPayload | undefined) ?? {};
-        const name = achievement.name || "Achievement";
+        const name = achievement.name || t("notifications.achievement_fallback_name");
         const xpReward = Number(achievement.xp_reward ?? 0);
         enqueue({
           kind: "achievement",
           message: t("notifications.achievement_unlocked", {
             name,
             xp: xpReward,
-            defaultValue: "Achievement unlocked: {{name}} (+{{xp}} XP)",
           }),
         });
         return;
@@ -59,7 +58,6 @@ export default function GamificationNotifications() {
             kind: "xp",
             message: t("notifications.xp_gained", {
               xp: xpGained,
-              defaultValue: "+{{xp}} XP gained",
             }),
           });
         }
@@ -73,7 +71,6 @@ export default function GamificationNotifications() {
             kind: "level",
             message: t("notifications.level_up", {
               level: newLevel,
-              defaultValue: "Level up! You reached level {{level}}",
             }),
           });
         }

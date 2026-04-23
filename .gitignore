@@ -5,3 +5,8 @@ nginx/ssl/*.key
 nginx/ssl/*.crt
 nginx/ssl/*.csr
 nginx/ssl/*.srl
+
+backend/apps/games/__pycache__/pong_consumer.cpython-312.pyc
+backend/apps/games/__pycache__/session.cpython-312.pyc
+backend/apps/games/__pycache__/tictaktoe_consumer.cpython-312.pyc
+backend/config/__pycache__/

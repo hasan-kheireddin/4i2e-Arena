@@ -50,7 +50,7 @@ export function Navbar() {
   }, [navigate]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-surface border-b backdrop-blur-[12px] backdrop-fallback">
+    <header className="fixed top-0 inset-x-0 z-50 h-16 bg-surface border-b backdrop-blur-[12px] backdrop-fallback">
       <div className="flex items-center justify-between h-full px-4 lg:px-8 max-w-screen-2xl mx-auto">
 
         {/* ── Logo ── */}
@@ -131,7 +131,7 @@ export function Navbar() {
           <button
             className="md:hidden p-2 rounded-lg text-secondary hover:text-primary hover:bg-surface-hover transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
+            aria-label={mobileMenuOpen ? t("navbar.close_menu") : t("navbar.open_menu")}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>

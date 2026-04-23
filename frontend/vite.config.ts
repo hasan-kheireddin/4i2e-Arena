@@ -16,6 +16,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    target: ["chrome90", "edge90", "firefox90", "safari14"],
+    cssTarget: ["chrome90", "edge90", "firefox90", "safari14"],
   },
   resolve: {
     alias: {

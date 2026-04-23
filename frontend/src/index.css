@@ -345,9 +345,15 @@ button::-moz-focus-inner {
 }
 
 /* ── Backdrop-filter fallback label ──────────────────────────────── */
+/* Keep blur effects working on Safari versions that still rely on -webkit- prefix */
+.backdrop-fallback {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
 /* For elements using backdrop-filter, ensure a solid bg fallback
    when the browser doesn't support it (older Firefox < 103)        */
-@supports not (backdrop-filter: blur(1px)) {
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .backdrop-fallback {
     background-color: rgba(10, 14, 26, 0.97) !important;
   }

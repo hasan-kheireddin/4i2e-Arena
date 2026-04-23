@@ -171,7 +171,7 @@ export default function PongPage() {
   const [onlineScore, setOnlineScore] = useState({ p1: 0, p2: 0 });
   const latestOnlineStateRef = useRef<OnlineGameState | null>(null);
   const snapshotBufferRef = useRef<OnlineSnapshot[]>([]);
-  const [opponentName, setOpponentName] = useState('Opponent');
+  const [opponentName, setOpponentName] = useState('');
   const [opponentLeft, setOpponentLeft] = useState(false);
   const [onlineReason, setOnlineReason] = useState<string | null>(null);
   const [onlineWinnerSlot, setOnlineWinnerSlot] = useState<number | null>(null);
@@ -725,7 +725,7 @@ export default function PongPage() {
     setMySlot(null);
     snapshotBufferRef.current = [];
     mySlotRef.current = null;
-    setOpponentName('Opponent');
+    setOpponentName('');
     setGameId(null);
     setGamePath(null);
     setIReady(false);
@@ -763,15 +763,36 @@ export default function PongPage() {
     : mode === 'local'
       ? (localPlayerNames.p1.trim() || t('pong.player1'))
       : t('pong.you');
-  const p2Label = mode === 'online' ? opponentName : 'Opponent';
+  const p2Label = opponentName || t('pong.opponent');
 
   // Mode label for HUD badge
-  const modeLabel = mode === 'online' ? t('pong.mode_online') : mode === 'ai' ? t('pong.mode_ai', { difficulty }) : t('pong.mode_local');
+  const aiDifficultyLabel = t(`play.diff_${difficulty}`);
+  const modeLabel = mode === 'online'
+    ? t('pong.mode_online')
+    : mode === 'ai'
+      ? t('pong.mode_ai', { difficulty: aiDifficultyLabel })
+      : t('pong.mode_local');
   const p2DisplayLabel = mode === 'online'
     ? p2Label
     : mode === 'ai'
       ? t('pong.ai_bot')
       : (localPlayerNames.p2.trim() || t('pong.player2'));
+  const onlinePhaseLabel = onlinePhase === 'matchmaking'
+    ? t('pong.searching')
+    : onlinePhase === 'waiting'
+      ? t('pong.waiting_opponent')
+      : onlinePhase === 'playing'
+        ? t('pong.live')
+        : onlinePhase === 'over'
+          ? t('pong.phase_over')
+          : t('pong.phase_idle');
+  const hudStatusLabel = mode !== 'online'
+    ? t('pong.live')
+    : gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
+      ? t('pong.reconnecting')
+      : gamePaused
+        ? t('pong.paused')
+        : onlinePhaseLabel;
   const showRealtimeRecoveryOverlay =
     mode === 'online'
     && onlinePhase === 'playing'
@@ -791,20 +812,12 @@ export default function PongPage() {
           <div className="flex flex-col items-center gap-0.5">
             <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5" style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-              {mode !== 'online'
-                ? t('pong.live')
-                : gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
-                  ? 'reconnecting'
-                  : gamePaused
-                    ? 'paused'
-                    : onlinePhase === 'playing'
-                      ? t('pong.live')
-                      : onlinePhase}
+              {hudStatusLabel}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
             {mode === 'online' && (
               <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                RTT {gameLatency.rttMs === null ? '--' : `${Math.round(gameLatency.rttMs)}ms`}
+                {t('pong.network_latency', { value: gameLatency.rttMs === null ? '--' : `${Math.round(gameLatency.rttMs)}ms` })}
               </span>
             )}
           </div>
@@ -992,12 +1005,12 @@ export default function PongPage() {
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {mode === 'local' ? (
               <>
-                <span><span className="font-bold" style={{ color: '#3B82F6' }}>{localPlayerNames.p1.trim() || 'P1'}</span> W / S</span>
+                <span><span className="font-bold" style={{ color: '#3B82F6' }}>{localPlayerNames.p1.trim() || t('pong.player1_short')}</span> {t('pong.controls_p1')}</span>
                 <span className="opacity-30">|</span>
-                <span><span className="font-bold" style={{ color: '#EF4444' }}>{localPlayerNames.p2.trim() || 'P2'}</span> ↑ / ↓</span>
+                <span><span className="font-bold" style={{ color: '#EF4444' }}>{localPlayerNames.p2.trim() || t('pong.player2_short')}</span> {t('pong.controls_p2')}</span>
               </>
             ) : (
-              <span>W / S &nbsp;or&nbsp; ↑ / ↓</span>
+              <span>{t('pong.controls_shared')}</span>
             )}
           </div>
           <div className="flex items-center gap-3">

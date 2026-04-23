@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
 
@@ -31,7 +32,16 @@ const placementClasses: Record<TooltipPlacement, { tooltip: string; arrow: strin
 
 export function Tooltip({ content, children, placement = 'top', className }: TooltipProps) {
   const [visible, setVisible] = useState(false);
-  const { tooltip, arrow } = placementClasses[placement];
+  const { i18n } = useTranslation();
+  const effectivePlacement: TooltipPlacement =
+    i18n.dir() === 'rtl'
+      ? placement === 'left'
+        ? 'right'
+        : placement === 'right'
+          ? 'left'
+          : placement
+      : placement;
+  const { tooltip, arrow } = placementClasses[effectivePlacement];
 
   return (
     <div

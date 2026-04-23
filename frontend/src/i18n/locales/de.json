@@ -44,7 +44,9 @@
     "achievements": "Errungenschaften",
     "settings": "Einstellungen",
     "toggle_theme": "Design wechseln",
-    "sign_out": "Abmelden"
+    "sign_out": "Abmelden",
+    "open_menu": "Menü öffnen",
+    "close_menu": "Menü schließen"
   },
   "2fa": {
     "verify_title": "Zwei-Faktor-Authentifizierung",
@@ -212,7 +214,19 @@
     "leaderboard": "Rangliste",
     "match_history": "Spielverlauf",
     "settings": "Einstellungen",
-    "online": "Online"
+    "online": "Online",
+    "expand": "Seitenleiste erweitern",
+    "collapse": "Seitenleiste einklappen",
+    "navigation": "Seitenleisten-Navigation"
+  },
+  "modal": {
+    "close": "Schließen"
+  },
+  "notifications": {
+    "achievement_fallback_name": "Errungenschaft",
+    "achievement_unlocked": "Errungenschaft freigeschaltet: {{name}} (+{{xp}} XP)",
+    "xp_gained": "+{{xp}} XP erhalten",
+    "level_up": "Levelaufstieg! Du hast Level {{level}} erreicht"
   },
   "home": {
     "welcome_back": "Willkommen zurück,",
@@ -483,7 +497,18 @@
     "local_player1_name": "Name Spieler 1",
     "local_player2_name": "Name Spieler 2",
     "start_local_match": "Spiel starten",
-    "local_player_wins": "{{name}} gewinnt!"
+    "local_player_wins": "{{name}} gewinnt!",
+    "opponent": "Gegner",
+    "reconnecting": "Verbindung wird wiederhergestellt…",
+    "paused": "Pausiert",
+    "phase_idle": "Inaktiv",
+    "phase_over": "Beendet",
+    "network_latency": "RTT {{value}}",
+    "player1_short": "S1",
+    "player2_short": "S2",
+    "controls_p1": "W / S",
+    "controls_p2": "↑ / ↓",
+    "controls_shared": "W / S oder ↑ / ↓"
   },
   "ttt": {
     "title": "⭕ Tic-Tac-Toe",

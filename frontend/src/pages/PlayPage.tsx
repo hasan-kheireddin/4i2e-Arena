@@ -134,7 +134,7 @@ export default function PlayPage() {
                   style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)' }}>
                   🏓
                 </div>
-                <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>Pong</h2>
+                <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>{t('home.game_pong')}</h2>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                   {t('play.pong_desc')}
                 </p>
@@ -164,7 +164,7 @@ export default function PlayPage() {
                   style={{ background: 'linear-gradient(135deg,#f59e0b,#f97316)' }}>
                   ⭕
                 </div>
-                <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>Tic-Tac-Toe</h2>
+                <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>{t('home.game_ttt')}</h2>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                   {t('play.ttt_desc')}
                 </p>

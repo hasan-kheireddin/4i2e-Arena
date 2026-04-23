@@ -86,7 +86,8 @@ services:
     restart: unless-stopped
     environment:
       - VITE_API_URL=https://localhost:8443/api
-      - VITE_WS_URL=wss://localhost:8443/ws
+      # Leave unset to auto-use current browser host (works across LAN devices).
+      - VITE_WS_URL=
     volumes:
       - ./frontend:/app
       - /app/node_modules
