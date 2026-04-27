@@ -42,9 +42,6 @@ migrate: ## Run Django database migrations
 makemigrations: ## Create new Django migration files
 	docker compose exec backend python manage.py makemigrations
 
-createsuperuser: ## Create a Django admin superuser
-	docker compose exec backend python manage.py createsuperuser
-
 shell: ## Open Django interactive shell
 	docker compose exec backend python manage.py shell
 
@@ -85,6 +82,6 @@ prune: ## Remove all unused Docker resources
 	@echo "Docker system pruned."
 
 .PHONY: help setup up down build rebuild logs \
-        migrate makemigrations createsuperuser shell \
+        migrate makemigrations shell \
         test lint clean fclean ssl-generate \
         db-shell redis-cli

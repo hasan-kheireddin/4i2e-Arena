@@ -34,7 +34,6 @@ def invalidate_user_activity_cache(user_id: UUID | int) -> None:
     keys = [
         _user_summary_key(user_id),
         _user_heatmap_key(user_id),
-        "analytics:global_summary",
     ]
     # Timeline keys for common day ranges
     for days in [7, 14, 30, 90]:

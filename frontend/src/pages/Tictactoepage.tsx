@@ -121,9 +121,7 @@ export default function TicTacToePage() {
               },
             },
           });
-        } catch (error) {
-          console.error('Failed to save match:', error);
-        }
+        } catch {}
       }
     } else if (mode === 'online') {
       // Online mode: send move to server
@@ -312,6 +310,21 @@ export default function TicTacToePage() {
     && (gamePaused || gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting');
 
   const modeLabel = mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local');
+  const statusLabel = mode === 'local'
+    ? (displayWinner ? t('ttt.game_over') : t('ttt.live'))
+    : gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
+      ? t('ttt.reconnecting')
+      : gamePaused
+        ? t('ttt.paused')
+        : onlinePhase === 'playing'
+          ? t('ttt.live')
+          : onlinePhase === 'waiting'
+            ? t('ttt.waiting_opponent')
+            : onlinePhase === 'searching'
+              ? t('ttt.searching')
+              : onlinePhase === 'game_over'
+                ? t('ttt.game_over')
+                : t('ttt.mode_online');
 
   return (
     <>
@@ -369,7 +382,7 @@ export default function TicTacToePage() {
         <div className="flex items-center justify-between rounded-xl px-4 py-3"
           style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center gap-3">
-            <Avatar name={mode === 'online' ? 'You' : localP1Label} size="sm" />
+            <Avatar name={mode === 'online' ? t('ttt.you') : localP1Label} size="sm" />
             <div>
               <span className="text-sm font-semibold" style={{ color: '#3B82F6' }}>
                 {mode === 'online' ? t('ttt.you') : localP1Label}
@@ -396,18 +409,12 @@ export default function TicTacToePage() {
             <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5" 
               style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-success)' }} />
-              {gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
-                ? 'reconnecting'
-                : gamePaused
-                  ? 'paused'
-                  : onlinePhase === 'playing'
-                    ? t('ttt.live')
-                    : onlinePhase}
+              {statusLabel}
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
             {mode === 'online' && (
               <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                RTT {gameLatency.rttMs === null ? '--' : `${Math.round(gameLatency.rttMs)}ms`}
+                {t('ttt.latency')} {gameLatency.rttMs === null ? '--' : `${Math.round(gameLatency.rttMs)}ms`}
               </span>
             )}
           </div>
@@ -666,7 +673,7 @@ export default function TicTacToePage() {
                 boxShadow: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? '0 0 20px rgba(59,130,246,0.25)' : 'none',
                 opacity: (mode === 'local' ? isXTurn : isMyTurn) && !displayWinner ? 1 : 0.65,
               }}>
-              <Avatar name={mode === 'online' ? 'You' : localP1Label} size="md" />
+              <Avatar name={mode === 'online' ? t('ttt.you') : localP1Label} size="md" />
               <div>
                 <p className="text-sm font-bold" style={{ color: '#3B82F6' }}>
                   {mode === 'online' ? t('ttt.you') : localP1Label} ({mode === 'online' ? mySymbol ?? '?' : 'X'})

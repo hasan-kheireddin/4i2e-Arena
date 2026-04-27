@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 type SpinnerVariant = 'brand' | 'white' | 'muted';
@@ -25,10 +26,12 @@ const variantClasses: Record<SpinnerVariant, string> = {
 };
 
 export function Spinner({ size = 'md', variant = 'brand', label, className }: SpinnerProps) {
+  const { t } = useTranslation();
+
   return (
     <div
       role="status"
-      aria-label={label ?? 'Loading'}
+      aria-label={label ?? t('loading.default')}
       className={cn('inline-flex flex-col items-center gap-2', className)}
     >
       <span

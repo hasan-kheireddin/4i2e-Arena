@@ -348,9 +348,7 @@ export default function PongPage() {
               : undefined,
           },
         });
-      } catch (error) {
-        console.error('Failed to save Pong match:', error);
-      }
+      } catch {}
     };
     
     saveMatch();
