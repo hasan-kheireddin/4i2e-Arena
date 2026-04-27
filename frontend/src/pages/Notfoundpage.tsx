@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export default function NotFoundPage() {
+  const { t } = useTranslation();
+
   return (
     <div
       className="h-screen w-screen flex flex-col items-center justify-center"
@@ -17,7 +20,7 @@ export default function NotFoundPage() {
           className="text-xl mb-8"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Page not found
+          {t("not_found.message")}
         </p>
         <Link
           to="/"
@@ -33,7 +36,7 @@ export default function NotFoundPage() {
             (e.currentTarget.style.backgroundColor = "var(--color-primary)")
           }
         >
-          Go Home
+          {t("not_found.go_home")}
         </Link>
       </div>
     </div>

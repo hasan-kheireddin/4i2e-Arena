@@ -7,12 +7,9 @@ Routes all API traffic under /api/:
   /api/analytics/ → achievements, XP, activity tracking
 """
 
-from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-
     # Accounts: auth, profiles, OAuth 2.0, 2FA
     path("api/accounts/", include("apps.accounts.urls")),
 

@@ -139,7 +139,7 @@ export default function HomePage() {
             <div className="mb-2 flex items-center gap-2">
               <BrandLogo compact />
               <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "#fb923c" }}>
-                FireArena Hub
+                {t("home.hub_badge")}
               </p>
             </div>
             <h1 className="text-2xl md:text-4xl font-extrabold mb-2" style={{ color: "var(--color-text-primary)" }}>
@@ -158,7 +158,11 @@ export default function HomePage() {
                   {t("home.level")} {level}
                 </span>
                 <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                  {totalXp.toLocaleString()} XP — {xpToNext} {t("home.xp_to_next_level")} {nextLevel}
+                  {t("home.xp_progress", {
+                    totalXp: totalXp.toLocaleString(),
+                    xpToNext,
+                    nextLevel,
+                  })}
                 </span>
               </div>
               <div className="w-full max-w-xs h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
@@ -280,7 +284,7 @@ export default function HomePage() {
                           {gameLabel}
                         </span>
                         <span className="text-sm truncate" style={{ color: "var(--color-text-primary)" }}>
-                          vs <strong>{opp?.username ?? t("home.unknown_opponent")}</strong>
+                          {t("home.vs")} <strong>{opp?.username ?? t("home.unknown_opponent")}</strong>
                         </span>
                       </div>
 
@@ -291,7 +295,7 @@ export default function HomePage() {
 
                       {/* XP */}
                       <span className="text-xs font-semibold shrink-0" style={{ color: "var(--color-success)" }}>
-                        +{xpEarned} XP
+                        {t("home.xp_gain", { xp: xpEarned })}
                       </span>
 
                       {/* Time */}
@@ -350,7 +354,7 @@ export default function HomePage() {
                         {isMe && <span className="text-xs" style={{ color: "#f97316", marginInlineStart: '0.25rem' }}>{t("home.you")}</span>}
                         </span>
                       <span className="text-xs font-mono shrink-0" style={{ color: "var(--color-primary)" }}>
-                        {player.total_xp.toLocaleString()} XP
+                        {t("home.xp_total", { xp: player.total_xp.toLocaleString() })}
                       </span>
                     </div>
                   );

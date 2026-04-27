@@ -190,9 +190,6 @@ class ActivityEvent(models.Model):
 
     The ``metadata`` JSONField stores event-specific context so the
     analytics engine can slice-and-dice without schema migrations.
-
-    The ``purge_before`` management command hard-deletes events older
-    than the configured retention window.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -236,12 +233,6 @@ class ActivityEvent(models.Model):
         blank=True,
         default="",
         help_text="Browser / client user-agent string.",
-    )
-
-    is_anonymised = models.BooleanField(
-        default=False,
-        db_index=True,
-        help_text="Whether user-identifying fields were anonymized for retention/privacy.",
     )
 
     created_at = models.DateTimeField(

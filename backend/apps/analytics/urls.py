@@ -15,7 +15,6 @@ from .views import (
     ActivityHeatmapView,
     ActivitySummaryView,
     ActivityTimelineView,
-    GlobalActivitySummaryView,
     RecentActivityView,
     TrackEventView,
 )
@@ -98,10 +97,4 @@ urlpatterns = [
         TrackEventView.as_view(),
         name="activity-track",
     ),
-    path(
-        "activity/global/",
-        GlobalActivitySummaryView.as_view(),
-        name="activity-global",
-    ),
-
 ]

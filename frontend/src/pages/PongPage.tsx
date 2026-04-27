@@ -892,7 +892,9 @@ export default function PongPage() {
           {/* Online — ready lobby */}
           {mode === 'online' && onlinePhase === 'waiting' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
-              <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>vs {opponentName}</p>
+              <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {t('pong.vs_opponent', { name: opponentName })}
+              </p>
 
               {/* Ready status indicators */}
               <div className="flex gap-8 text-sm">
@@ -940,10 +942,10 @@ export default function PongPage() {
               <div className="w-10 h-10 rounded-full border-4 animate-spin"
                 style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
               <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                Reconnecting players...
+                {t('pong.reconnecting_players')}
               </p>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                The match will resume automatically if both clients reconnect in time.
+                {t('pong.reconnecting_resume')}
               </p>
             </div>
           )}

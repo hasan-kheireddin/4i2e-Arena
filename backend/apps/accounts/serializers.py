@@ -32,7 +32,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "level",
             "is_2fa_enabled",
             "is_oauth_user",
-            "is_online",
             "last_activity",
             "date_joined",
         ]

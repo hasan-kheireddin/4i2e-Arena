@@ -136,7 +136,7 @@ export default function Verify2FAPage() {
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
             src={isDark ? verifyDark : verify}
-            alt="Sport"
+            alt={t("2fa.hero_image_alt")}
             className="w-full h-full object-cover"
           />
         </div>

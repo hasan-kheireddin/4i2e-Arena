@@ -12,7 +12,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
-import { Avatar } from './ui/Avatar';
 
 interface NavItemDef {
   label: string;
@@ -20,12 +19,6 @@ interface NavItemDef {
   to: string;
   children?: { label: string; to: string }[];
 }
-
-const onlineFriends = [
-  { name: 'Sarah K.', online: true },
-  { name: 'Mike J.', online: true },
-  { name: 'Emma W.', online: true },
-];
 
 interface SidebarProps {
   collapsed: boolean;
@@ -148,25 +141,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           );
         })}
       </nav>
-
-      {/* Online Friends */}
-      {!collapsed && (
-        <div className="px-4 py-4 border-t">
-          <p className="text-[10px] font-medium uppercase tracking-widest mb-3 text-muted">
-            {t('sidebar.online')} — {onlineFriends.length}
-          </p>
-          <div className="space-y-2">
-            {onlineFriends.map((f) => (
-              <div key={f.name} className="flex items-center gap-2.5 cursor-pointer">
-                <Avatar name={f.name} size="sm" online />
-                <span className="text-xs truncate transition-colors text-secondary hover:text-primary">
-                  {f.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </aside>
   );
 }

@@ -387,6 +387,8 @@ export default function LandingPage() {
               <button onClick={() => scrollTo("games")} className="hover:opacity-100 opacity-70 transition-opacity bg-transparent border-none cursor-pointer text-sm" style={{ color: "inherit" }}>{t("landing.nav_games")}</button>
               <Link to="/login" className="hover:opacity-100 opacity-70 transition-opacity" style={{ color: "inherit" }}>{t("landing.sign_in")}</Link>
               <Link to="/register" className="hover:opacity-100 opacity-70 transition-opacity" style={{ color: "inherit" }}>{t("landing.footer_register")}</Link>
+              <Link to="/privacy-policy" className="hover:opacity-100 opacity-70 transition-opacity" style={{ color: "inherit" }}>{t("privacy_policy.title")}</Link>
+              <Link to="/terms-of-service" className="hover:opacity-100 opacity-70 transition-opacity" style={{ color: "inherit" }}>{t("terms_of_service.footer_link")}</Link>
             </div>
 
             <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>

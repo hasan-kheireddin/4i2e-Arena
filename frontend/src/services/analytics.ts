@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken } from './api';
+import { apiFetch } from './api';
 
 const A = '/api/analytics';
 
@@ -131,22 +131,7 @@ export interface RecentActivityEvent {
   created_at: string;
 }
 
-export interface GlobalActivitySummary {
-  total_events: number;
-  active_users_24h: number;
-  active_users_7d: number;
-  active_users_30d: number;
-  by_category: Record<string, number>;
-  top_event_types: Array<{ event_type: string; count: number }>;
-}
 
-export type ExportFormat = 'json' | 'csv';
-
-export interface ImportResult {
-  imported: number;
-  skipped: number;
-  errors: string[];
-}
 
 // ── Achievement API ───────────────────────────────────────────────────────────
 
@@ -222,11 +207,6 @@ export function getRecentActivity(params: {
   return apiFetch<RecentActivityEvent[]>(`${A}/activity/recent/${buildQuery(params)}`);
 }
 
-/** GET /api/analytics/activity/global/ (admin only) */
-export function getGlobalActivitySummary(): Promise<GlobalActivitySummary> {
-  return apiFetch<GlobalActivitySummary>(`${A}/activity/global/`);
-}
-
 /** POST /api/analytics/activity/track/ — track a page view */
 export function trackPageView(path: string): Promise<{ detail: string }> {
   return apiFetch(`${A}/activity/track/`, {
@@ -235,87 +215,4 @@ export function trackPageView(path: string): Promise<{ detail: string }> {
   });
 }
 
-// ── Export / Import (file-based, can't use apiFetch) ─────────────────────────
 
-function authHeaders(): HeadersInit {
-  const token = getAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-type LegacyNavigator = Navigator & {
-  msSaveOrOpenBlob?: (blob: Blob, defaultName?: string) => boolean;
-};
-
-/**
- * Download the user's activity export as a file.
- * Triggers a browser file-save dialog.
- */
-export async function exportActivityData(format: ExportFormat = 'json'): Promise<void> {
-  const mimeTypes: Record<ExportFormat, string> = {
-    json: 'application/json',
-    csv: 'text/csv',
-  };
-
-  // Use 'export_format' to avoid conflict with DRF's reserved 'format' param
-  const res = await fetch(`${A}/activity/export/?export_format=${format}`, {
-    method: 'GET',
-    headers: authHeaders(),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Export failed: ${res.status} ${res.statusText}`);
-  }
-
-  // Read as text first to ensure proper encoding, then create blob with correct MIME type
-  const text = await res.text();
-  const blob = new Blob([text], { type: mimeTypes[format] });
-
-  const contentDisposition = res.headers.get('Content-Disposition') ?? '';
-  const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-  const filename = filenameMatch ? filenameMatch[1] : `activity_export.${format}`;
-
-  const legacyNavigator = window.navigator as LegacyNavigator;
-  if (typeof legacyNavigator.msSaveOrOpenBlob === 'function') {
-    legacyNavigator.msSaveOrOpenBlob(blob, filename);
-    return;
-  }
-
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  if (!('download' in anchor)) {
-    window.location.assign(url);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
-    return;
-  }
-
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.style.display = 'none';
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  setTimeout(() => URL.revokeObjectURL(url), 100);
-}
-
-/**
- * Upload a previously exported activity file (JSON, CSV).
- * The server will skip events that already exist (idempotent).
- */
-export async function importActivityData(file: File): Promise<ImportResult> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const res = await fetch(`${A}/activity/import/`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.detail ?? `Import failed: ${res.status}`);
-  }
-
-  return data as ImportResult;
-}

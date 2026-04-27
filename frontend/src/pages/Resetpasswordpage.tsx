@@ -132,11 +132,11 @@ export default function ResetPasswordPage() {
 
           {/* Image side - full height */}
           <div className="w-[45%] flex-shrink-0 h-full ">
-            <img
-              src={isDark ? resetDark : resetImg}
-              alt="Sport"
-              className="w-full h-full object-cover"
-            />
+              <img
+                src={isDark ? resetDark : resetImg}
+                alt={t("reset.hero_image_alt")}
+                className="w-full h-full object-cover"
+              />
           </div>
         </div>
 
@@ -154,7 +154,7 @@ export default function ResetPasswordPage() {
           <div className="h-64 w-full flex-shrink-0">
             <img
               src={isDark ? resetDark : resetImg}
-              alt="Sport"
+              alt={t("reset.hero_image_alt")}
               className="w-full h-full object-cover"
             />
           </div>
@@ -196,7 +196,7 @@ export default function ResetPasswordPage() {
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
             src={isDark ? resetDark : resetImg}
-            alt="Sport"
+            alt={t("reset.hero_image_alt")}
             className="w-full h-full object-cover"
           />
         </div>
@@ -306,7 +306,7 @@ function FormContent({
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t("reset.hide_password") : t("reset.show_password")}
             >
               {showPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
@@ -332,7 +332,7 @@ function FormContent({
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
               className="rounded-md p-0.5 text-muted transition-colors hover:text-primary focus:outline-none"
-              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                aria-label={showConfirmPassword ? t("reset.hide_password") : t("reset.show_password")}
             >
               {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>

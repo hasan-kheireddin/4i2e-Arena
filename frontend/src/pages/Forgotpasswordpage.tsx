@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
       setSubmitted(true);
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setError(apiErr.detail ?? "Failed to send reset email. Please try again.");
+      setError(apiErr.detail ?? t("forgot.send_failed"));
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
             src={isDark ? forgetPassDark : forgetPass}
-            alt="Sport"
+            alt={t("forgot.hero_image_alt")}
             className="w-full h-full object-cover"
           />
         </div>

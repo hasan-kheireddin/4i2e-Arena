@@ -11,7 +11,6 @@ export interface User {
   level: number;
   is_2fa_enabled: boolean;
   is_oauth_user: boolean;
-  is_online: boolean;
   last_activity: string | null;
   date_joined: string;
 }

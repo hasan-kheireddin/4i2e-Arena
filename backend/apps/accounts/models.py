@@ -48,16 +48,6 @@ class User(AbstractUser):
         super().save(*args, **kwargs)
 
     @property
-    def is_online(self) -> bool:
-        """
-        Consider user online if last activity is recent.
-        Tune the threshold based on your app (WS pings, page activity, etc.).
-        """
-        if not self.last_activity:
-            return False
-        return timezone.now() - self.last_activity <= timezone.timedelta(minutes=2)
-
-    @property
     def is_oauth_user(self) -> bool:
         """True when the account is linked to at least one OAuth provider."""
         return self.oauth_accounts.exists()

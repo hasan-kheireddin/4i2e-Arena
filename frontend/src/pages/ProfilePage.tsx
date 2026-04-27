@@ -76,6 +76,11 @@ export default function ProfilePage() {
   const streak        = stats?.streaks.current.count ?? 0;
   const streakType    = stats?.streaks.current.type ?? "none";
   const longestWin    = stats?.streaks.longest_win ?? 0;
+  const streakTypeLabel = streakType === "win"
+    ? t("profile.streak_type_win")
+    : streakType === "loss"
+      ? t("profile.streak_type_loss")
+      : t("profile.no_streak");
 
   const totalXp = xp?.xp ?? 0;
   const level   = xp?.level ?? 1;
@@ -161,8 +166,8 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <AnalyticCard icon={<Trophy className="w-5 h-5" />} label={t("profile.wins")} value={String(wins)} sub={t("profile.of_games", { total: totalGames })} color="#f97316" />
-          <AnalyticCard icon={<TrendingUp className="w-5 h-5" />} label={t("profile.win_rate")} value={`${winRate}%`} sub={`${losses}L · ${draws}D`} color="#ef4444" />
-          <AnalyticCard icon={<Flame className="w-5 h-5" />} label={t("profile.current_streak")} value={String(streak)} sub={streakType !== "none" ? streakType : t("profile.no_streak")} color={streakType === "win" ? "#22c55e" : streakType === "loss" ? "#ef4444" : "#71717a"} />
+          <AnalyticCard icon={<TrendingUp className="w-5 h-5" />} label={t("profile.win_rate")} value={`${winRate}%`} sub={t("profile.record_short", { losses, draws })} color="#ef4444" />
+          <AnalyticCard icon={<Flame className="w-5 h-5" />} label={t("profile.current_streak")} value={String(streak)} sub={streakTypeLabel} color={streakType === "win" ? "#22c55e" : streakType === "loss" ? "#ef4444" : "#71717a"} />
           <AnalyticCard icon={<Target className="w-5 h-5" />} label={t("profile.avg_score")} value={avgScore} sub={t("profile.best_streak", { count: longestWin })} color="#06b6d4" />
         </div>
 
@@ -182,15 +187,15 @@ export default function ProfilePage() {
                 {/* Bar */}
                 <div className="flex h-4 rounded-full overflow-hidden mb-3 gap-0.5">
                   {wins > 0 && (
-                    <div className="transition-all duration-700 rounded-l-full" title={`${wins} wins`}
+                    <div className="transition-all duration-700 rounded-l-full" title={t("profile.wins_title", { count: wins })}
                       style={{ width: `${(wins / totalGames) * 100}%`, background: "linear-gradient(90deg,#22c55e,#16a34a)" }} />
                   )}
                   {draws > 0 && (
-                    <div title={`${draws} draws`}
+                    <div title={t("profile.draws_title", { count: draws })}
                       style={{ width: `${(draws / totalGames) * 100}%`, backgroundColor: "#f59e0b" }} />
                   )}
                   {losses > 0 && (
-                    <div className="transition-all duration-700 rounded-r-full" title={`${losses} losses`}
+                    <div className="transition-all duration-700 rounded-r-full" title={t("profile.losses_title", { count: losses })}
                       style={{ width: `${(losses / totalGames) * 100}%`, background: "linear-gradient(90deg,#dc2626,#ef4444)" }} />
                   )}
                 </div>
@@ -289,10 +294,10 @@ export default function ProfilePage() {
                       {gameLabel}
                     </span>
                     <span className="text-sm flex-1 truncate" style={{ color: "var(--color-text-primary)" }}>
-                      vs <strong>{opp?.username ?? t("profile.unknown")}</strong>
+                      {t("profile.vs")} <strong>{opp?.username ?? t("profile.unknown")}</strong>
                     </span>
                     <span className="text-xs font-mono font-bold" style={{ color: "var(--color-text-primary)" }}>{score}</span>
-                    <span className="text-xs font-semibold shrink-0" style={{ color: "#22c55e" }}>+{xpEarned} XP</span>
+                    <span className="text-xs font-semibold shrink-0" style={{ color: "#22c55e" }}>{t("profile.xp_gain", { xp: xpEarned })}</span>
                     <span className="text-xs shrink-0 hidden sm:block" style={{ color: "var(--color-text-muted)" }}>
                       {m.finished_at ? timeAgo(m.finished_at, t) : ""}
                     </span>
@@ -352,7 +357,7 @@ export default function ProfilePage() {
                   </div>
                   <span className="text-xs font-bold shrink-0"
                     style={{ color: TIER_COLORS[u.achievement.tier] ?? "#a855f7" }}>
-                    +{u.achievement.xp_reward} XP
+                    {t("profile.xp_gain", { xp: u.achievement.xp_reward })}
                   </span>
                 </div>
               ))}

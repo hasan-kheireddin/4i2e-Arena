@@ -62,7 +62,8 @@ export default function TicTacToePage() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(null);
   const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
-  const [opponentName, setOpponentName] = useState('Opponent');
+  const defaultOpponentName = t('ttt.opponent');
+  const [opponentName, setOpponentName] = useState(defaultOpponentName);
   const [onlineWinner, setOnlineWinner] = useState<'X' | 'O' | 'draw' | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [iReady, setIReady] = useState(false);
@@ -173,7 +174,7 @@ export default function TicTacToePage() {
       } else if (data.type === 'queue_update') {
         setQueuePosition(data.position as number);
       }
-    }, []),
+    }, [defaultOpponentName]),
   });
 
   // ── Online game socket ────────────────────────────────────────────────────
@@ -245,7 +246,7 @@ export default function TicTacToePage() {
           setOpponentLeftMsg(null);
         }
       } else if (type === 'opponent_left_lobby') {
-        setOpponentLeftMsg((data.username as string) || 'Opponent');
+        setOpponentLeftMsg((data.username as string) || defaultOpponentName);
         setGamePath(null);
         setOnlinePhase('idle');
       } else if (type === 'game_paused') {
@@ -266,7 +267,7 @@ export default function TicTacToePage() {
     setOnlineWinner(null);
     mySlotRef.current = null;
     setMySymbol(null);
-    setOpponentName('Opponent');
+    setOpponentName(defaultOpponentName);
     setGameId(null);
     setGamePath(null);
     setQueuePosition(null);
@@ -480,7 +481,9 @@ export default function TicTacToePage() {
             {mode === 'online' && onlinePhase === 'waiting' && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 z-10 rounded-xl"
                 style={{ backgroundColor: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(8px)' }}>
-                <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>vs {opponentName}</p>
+              <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {t('ttt.vs_opponent', { name: opponentName })}
+              </p>
 
                 <div className="flex gap-8 text-sm">
                   <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
@@ -545,10 +548,10 @@ export default function TicTacToePage() {
                 <div className="w-10 h-10 rounded-full border-4 animate-spin"
                   style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
                 <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                  Reconnecting players...
+                  {t('ttt.reconnecting_players')}
                 </p>
                 <p className="text-sm text-center max-w-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  Your board state is preserved and the match will resume automatically.
+                  {t('ttt.reconnecting_resume')}
                 </p>
               </div>
             )}

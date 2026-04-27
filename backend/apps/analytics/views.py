@@ -19,7 +19,6 @@
 #   GET  /api/analytics/activity/heatmap/        → Hourly heatmap
 #   GET  /api/analytics/activity/recent/         → Recent activity feed
 #   POST /api/analytics/activity/track/          → Frontend page-view tracking
-#   GET  /api/analytics/activity/global/         → Platform-wide summary (admin)
 # =============================================================================
 
 from __future__ import annotations
@@ -345,7 +344,7 @@ class LeaderboardView(generics.ListAPIView):
 
         qs = (
             User.objects
-            .filter(is_active=True, is_staff=False)
+            .filter(is_active=True)
             .annotate(
                 rank=Window(
                     expression=DenseRank(),
@@ -368,15 +367,15 @@ class UserXPDetailView(APIView):
     def get(self, request):
         user = request.user
 
-        # Calculate rank (number of active non-staff users with more XP + 1)
+        # Calculate rank (number of active users with more XP + 1)
         rank = (
             User.objects
-            .filter(is_active=True, is_staff=False, xp__gt=user.xp)
+            .filter(is_active=True, xp__gt=user.xp)
             .count()
         ) + 1
 
         total_players = User.objects.filter(
-            is_active=True, is_staff=False,
+            is_active=True,
         ).count()
 
         level_info = get_xp_to_next_level(user.xp)
@@ -458,7 +457,6 @@ class PublicStatsView(APIView):
 from .aggregation_service import (
     get_activity_heatmap,
     get_activity_timeline,
-    get_global_activity_summary,
     get_recent_activity,
     get_user_activity_summary,
 )
@@ -633,21 +631,3 @@ class TrackEventView(APIView):
             {"detail": "Event tracked."},
             status=status.HTTP_201_CREATED,
         )
-
-
-# ---------------------------------------------------------------------------
-# GET /api/analytics/activity/global/ — Platform-wide summary (admin)
-# ---------------------------------------------------------------------------
-
-class GlobalActivitySummaryView(APIView):
-    """
-    Return platform-wide activity statistics.
-
-    Restricted to staff / admin users.
-    """
-
-    permission_classes = [permissions.IsAdminUser]
-
-    def get(self, request):
-        data = get_global_activity_summary()
-        return Response(data, status=status.HTTP_200_OK)

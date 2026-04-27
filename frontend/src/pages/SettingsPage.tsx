@@ -99,11 +99,11 @@ export default function SettingsPage() {
       setTwoFAInfo(status);
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setTwoFAError(apiErr.detail ?? 'Failed to load two-factor authentication status.');
+      setTwoFAError(apiErr.detail ?? t('settings.security.load_status_failed'));
     } finally {
       setTwoFALoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     if (tab === 'security') {
@@ -125,7 +125,7 @@ export default function SettingsPage() {
 
   const handleDisable2FA = async () => {
     if (disableCode.length !== 6) {
-      setTwoFAError('Enter the 6-digit code from your authenticator app.');
+      setTwoFAError(t('settings.security.enter_disable_code'));
       return;
     }
 
@@ -142,13 +142,13 @@ export default function SettingsPage() {
       });
       setShowDisable2FA(false);
       setDisableCode('');
-      setDisableSuccess('Two-factor authentication has been disabled.');
+      setDisableSuccess(t('settings.security.disable_success'));
       if (user) {
         setUser({ ...user, is_2fa_enabled: false });
       }
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setTwoFAError(apiErr.detail ?? 'Failed to disable two-factor authentication.');
+      setTwoFAError(apiErr.detail ?? t('settings.security.disable_failed'));
     } finally {
       setDisableLoading(false);
     }
@@ -175,7 +175,7 @@ export default function SettingsPage() {
     setPasswordSuccess(null);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All password fields are required.');
+      setPasswordError(t('settings.security.password_fields_required'));
       return;
     }
 
@@ -192,7 +192,7 @@ export default function SettingsPage() {
       setConfirmPassword('');
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setPasswordError(getApiErrorMessage(apiErr, 'Failed to update password.'));
+      setPasswordError(getApiErrorMessage(apiErr, t('settings.security.password_update_failed')));
     } finally {
       setPasswordLoading(false);
     }
@@ -206,11 +206,13 @@ export default function SettingsPage() {
 
   const twoFAEnabled = twoFAInfo.is_2fa_enabled && twoFAInfo.confirmed;
   const twoFAStatusText = twoFALoading
-    ? 'Checking status...'
+    ? t('settings.security.status_checking')
     : twoFAEnabled
       ? t('settings.security.enabled')
-      : 'Disabled';
-  const twoFAManageLabel = twoFAEnabled ? 'Disable' : 'Enable';
+      : t('settings.security.disabled');
+  const twoFAManageLabel = twoFAEnabled
+    ? t('settings.security.manage_disable')
+    : t('settings.security.manage_enable');
   const twoFAEnabledAt = twoFAInfo.created_at
     ? new Date(twoFAInfo.created_at).toLocaleString()
     : null;
@@ -273,11 +275,11 @@ export default function SettingsPage() {
                       {t('settings.profile.title')}
                     </h2>
                     <p className="text-sm text-secondary">
-                      Keep your identity and preferences in sync across the arena.
+                      {t('settings.profile.identity_sync')}
                     </p>
                   </div>
                   <div className="w-full max-w-[180px]">
-                    <ProgressBar value={profileCompletion} label={`Profile completeness ${profileCompletion}%`} showLabel />
+                    <ProgressBar value={profileCompletion} label={t('settings.profile.completeness_label', { value: profileCompletion })} showLabel />
                   </div>
                 </div>
                 <div className="mb-6 flex items-center gap-4">
@@ -336,9 +338,9 @@ export default function SettingsPage() {
                 {isOAuthUser ? (
                   <div className="rounded-xl border border-info/30 bg-info/10 p-4 text-sm text-secondary">
                     <div className="mb-2">
-                      <Badge variant="info">42 OAuth</Badge>
+                      <Badge variant="info">{t('settings.security.oauth_badge')}</Badge>
                     </div>
-                    This account uses 42 OAuth. Password login and password changes are disabled.
+                    {t('settings.security.oauth_info')}
                   </div>
                 ) : (
                   <>
@@ -407,7 +409,7 @@ export default function SettingsPage() {
                     </div>
                     {twoFAEnabledAt && (
                       <p className="mt-2 text-xs text-muted">
-                        Enabled on {twoFAEnabledAt}
+                        {t('settings.security.enabled_on', { date: twoFAEnabledAt })}
                       </p>
                     )}
                   </div>
@@ -422,7 +424,7 @@ export default function SettingsPage() {
                 </div>
                 {!twoFAEnabled && !twoFALoading && (
                   <p className="mt-3 text-xs text-muted">
-                    You will be redirected to the setup flow to scan a QR code and confirm your first TOTP code.
+                    {t('settings.security.setup_redirect_hint')}
                   </p>
                 )}
               </SurfaceCard>
@@ -487,14 +489,14 @@ export default function SettingsPage() {
           setDisableCode('');
           setTwoFAError(null);
         }}
-        title="Disable two-factor authentication"
+        title={t('settings.security.disable_modal_title')}
       >
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Enter the 6-digit code from your authenticator app to confirm this action.
+            {t('settings.security.disable_modal_desc')}
           </p>
           <Input
-            label="Authenticator Code"
+            label={t('settings.security.authenticator_code')}
             value={disableCode}
             onChange={(e) => {
               setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6));
@@ -506,7 +508,7 @@ export default function SettingsPage() {
           />
           <div className="flex gap-3">
             <Button onClick={handleDisable2FA} loading={disableLoading} variant="danger">
-              Confirm Disable
+              {t('settings.security.confirm_disable')}
             </Button>
             <Button
               onClick={() => {
@@ -517,7 +519,7 @@ export default function SettingsPage() {
               disabled={disableLoading}
               variant="secondary"
             >
-              Cancel
+              {t('settings.security.cancel')}
             </Button>
           </div>
         </div>

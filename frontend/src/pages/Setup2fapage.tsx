@@ -36,7 +36,7 @@ export default function Setup2FAPage() {
       } catch (err: unknown) {
         if (cancelled) return;
         const apiErr = err as ApiError;
-        setError(apiErr.detail ?? "Failed to initialize 2FA setup. Please try again.");
+        setError(apiErr.detail ?? t("2fa.setup_init_failed"));
       } finally {
         if (!cancelled) setSetupLoading(false);
       }
@@ -68,7 +68,7 @@ export default function Setup2FAPage() {
       }
       setShowToast(true);
     } catch {
-      setCopyError(t("2fa.copy_failed", "Couldn't copy automatically. Please copy manually."));
+      setCopyError(t("2fa.copy_failed"));
     }
   };
 
@@ -93,7 +93,7 @@ export default function Setup2FAPage() {
       navigate("/settings");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
-      setError(apiErr.detail ?? "Invalid code. Please try again.");
+      setError(apiErr.detail ?? t("2fa.verify_failed"));
       setCode("");
     } finally {
       setLoading(false);
@@ -143,7 +143,7 @@ export default function Setup2FAPage() {
             >
               <div className="flex flex-col items-center">
                 <div className="bg-white p-4 rounded-lg mb-4">
-                  <img src={qrCodeData} alt="QR Code" className="w-48 h-48" />
+                  <img src={qrCodeData} alt={t("2fa.qr_code_alt")} className="w-48 h-48" />
                 </div>
                 <p className="text-sm mb-3" style={{ color: "var(--color-text-secondary)" }}>
                   {t("2fa.cant_scan", "Can't scan the code?")}
