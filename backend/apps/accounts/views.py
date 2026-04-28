@@ -42,6 +42,10 @@ safe_track_login = non_blocking(track_login)
 safe_track_logout = non_blocking(track_logout)
 safe_track_profile_updated = non_blocking(track_profile_updated)
 
+
+def _request_origin(request) -> str:
+    return f"{request.scheme}://{request.get_host()}".rstrip("/")
+
 class RegisterView(APIView):
     """
     Create a new user account.
@@ -445,7 +449,11 @@ class PasswordResetRequestView(APIView):
                     status=status.HTTP_200_OK,
                 )
             token = EmailVerificationToken.create_reset_token(user)
-            send_password_reset_email(user, token.code)
+            send_password_reset_email(
+                user,
+                token.code,
+                frontend_url=_request_origin(request),
+            )
         except User.DoesNotExist:
             pass  # Don't reveal whether the email exists
         except Exception:

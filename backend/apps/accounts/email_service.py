@@ -36,10 +36,17 @@ def send_otp_email(user, otp: str) -> None:
         raise
 
 
-def send_password_reset_email(user, token: str) -> None:
+def send_password_reset_email(
+    user,
+    token: str,
+    frontend_url: str | None = None,
+) -> None:
     """Send a password reset link to the user's email."""
-    frontend_url = getattr(settings, "FRONTEND_URL", "https://localhost:8443")
-    reset_url = f"{frontend_url}/reset-password?token={token}"
+    base_url = (
+        (frontend_url or "").rstrip("/")
+        or getattr(settings, "FRONTEND_URL", "https://localhost:8443")
+    )
+    reset_url = f"{base_url}/reset-password?token={token}"
 
     subject = "Reset your 4i2e Arena password"
     message = (

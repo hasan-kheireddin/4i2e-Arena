@@ -7,6 +7,7 @@ Generated for Django 5.1 with Channels, DRF, JWT, CORS, and PostgreSQL.
 from __future__ import annotations
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from decouple import config
@@ -15,6 +16,30 @@ from decouple import config
 # Base paths
 # ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _split_csv(raw: str) -> list[str]:
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _dedupe(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        ordered.append(item)
+    return ordered
+
+
+def _normalise_origin(origin: str) -> str:
+    return origin.strip().rstrip("/")
+
+
+def _origin_host(origin: str) -> str:
+    parsed = urlparse(origin)
+    return parsed.hostname or ""
 
 # ---------------------------------------------------------------------------
 # Security
@@ -25,12 +50,22 @@ SECRET_KEY = config(
 )
 
 DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+DEFAULT_PUBLIC_APP_ORIGIN = "https://localhost:8443"
+PUBLIC_APP_ORIGIN = _normalise_origin(
+    config("PUBLIC_APP_ORIGIN", default=DEFAULT_PUBLIC_APP_ORIGIN)
+    or DEFAULT_PUBLIC_APP_ORIGIN
+)
+PUBLIC_APP_HOST = _origin_host(PUBLIC_APP_ORIGIN)
 
-_allowed_hosts_default = "*" if DEBUG else "localhost,127.0.0.1,backend"
+_allowed_hosts_default = "localhost,127.0.0.1,backend,host.docker.internal"
 ALLOWED_HOSTS_RAW = config("DJANGO_ALLOWED_HOSTS", default=_allowed_hosts_default)
-ALLOWED_HOSTS: list[str] = [
-    h.strip() for h in ALLOWED_HOSTS_RAW.split(",") if h.strip()
-]
+if ALLOWED_HOSTS_RAW.strip() == "*":
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = _dedupe(
+        _split_csv(ALLOWED_HOSTS_RAW)
+        + ([PUBLIC_APP_HOST] if PUBLIC_APP_HOST else [])
+    )
 
 # ---------------------------------------------------------------------------
 # Application definition
@@ -183,23 +218,26 @@ CORS_ALLOW_ALL_ORIGINS = config(
     default=DEBUG,
     cast=bool,
 )
-_cors_raw = config(
-    "CORS_ALLOWED_ORIGINS",
-    default="https://localhost:8443,https://127.0.0.1:8443",
+_default_trusted_origins = _dedupe(
+    [
+        PUBLIC_APP_ORIGIN,
+        "https://127.0.0.1:8443",
+        "https://host.docker.internal:8443",
+    ]
 )
+_cors_raw = config("CORS_ALLOWED_ORIGINS", default="")
 CORS_ALLOWED_ORIGINS: list[str] = (
-    [o.strip() for o in _cors_raw.split(",") if o.strip()]
+    _dedupe(_split_csv(_cors_raw) or _default_trusted_origins)
     if not CORS_ALLOW_ALL_ORIGINS
     else []
 )
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 
-_csrf_raw = config(
-    "CSRF_TRUSTED_ORIGINS",
-    default="https://localhost:8443,https://127.0.0.1:8443",
+_csrf_raw = config("CSRF_TRUSTED_ORIGINS", default="")
+CSRF_TRUSTED_ORIGINS: list[str] = _dedupe(
+    _split_csv(_csrf_raw) or _default_trusted_origins
 )
-CSRF_TRUSTED_ORIGINS: list[str] = [o.strip() for o in _csrf_raw.split(",") if o.strip()]
 
 # ---------------------------------------------------------------------------
 # Channels / Redis
@@ -258,7 +296,9 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@4i2e-arena.com")
-FRONTEND_URL = config("FRONTEND_URL", default="https://localhost:8443")
+FRONTEND_URL = _normalise_origin(
+    config("FRONTEND_URL", default=PUBLIC_APP_ORIGIN) or PUBLIC_APP_ORIGIN
+)
 
 # ---------------------------------------------------------------------------
 # Logging

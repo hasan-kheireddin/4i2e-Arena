@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 safe_track_oauth_login = non_blocking(track_oauth_login)
 
+
+def _request_origin(request) -> str:
+    return f"{request.scheme}://{request.get_host()}".rstrip("/")
+
+
+def _redirect_uri(request, cfg) -> str:
+    return (cfg.redirect_uri or f"{_request_origin(request)}/oauth/callback").rstrip("/")
+
 class OAuthInitiateView(APIView):
     """
     GET /api/accounts/oauth/<provider>/initiate/
@@ -43,7 +51,9 @@ class OAuthInitiateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not cfg.client_id or not cfg.client_secret or not cfg.redirect_uri:
+        redirect_uri = _redirect_uri(request, cfg)
+
+        if not cfg.client_id or not cfg.client_secret or not redirect_uri:
             return Response(
                 {"detail": f"OAuth provider '{provider}' is not configured."},
                 status=status.HTTP_501_NOT_IMPLEMENTED,
@@ -57,7 +67,7 @@ class OAuthInitiateView(APIView):
         # Build the authorization URL
         params = {
             "client_id": cfg.client_id,
-            "redirect_uri": cfg.redirect_uri,
+            "redirect_uri": redirect_uri,
             "response_type": "code",
             "scope": " ".join(cfg.scopes),
             "state": state,
@@ -92,7 +102,9 @@ class OAuthCallbackView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not cfg.client_id or not cfg.client_secret or not cfg.redirect_uri:
+        redirect_uri = _redirect_uri(request, cfg)
+
+        if not cfg.client_id or not cfg.client_secret or not redirect_uri:
             return Response(
                 {"detail": f"OAuth provider '{provider}' is not configured."},
                 status=status.HTTP_501_NOT_IMPLEMENTED,
@@ -120,7 +132,7 @@ class OAuthCallbackView(APIView):
             )
 
         # ---- Exchange code for access token -----------------------------------
-        token_data = self._exchange_code(cfg, code)
+        token_data = self._exchange_code(cfg, code, redirect_uri)
         if token_data is None:
             return Response(
                 {"detail": "Failed to exchange authorization code."},
@@ -196,7 +208,7 @@ class OAuthCallbackView(APIView):
     # -----------------------------------------------------------------------
 
     @staticmethod
-    def _exchange_code(cfg, code: str) -> dict | None:
+    def _exchange_code(cfg, code: str, redirect_uri: str) -> dict | None:
         """POST to the token endpoint to swap the auth code for tokens."""
         try:
             resp = requests.post(
@@ -205,7 +217,7 @@ class OAuthCallbackView(APIView):
                     "grant_type": "authorization_code",
                     "client_id": cfg.client_id,
                     "client_secret": cfg.client_secret,
-                    "redirect_uri": cfg.redirect_uri,
+                    "redirect_uri": redirect_uri,
                     "code": code,
                 },
                 headers={"Accept": "application/json"},
