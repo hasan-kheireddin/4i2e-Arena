@@ -9,6 +9,9 @@ setup: ssl-generate build up ## First-time project setup: generates SSL, builds 
 up:
 	docker compose up -d
 
+stop:
+	docker compose stop
+
 down:
 	docker compose down
 
