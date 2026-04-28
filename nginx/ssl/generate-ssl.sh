@@ -7,12 +7,27 @@ ENV_FILE="${REPO_ROOT}/.env"
 KEY_FILE="${SCRIPT_DIR}/server.key"
 CERT_FILE="${SCRIPT_DIR}/server.crt"
 
-if [ -f "$ENV_FILE" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    set +a
-fi
+read_env_var() {
+    local key="$1"
+    local raw
+
+    [ -f "$ENV_FILE" ] || return 0
+
+    raw="$(grep -m1 -E "^${key}=" "$ENV_FILE" | tr -d '\r' || true)"
+    raw="${raw#*=}"
+
+    if [[ "$raw" == \"*\" && "$raw" == *\" ]]; then
+        raw="${raw:1:${#raw}-2}"
+    elif [[ "$raw" == \'*\' && "$raw" == *\' ]]; then
+        raw="${raw:1:${#raw}-2}"
+    fi
+
+    printf '%s' "$raw"
+}
+
+PUBLIC_APP_ORIGIN="${PUBLIC_APP_ORIGIN:-$(read_env_var PUBLIC_APP_ORIGIN)}"
+SSL_EXTRA_DNS_NAMES="${SSL_EXTRA_DNS_NAMES:-$(read_env_var SSL_EXTRA_DNS_NAMES)}"
+SSL_EXTRA_IPS="${SSL_EXTRA_IPS:-$(read_env_var SSL_EXTRA_IPS)}"
 
 PUBLIC_APP_ORIGIN="${PUBLIC_APP_ORIGIN:-https://localhost:8443}"
 PUBLIC_HOST="$(printf '%s' "$PUBLIC_APP_ORIGIN" | sed -E 's#^[a-zA-Z]+://([^/:]+).*$#\1#')"
