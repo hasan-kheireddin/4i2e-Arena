@@ -1,5 +1,6 @@
 import random
 import uuid
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -51,6 +52,49 @@ class User(AbstractUser):
     def is_oauth_user(self) -> bool:
         """True when the account is linked to at least one OAuth provider."""
         return self.oauth_accounts.exists()
+
+
+class PendingRegistration(models.Model):
+    """
+    Stores a registration attempt until the user proves email ownership.
+
+    A real User row is created only after a valid OTP is submitted.
+    """
+
+    username = models.CharField(max_length=30, unique=True)
+    email = models.EmailField(unique=True)
+    display_name = models.CharField(max_length=50, blank=True, default="")
+    password_hash = models.CharField(max_length=128)
+    code = models.CharField(max_length=6)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "pending_registrations"
+        verbose_name = "Pending Registration"
+        verbose_name_plural = "Pending Registrations"
+
+    def __str__(self):
+        return self.email
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        if self.username:
+            self.username = self.username.strip()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() > self.expires_at
+
+    def set_password(self, raw_password: str) -> None:
+        self.password_hash = make_password(raw_password)
+
+    def issue_code(self) -> None:
+        self.code = str(random.randint(100000, 999999))
+        self.expires_at = timezone.now() + timezone.timedelta(minutes=15)
 
 class OAuthAccount(models.Model):
     """

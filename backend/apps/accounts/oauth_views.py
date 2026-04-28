@@ -43,7 +43,7 @@ class OAuthInitiateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not cfg.client_id:
+        if not cfg.client_id or not cfg.client_secret or not cfg.redirect_uri:
             return Response(
                 {"detail": f"OAuth provider '{provider}' is not configured."},
                 status=status.HTTP_501_NOT_IMPLEMENTED,
@@ -90,6 +90,12 @@ class OAuthCallbackView(APIView):
             return Response(
                 {"detail": f"Unknown OAuth provider: {provider}"},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not cfg.client_id or not cfg.client_secret or not cfg.redirect_uri:
+            return Response(
+                {"detail": f"OAuth provider '{provider}' is not configured."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
             )
 
         # ---- Validate code & state --------------------------------------------

@@ -52,11 +52,11 @@ services:
       - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS:-True}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://localhost:8443,https://127.0.0.1:8443,https://host.docker.internal:8443}
-      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-https://localhost:8443,https://127.0.0.1:8443,https://host.docker.internal:8443}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://localhost:${HTTPS_PORT:-8443},https://127.0.0.1:${HTTPS_PORT:-8443},https://host.docker.internal:${HTTPS_PORT:-8443}}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-https://localhost:${HTTPS_PORT:-8443},https://127.0.0.1:${HTTPS_PORT:-8443},https://host.docker.internal:${HTTPS_PORT:-8443}}
       - OAUTH_42_CLIENT_ID=${OAUTH_42_CLIENT_ID:-}
       - OAUTH_42_CLIENT_SECRET=${OAUTH_42_CLIENT_SECRET:-}
-      - OAUTH_42_REDIRECT_URI=${OAUTH_42_REDIRECT_URI:-https://localhost/oauth/callback}
+      - OAUTH_42_REDIRECT_URI=${OAUTH_42_REDIRECT_URI:-https://localhost:8443/oauth/callback}
       - EMAIL_BACKEND=${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
       - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
       - EMAIL_PORT=${EMAIL_PORT:-587}
@@ -64,12 +64,18 @@ services:
       - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
       - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@4i2e-arena.com}
-      - FRONTEND_URL=${FRONTEND_URL:-https://localhost:8443}
+      - FRONTEND_URL=${FRONTEND_URL:-https://localhost:${HTTPS_PORT:-8443}}
       - GAME_SESSION_TTL_SECONDS=${GAME_SESSION_TTL_SECONDS:-1800}
 
     volumes:
       - ./backend:/app
       - backend_static:/app/staticfiles
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.create_connection(('127.0.0.1', 8000), 2); s.close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -85,11 +91,18 @@ services:
     container_name: ft_frontend
     restart: unless-stopped
     environment:
-      - VITE_API_URL=https://localhost:8443/api
+      - VITE_API_URL=${VITE_API_URL:-/api}
       # Leave unset to auto-use current browser host (works across LAN devices).
       - VITE_WS_URL=
-    depends_on:
-      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5173/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks:
       - ft_network
 
@@ -106,8 +119,10 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - backend_static:/var/www/static:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks:
       - ft_network
 

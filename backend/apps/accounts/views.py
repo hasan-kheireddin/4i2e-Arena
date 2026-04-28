@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth import logout as django_logout
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -9,7 +10,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.contrib.auth import get_user_model
-from .models import EmailVerificationToken, TOTPDevice
+from .models import EmailVerificationToken, PendingRegistration, TOTPDevice
 from .safety import non_blocking
 from .twofa_views import _issue_temp_token
 
@@ -54,29 +55,58 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        username = serializer.validated_data["username"].strip()
+        email = serializer.validated_data["email"].strip().lower()
+        display_name = serializer.validated_data.get("display_name", "").strip()
+        password = serializer.validated_data["password"]
 
-        # Mark account inactive until email is verified
-        user.is_active = False
-        user.save(update_fields=["is_active"])
+        with transaction.atomic():
+            pending_by_email = (
+                PendingRegistration.objects.select_for_update()
+                .filter(email__iexact=email)
+                .first()
+            )
+            pending_by_username = (
+                PendingRegistration.objects.select_for_update()
+                .filter(username__iexact=username)
+                .first()
+            )
 
-        # Create OTP and send verification email
-        token = EmailVerificationToken.create_otp(user)
+            if (
+                pending_by_email
+                and pending_by_username
+                and pending_by_email.pk != pending_by_username.pk
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "A pending registration already exists for this "
+                            "email or username. Please finish verification or "
+                            "use different credentials."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            pending = pending_by_email or pending_by_username or PendingRegistration()
+            pending.username = username
+            pending.email = email
+            pending.display_name = display_name
+            pending.set_password(password)
+            pending.issue_code()
+            pending.save()
+
         try:
-            send_otp_email(user, token.code)
+            send_otp_email(pending, pending.code)
         except Exception:
-            logger.exception("Failed to send OTP email to %s during registration", user.email)
-
-        # Track registration event (non-blocking)
-        safe_track_registration(
-            user.pk,
-            ip_address=get_client_ip(request),
-            user_agent=get_user_agent(request),
-        )
+            logger.exception(
+                "Failed to send OTP email to %s during registration",
+                pending.email,
+            )
         return Response(
             {
                 "requires_verification": True,
-                "email": user.email,
+                "email": pending.email,
                 "detail": "A verification code has been sent to your email.",
             },
             status=status.HTTP_201_CREATED,
@@ -286,45 +316,68 @@ class VerifyEmailView(APIView):
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
+        email = serializer.validated_data["email"].strip().lower()
         code = serializer.validated_data["code"]
 
-        try:
-            user = User.objects.get(email__iexact=email)
-        except User.DoesNotExist:
-            return Response(
-                {"detail": "Invalid verification code."},
-                status=status.HTTP_400_BAD_REQUEST,
+        with transaction.atomic():
+            pending = (
+                PendingRegistration.objects.select_for_update()
+                .filter(email__iexact=email)
+                .first()
             )
 
-        token = (
-            EmailVerificationToken.objects.filter(
-                user=user,
-                token_type=EmailVerificationToken.TYPE_EMAIL_VERIFY,
-                used=False,
-                code=code,
+            if not pending or pending.code != code:
+                return Response(
+                    {"detail": "Invalid verification code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if pending.is_expired:
+                return Response(
+                    {
+                        "detail": (
+                            "Verification code has expired. Please request a new one."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if User.objects.filter(username__iexact=pending.username).exists():
+                return Response(
+                    {
+                        "detail": (
+                            "That username is no longer available. "
+                            "Please register again."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if User.objects.filter(email__iexact=pending.email).exists():
+                return Response(
+                    {
+                        "detail": (
+                            "That email is already associated with an account."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            user = User(
+                username=pending.username,
+                email=pending.email,
+                display_name=pending.display_name,
+                is_active=True,
             )
-            .order_by("-created_at")
-            .first()
+            user.password = pending.password_hash
+            user.save()
+            pending.delete()
+
+        safe_track_registration(
+            user.pk,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
         )
-
-        if not token:
-            return Response(
-                {"detail": "Invalid verification code."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if token.is_expired:
-            return Response(
-                {"detail": "Verification code has expired. Please request a new one."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Mark token used, activate user
-        token.used = True
-        token.save(update_fields=["used"])
-        user.is_active = True
-        user.save(update_fields=["is_active"])
 
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
@@ -341,20 +394,32 @@ class ResendOTPView(APIView):
 
     def post(self, request):
         email = request.data.get("email", "").strip().lower()
-        try:
-            user = User.objects.get(email__iexact=email, is_active=False)
-        except User.DoesNotExist:
+        pending = PendingRegistration.objects.filter(email__iexact=email).first()
+        if not pending:
             # Don't reveal whether the email exists
             return Response(
                 {"detail": "If that email exists, a new code has been sent."},
                 status=status.HTTP_200_OK,
             )
 
-        token = EmailVerificationToken.create_otp(user)
+        with transaction.atomic():
+            pending = (
+                PendingRegistration.objects.select_for_update()
+                .filter(pk=pending.pk)
+                .first()
+            )
+            if not pending:
+                return Response(
+                    {"detail": "If that email exists, a new code has been sent."},
+                    status=status.HTTP_200_OK,
+                )
+            pending.issue_code()
+            pending.save(update_fields=["code", "expires_at", "updated_at"])
+
         try:
-            send_otp_email(user, token.code)
+            send_otp_email(pending, pending.code)
         except Exception:
-            logger.exception("Failed to resend OTP email to %s", user.email)
+            logger.exception("Failed to resend OTP email to %s", pending.email)
 
         return Response(
             {"detail": "If that email exists, a new code has been sent."},

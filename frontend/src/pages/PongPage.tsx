@@ -32,12 +32,15 @@ const BALL_SPEED: Record<Difficulty, number> = { easy: 0.7, medium: 1.0, hard: 1
 const BASE_BALL_VX = 4;
 const BASE_BALL_VY = 3;
 const SERVER_TICK_RATE = 60;
+const SERVER_PADDLE_SPEED = 8;
 const LOCAL_SIM_HZ = 60;
 const LOCAL_STEP_MS = 1000 / LOCAL_SIM_HZ;
 const LOCAL_MAX_CATCHUP_STEPS = 6;
-const INTERPOLATION_BASE_DELAY_MS = 90;
+const ONLINE_FIELD_HEIGHT = 600;
+const ONLINE_PADDLE_HALF_HEIGHT = 40;
+const INTERPOLATION_BASE_DELAY_MS = 45;
 const INTERPOLATION_MAX_EXTRAPOLATION_MS = 120;
-const ONLINE_SMOOTHING_GAIN = 18;
+const ONLINE_SMOOTHING_GAIN = 26;
 
 // ── canvas draw helper ──────────────────────────────────────────────────────
 function drawFrame(
@@ -105,6 +108,82 @@ function clamp(value: number, min: number, max: number): number {
 
 function lerp(a: number, b: number, alpha: number): number {
   return a + (b - a) * alpha;
+}
+
+function getOnlineInputDirection(keys: Record<string, boolean>): -1 | 0 | 1 {
+  if (keys['w'] || keys['W'] || keys['ArrowUp']) return -1;
+  if (keys['s'] || keys['S'] || keys['ArrowDown']) return 1;
+  return 0;
+}
+
+function projectOnlinePaddleY(y: number, velocityPerTick: number, dtMs: number): number {
+  const dtTicks = (dtMs / 1000) * SERVER_TICK_RATE;
+  return clamp(
+    y + velocityPerTick * dtTicks,
+    ONLINE_PADDLE_HALF_HEIGHT,
+    ONLINE_FIELD_HEIGHT - ONLINE_PADDLE_HALF_HEIGHT,
+  );
+}
+
+function estimatePaddleVelocityPerTick(
+  snapshots: OnlineSnapshot[],
+  slot: 1 | 2,
+): number {
+  if (snapshots.length < 2) return 0;
+  const last = snapshots[snapshots.length - 1];
+  const prev = snapshots[snapshots.length - 2];
+  const dtMs = Math.max(1, last.serverTsMs - prev.serverTsMs);
+  const dtTicks = Math.max((dtMs / 1000) * SERVER_TICK_RATE, 1);
+  const lastY = last.state.paddles[slot]?.y ?? ONLINE_FIELD_HEIGHT / 2;
+  const prevY = prev.state.paddles[slot]?.y ?? lastY;
+  return (lastY - prevY) / dtTicks;
+}
+
+function extrapolateOnlineState(
+  lastSnapshot: OnlineSnapshot,
+  snapshots: OnlineSnapshot[],
+  targetServerTs: number,
+  mySlot: number | null,
+  keys: Record<string, boolean>,
+): OnlineGameState {
+  const dtMs = clamp(
+    targetServerTs - lastSnapshot.serverTsMs,
+    0,
+    INTERPOLATION_MAX_EXTRAPOLATION_MS,
+  );
+  const dtTicks = (dtMs / 1000) * SERVER_TICK_RATE;
+  const ownVelocity = getOnlineInputDirection(keys) * SERVER_PADDLE_SPEED;
+  const paddle1Velocity = mySlot === 1
+    ? ownVelocity
+    : estimatePaddleVelocityPerTick(snapshots, 1);
+  const paddle2Velocity = mySlot === 2
+    ? ownVelocity
+    : estimatePaddleVelocityPerTick(snapshots, 2);
+
+  return {
+    ball: {
+      x: lastSnapshot.state.ball.x + lastSnapshot.state.ball.vx * dtTicks,
+      y: lastSnapshot.state.ball.y + lastSnapshot.state.ball.vy * dtTicks,
+      vx: lastSnapshot.state.ball.vx,
+      vy: lastSnapshot.state.ball.vy,
+    },
+    paddles: {
+      1: {
+        y: projectOnlinePaddleY(
+          lastSnapshot.state.paddles[1]?.y ?? ONLINE_FIELD_HEIGHT / 2,
+          paddle1Velocity,
+          dtMs,
+        ),
+      },
+      2: {
+        y: projectOnlinePaddleY(
+          lastSnapshot.state.paddles[2]?.y ?? ONLINE_FIELD_HEIGHT / 2,
+          paddle2Velocity,
+          dtMs,
+        ),
+      },
+    },
+  };
 }
 
 export default function PongPage() {
@@ -566,34 +645,33 @@ export default function PongPage() {
           220,
         );
         const targetServerTs = Date.now() + clockOffsetMs - renderDelayMs;
+        const onlineKeys = keysRef.current;
         // Keep buffer focused around the current interpolation window.
         while (snapshots.length > 2 && snapshots[1].serverTsMs < targetServerTs - 200) {
           snapshots.shift();
         }
 
         if (snapshots.length === 1) {
-          frameState = snapshots[0].state;
+          frameState = extrapolateOnlineState(
+            snapshots[0],
+            snapshots,
+            targetServerTs,
+            mySlot,
+            onlineKeys,
+          );
         } else {
           const upperIndex = snapshots.findIndex((s) => s.serverTsMs >= targetServerTs);
           if (upperIndex <= 0 && upperIndex !== -1) {
             frameState = snapshots[0].state;
           } else if (upperIndex === -1) {
             const last = snapshots[snapshots.length - 1];
-            const dtMs = clamp(
-              targetServerTs - last.serverTsMs,
-              0,
-              INTERPOLATION_MAX_EXTRAPOLATION_MS,
+            frameState = extrapolateOnlineState(
+              last,
+              snapshots,
+              targetServerTs,
+              mySlot,
+              onlineKeys,
             );
-            const dtTicks = (dtMs / 1000) * SERVER_TICK_RATE;
-            frameState = {
-              ball: {
-                x: last.state.ball.x + last.state.ball.vx * dtTicks,
-                y: last.state.ball.y + last.state.ball.vy * dtTicks,
-                vx: last.state.ball.vx,
-                vy: last.state.ball.vy,
-              },
-              paddles: last.state.paddles,
-            };
           } else {
             const prev = snapshots[upperIndex - 1];
             const next = snapshots[upperIndex];
@@ -656,6 +734,11 @@ export default function PongPage() {
             },
           },
         };
+        if (mySlot === 1 || mySlot === 2) {
+          smoothed.paddles[mySlot] = {
+            y: frameState.paddles[mySlot]?.y ?? smoothed.paddles[mySlot]?.y ?? 300,
+          };
+        }
         renderedOnlineStateRef.current = smoothed;
         const { ball, paddles } = smoothed;
         const scaleY = canvas.height / 600;

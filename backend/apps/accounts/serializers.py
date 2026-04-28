@@ -40,7 +40,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.Serializer):
     """
-    Validates and creates a new user account.
+    Validates a new user registration payload.
 
     Fields:
       - username     : 8-30 chars, alphanumeric + _ -, starts with letter
@@ -76,17 +76,6 @@ class RegisterSerializer(serializers.Serializer):
                 {"password2": "Passwords do not match."}
             )
         return attrs
-
-    def create(self, validated_data):
-        """Create the user and return it with JWT tokens."""
-        validated_data.pop("password2")
-        password = validated_data.pop("password")
-        validated_data["username"] = validated_data["username"].strip()
-        validated_data["email"] = validated_data["email"].strip().lower()
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
 
 class LoginSerializer(serializers.Serializer):
     """
