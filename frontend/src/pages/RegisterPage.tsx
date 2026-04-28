@@ -21,6 +21,8 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    agreeTerms: false,
+    agreePrivacy: false,
   });
 
   const [errors, setErrors] = useState({
@@ -28,6 +30,8 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    agreeTerms: "",
+    agreePrivacy: "",
   });
 
   const [serverError, setServerError] = useState("");
@@ -51,7 +55,14 @@ export default function RegisterPage() {
     return () => observer.disconnect();
   }, []);
   const validate = () => {
-    const newErrors = { username: "", email: "", password: "", confirmPassword: "" };
+    const newErrors = {
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      agreeTerms: "",
+      agreePrivacy: "",
+    };
     let valid = true;
 
     if (!formData.username) {
@@ -104,12 +115,30 @@ export default function RegisterPage() {
       valid = false;
     }
 
+    if (!formData.agreeTerms) {
+      newErrors.agreeTerms = t(
+        "register.terms_required",
+        "You must agree to the terms and conditions"
+      );
+      valid = false;
+    }
+
+    if (!formData.agreePrivacy) {
+      newErrors.agreePrivacy = t(
+        "register.privacy_required",
+        "You must agree to the privacy policy"
+      );
+      valid = false;
+    }
+
     setErrors(newErrors);
     return valid;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const value =
+      e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    setFormData({ ...formData, [e.target.name]: value });
     setErrors({ ...errors, [e.target.name]: "" });
     setServerError("");
   };
@@ -232,12 +261,16 @@ interface FormProps {
     email: string;
     password: string;
     confirmPassword: string;
+    agreeTerms: boolean;
+    agreePrivacy: boolean;
   };
   errors: {
     username: string;
     email: string;
     password: string;
     confirmPassword: string;
+    agreeTerms: string;
+    agreePrivacy: string;
   };
   loading: boolean;
   serverError: string;
@@ -374,10 +407,65 @@ function FormContent({
           }
         />
 
+        <div className="space-y-3">
+          <label className="flex items-start gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            <input
+              type="checkbox"
+              name="agreeTerms"
+              checked={formData.agreeTerms}
+              onChange={handleChange}
+              className="mt-0.5 h-4 w-4 rounded border"
+              style={{ accentColor: "var(--color-text-link)" }}
+            />
+            <span>
+              {t("register.agree_terms_prefix", "I agree to the")}{" "}
+              <Link
+                to="/terms-of-service"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium hover:underline"
+                style={{ color: "var(--color-text-link)" }}
+              >
+                {t("register.agree_terms_link", "terms and conditions")}
+              </Link>
+            </span>
+          </label>
+          {errors.agreeTerms && (
+            <p className="text-sm text-danger">{errors.agreeTerms}</p>
+          )}
+
+          <label className="flex items-start gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            <input
+              type="checkbox"
+              name="agreePrivacy"
+              checked={formData.agreePrivacy}
+              onChange={handleChange}
+              className="mt-0.5 h-4 w-4 rounded border"
+              style={{ accentColor: "var(--color-text-link)" }}
+            />
+            <span>
+              {t("register.agree_privacy_prefix", "I agree to the")}{" "}
+              <Link
+                to="/privacy-policy"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium hover:underline"
+                style={{ color: "var(--color-text-link)" }}
+              >
+                {t("register.agree_privacy_link", "privacy policy")}
+              </Link>
+            </span>
+          </label>
+          {errors.agreePrivacy && (
+            <p className="text-sm text-danger">{errors.agreePrivacy}</p>
+          )}
+        </div>
+
         {/* Submit */}
         <Button
           type="submit"
           loading={loading}
+          disabled={!formData.agreeTerms || !formData.agreePrivacy}
           className="mt-2 w-full"
         >
           {t("register.submit", "Get started")}
