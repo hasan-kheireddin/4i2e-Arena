@@ -355,7 +355,7 @@
     "platform_badge": "FireArena Gaming Platform",
     "hero_line1": "Feel the Heat.",
     "hero_line2": "Play in FireArena.",
-    "hero_sub": "Step into 4i2e Arena, challenge rivals in blazing real-time battles, and climb the leaderboard with every win.",
+    "hero_sub": "Step into Fire Arena, challenge rivals in blazing real-time battles, and climb the leaderboard with every win.",
     "cta_start": "Start Playing Free",
     "stat_active_players": "Active Players",
     "stat_games_played": "Games Played",
@@ -399,9 +399,9 @@
     "stat_modes": "Game Modes",
     "stat_sla": "Uptime SLA",
     "cta_title": "Ready to Ignite the Arena?",
-    "cta_sub": "Join the fire, create your free account, and start your climb in 4i2e Arena today.",
+    "cta_sub": "Join the fire, create your free account, and start your climb in Fire Arena today.",
     "cta_create": "Create Free Account",
-    "footer_rights": "© {{year}} 4i2e Arena. Built with ♥ and fire",
+    "footer_rights": "© {{year}} Fire Arena. Built with ♥ and fire",
     "footer_register": "Register"
   },
   "profile": {

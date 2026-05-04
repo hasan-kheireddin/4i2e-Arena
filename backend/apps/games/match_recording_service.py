@@ -84,6 +84,7 @@ def _create_match_record(
     p1_score, p2_score = _extract_scores(session)
 
     winner_user_id = _resolve_winner_user_id(session)
+    finish_reason = _normalize_finish_reason(finish_reason, winner_user_id)
 
     # Winner user object (for FK)
     winner_user = None
@@ -211,9 +212,32 @@ def _determine_outcome(
         if winner_user_id is not None
         else _resolve_winner_user_id(session)
     )
+    if (
+        resolved_winner_user_id is None
+        and session.finish_reason
+        not in (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
+    ):
+        return MatchOutcome.DRAW
     if resolved_winner_user_id is not None and resolved_winner_user_id == user_id:
         return MatchOutcome.WIN
     return MatchOutcome.LOSS
+
+
+def _normalize_finish_reason(
+    finish_reason: str,
+    winner_user_id: int | None,
+) -> str:
+    """
+    A recorded match without a winner should be treated as a draw unless it
+    ended by forfeit/disconnect forfeit.
+    """
+    if (
+        winner_user_id is None
+        and finish_reason
+        not in (DBFinishReason.FORFEIT, DBFinishReason.DISCONNECT_FORFEIT)
+    ):
+        return DBFinishReason.DRAW
+    return finish_reason
 
 
 def _resolve_winner_user_id(session: GameSession) -> int | None:
