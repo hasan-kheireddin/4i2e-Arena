@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 
-RUN npm install
+RUN npm ci --include=optional --no-audit --no-fund
 
 COPY . .
 

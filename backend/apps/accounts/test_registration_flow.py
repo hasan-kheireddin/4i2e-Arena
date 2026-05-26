@@ -1,7 +1,9 @@
+import os
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from .models import PendingRegistration
@@ -71,3 +73,52 @@ class RegistrationFlowTests(TestCase):
         self.assertTrue(pending.code)
         self.assertTrue(pending.password_hash)
         self.assertEqual(mock_send_otp.call_count, 2)
+
+    @override_settings(ALLOWED_HOSTS=["*"])
+    def test_oauth_initiate_uses_request_host_when_redirect_env_is_blank(self):
+        with patch.dict(
+            os.environ,
+            {
+                "OAUTH_42_CLIENT_ID": "client-id",
+                "OAUTH_42_CLIENT_SECRET": "client-secret",
+            },
+            clear=False,
+        ):
+            os.environ.pop("OAUTH_42_REDIRECT_URI", None)
+            response = self.client.get(
+                "/api/accounts/oauth/42/initiate/",
+                HTTP_X_FORWARDED_PROTO="https",
+                HTTP_X_FORWARDED_HOST="192.168.1.20:8443",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        authorize_url = response.json()["authorize_url"]
+        redirect_uri = parse_qs(urlparse(authorize_url).query)["redirect_uri"][0]
+        self.assertEqual(
+            redirect_uri,
+            "https://192.168.1.20:8443/oauth/callback",
+        )
+
+    @override_settings(ALLOWED_HOSTS=["*"])
+    @patch("apps.accounts.views.send_password_reset_email")
+    def test_password_reset_email_uses_request_origin(self, mock_send_reset_email):
+        User.objects.create_user(
+            username="ResetPlayer",
+            email="reset@example.com",
+            password="StrongPass1!",
+        )
+
+        response = self.client.post(
+            "/api/accounts/password-reset/",
+            {"email": "reset@example.com"},
+            format="json",
+            HTTP_X_FORWARDED_PROTO="https",
+            HTTP_X_FORWARDED_HOST="192.168.1.20:8443",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        mock_send_reset_email.assert_called_once()
+        self.assertEqual(
+            mock_send_reset_email.call_args.kwargs["frontend_url"],
+            "https://192.168.1.20:8443",
+        )
