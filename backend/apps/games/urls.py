@@ -2,8 +2,10 @@ from django.urls import path
 
 from apps.games.views import (
     CreateLocalMatchView,
+    GameInfoView,
     HeadToHeadView,
     LeaderboardView,
+    LiveGamesView,
     MatchDetailView,
     MatchListView,
     MatchSummaryView,
@@ -64,5 +66,15 @@ urlpatterns = [
         "stats/leaderboard/",
         LeaderboardView.as_view(),
         name="stats-leaderboard",
+    ),
+    path(
+        "live/",
+        LiveGamesView.as_view(),
+        name="live-games",
+    ),
+    path(
+        "live/<str:game_id>/",
+        GameInfoView.as_view(),
+        name="game-info",
     ),
 ]

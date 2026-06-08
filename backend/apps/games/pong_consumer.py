@@ -7,7 +7,7 @@ from typing import Any
 
 from apps.analytics.achievement_service import check_achievements_after_game
 from apps.analytics.xp_service import award_xp_after_game
-from apps.games.consumers import BaseConsumer
+from apps.games.consumers import BaseConsumer, _channel_safe
 from apps.games.match_recording_service import record_match
 from apps.games.pong_engine import GameStatus as PongStatus
 from apps.games.pong_engine import PongEngine
@@ -99,6 +99,8 @@ class PongConsumer(BaseConsumer):
             await self._handle_forfeit()
         elif msg_type == "ping":
             await self._handle_ping(content)
+        elif msg_type == "emote":
+            await self._handle_emote(content)
         else:
             await self.send_error("unknown_type", f"Unknown message type: {msg_type}")
 
@@ -296,6 +298,31 @@ class PongConsumer(BaseConsumer):
             ),
             "server_ts_ms": int(time.time() * 1000),
         })
+
+    async def _handle_emote(self, content: dict[str, Any]) -> None:
+        session = self._session
+        if session is None or self._slot is None:
+            return
+        emote_id = content.get("emote_id", "")
+        if not emote_id:
+            return
+        emote_payload = _channel_safe({
+            "type": "emote",
+            "emote_id": emote_id,
+            "slot": self._slot,
+            "sender_username": self.user.username,
+            "sender_avatar": self.user.avatar_url or "",
+        })
+        await self.channel_layer.group_send(session.group_name, emote_payload)
+
+    async def emote(self, event: dict[str, Any]) -> None:
+        await self.send_json(event)
+
+    async def spectator_count(self, event: dict[str, Any]) -> None:
+        await self.send_json(event)
+
+    async def spectator_emote(self, event: dict[str, Any]) -> None:
+        await self.send_json(event)
 
     def _is_rate_limited(self) -> bool:
         now = time.monotonic()

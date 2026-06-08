@@ -12,6 +12,7 @@ import ResetPasswordPage from "./pages/Resetpasswordpage";
 import DarkModeToggle from "./components/Darkmodetoggle";
 import TicTacToePage from "./pages/Tictactoepage";
 import PongPage from "./pages/PongPage";
+import Pong3DPage from "./pages/Pong3DPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import NotFoundPage from "./pages/Notfoundpage";
 import LandingPage from "./pages/LandingPage";
@@ -24,6 +25,8 @@ import ProfilePage from "./pages/ProfilePage";
 import AchievementsPage from "./pages/AchievementsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
+import ChatPage from "./pages/ChatPage";
+import SpectatePage from "./pages/SpectatePage";
 import GamificationNotifications from "./components/GamificationNotifications";
 
 function App() {
@@ -122,6 +125,17 @@ function App() {
 
           {/* ========== GAME SELECTION (Protected, With Layout) ========== */}
           <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ChatPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/games/playpage"
             element={
               <ProtectedRoute>
@@ -147,6 +161,24 @@ function App() {
             element={
               <ProtectedRoute>
                 <PongPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/games/pong3d"
+            element={
+              <ProtectedRoute>
+                <Pong3DPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/spectate/:gameId"
+            element={
+              <ProtectedRoute>
+                <SpectatePage />
               </ProtectedRoute>
             }
           />

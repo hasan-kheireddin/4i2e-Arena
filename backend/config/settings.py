@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.games",
     "apps.analytics",
+    "apps.chat",
 ]
 
 MIDDLEWARE = [

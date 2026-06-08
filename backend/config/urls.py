@@ -18,4 +18,7 @@ urlpatterns = [
 
     # Analytics: achievements, XP, leaderboard, activity tracking
     path("api/analytics/", include("apps.analytics.urls")),
+
+    # Chat: channels, messages, memberships
+    path("api/chat/", include("apps.chat.urls")),
 ]

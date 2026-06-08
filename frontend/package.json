@@ -12,6 +12,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@babylonjs/core": "^9.10.1",
+    "@babylonjs/gui": "^9.10.1",
+    "@babylonjs/loaders": "^9.10.1",
     "@radix-ui/react-avatar": "^1.1.11",
     "i18next": "^25.8.10",
     "lucide-react": "^0.575.0",

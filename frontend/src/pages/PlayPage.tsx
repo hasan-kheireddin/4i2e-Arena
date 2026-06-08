@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 type GameChoice = 'pong' | 'tictactoe' | null;
 type ModeChoice = 'online' | 'ai' | 'local' | null;
 type DiffChoice = 'easy' | 'medium' | 'hard';
+type Dimension = '2d' | '3d';
 type Step = 1 | 2 | 3;
 
 const DIFFICULTIES: DiffChoice[] = ['easy', 'medium', 'hard'];
@@ -35,6 +36,7 @@ export default function PlayPage() {
   const [game,       setGame]       = useState<GameChoice>(null);
   const [mode,       setMode]       = useState<ModeChoice>(null);
   const [difficulty, setDifficulty] = useState<DiffChoice>('medium');
+  const [dimension,  setDimension]  = useState<Dimension>('2d');
 
   // ── Navigation helpers ────────────────────────────────────────────────────
   const goBack = () => {
@@ -45,6 +47,7 @@ export default function PlayPage() {
   const selectGame = (g: GameChoice) => {
     setGame(g);
     setMode(null);
+    setDimension('2d');
     setStep(2);
   };
 
@@ -56,11 +59,11 @@ export default function PlayPage() {
   const launch = () => {
     if (!game || !mode) return;
     if (game === 'pong') {
-      if      (mode === 'online') navigate('/games/pong?mode=online');
-      else if (mode === 'ai')     navigate(`/games/pong?mode=ai&difficulty=${difficulty}`);
-      else                        navigate('/games/pong?mode=local');
+      const base = dimension === '3d' ? '/games/pong3d' : '/games/pong';
+      if      (mode === 'online') navigate(`${base}?mode=online`);
+      else if (mode === 'ai')     navigate(`${base}?mode=ai&difficulty=${difficulty}`);
+      else                        navigate(`${base}?mode=local`);
     } else {
-      // TicTacToe
       if (mode === 'online') navigate('/games/tictactoe?mode=online');
       else                   navigate('/games/tictactoe?mode=local');
     }
@@ -196,6 +199,32 @@ export default function PlayPage() {
                 {t('play.how_play', { game: game === 'pong' ? t('home.game_pong') : t('home.game_ttt') })}
               </p>
             </div>
+
+            {/* 2D / 3D toggle — only for Pong */}
+            {game === 'pong' && (
+              <div className="flex justify-center mb-6">
+                <div className="inline-flex rounded-xl p-1" style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)' }}>
+                  {(['2d', '3d'] as Dimension[]).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setDimension(d)}
+                      className={cn(
+                        'px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200',
+                        dimension === d ? 'text-white shadow-md' : 'hover:opacity-80',
+                      )}
+                      style={{
+                        background: dimension === d
+                          ? 'linear-gradient(135deg,#8b5cf6,#6366f1)'
+                          : 'transparent',
+                        color: dimension === d ? '#fff' : 'var(--color-text-muted)',
+                      }}
+                    >
+                      {d === '2d' ? '2D Mode' : '3D Mode'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className={cn('gap-4', game === 'pong' ? 'grid grid-cols-1 sm:grid-cols-3' : 'flex justify-center')}>
               {(game === 'pong' ? PONG_MODES : TTT_MODES).map((m) => (

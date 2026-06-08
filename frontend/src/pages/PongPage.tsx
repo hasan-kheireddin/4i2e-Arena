@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
+import EmotePalette from '../components/Chat/EmotePalette';
+import FloatingEmoteOverlay, { useFloatingEmotes } from '../components/Chat/FloatingEmote';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { createLocalMatch } from '../services/games';
 
@@ -262,6 +264,11 @@ export default function PongPage() {
   const renderedOnlineStateRef = useRef<OnlineGameState | null>(null);
   const onlineLastRenderTsRef = useRef<number | null>(null);
 
+  const [showEmotePalette, setShowEmotePalette] = useState(false);
+  const { emotes: floatingEmotes, addEmote, addSpectatorEmote } = useFloatingEmotes();
+  const [spectatorCount, setSpectatorCount] = useState({ total: 0, side1: 0, side2: 0 });
+  const [copied, setCopied] = useState(false);
+
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
 
@@ -432,6 +439,14 @@ export default function PongPage() {
     
     saveMatch();
   }, [gameOver, mode, gameStartTime, score, difficulty, localPlayerNames]);
+
+  const handleShare = useCallback(() => {
+    const url = `${window.location.origin}/spectate/${gameId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [gameId]);
 
   // ── online keyboard input → direction-based messages ─────────────────────
   const gameSendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
@@ -606,8 +621,19 @@ export default function PongPage() {
         setGamePaused(true);
       } else if (type === 'player_left') {
         setOpponentLeft(true);
+      } else if (type === 'emote') {
+        const emoteId = data.emote_id as string;
+        const slot = data.slot as number;
+        const username = data.sender_username as string | undefined;
+        addEmote(emoteId, slot, username);
+      } else if (type === 'spectator_count') {
+        setSpectatorCount({ total: data.total as number, side1: data.side1 as number, side2: data.side2 as number });
+      } else if (type === 'spectator_emote') {
+        const emoteId = data.emote_id as string;
+        const side = data.side as number;
+        addSpectatorEmote(emoteId, side || 0);
       }
-    }, [pushOnlineSnapshot]),
+    }, [pushOnlineSnapshot, addEmote, addSpectatorEmote]),
   });
 
   useEffect(() => { gameSendRef.current = gameSend; }, [gameSend]);
@@ -897,8 +923,10 @@ export default function PongPage() {
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{modeLabel}</span>
             {mode === 'online' && (
-              <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                {t('pong.network_latency', { value: gameLatency.rttMs === null ? '--' : `${Math.round(gameLatency.rttMs)}ms` })}
+              <span className="text-[10px] font-medium flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                👁️ <span style={{ color: '#3B82F6' }}>{spectatorCount.side1}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>/</span>
+                <span style={{ color: '#EF4444' }}>{spectatorCount.side2}</span>
               </span>
             )}
           </div>
@@ -1081,6 +1109,18 @@ export default function PongPage() {
               </div>
             </div>
           )}
+          <FloatingEmoteOverlay emotes={floatingEmotes} flipped={mode === 'online' && mySlot === 2} />
+
+          {mode === 'online' && showEmotePalette && (
+            <div className="absolute bottom-0 left-0 right-0 z-50 px-4 pb-4">
+              <EmotePalette
+                onEmote={(emote) => {
+                  gameSend({ type: 'emote', emote_id: emote.id });
+                  setShowEmotePalette(false);
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Controls Bar */}
@@ -1098,15 +1138,40 @@ export default function PongPage() {
           </div>
           <div className="flex items-center gap-3">
             {mode === 'online' && onlinePhase === 'playing' && (
-              <button
-                onClick={handleForfeit}
-                className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
-                style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
-              >
-                {t('pong.forfeit')}
-              </button>
+              <>
+                <button
+                  onClick={handleShare}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+                  style={{
+                    backgroundColor: copied ? 'rgba(34,197,94,0.15)' : 'var(--color-bg-input)',
+                    color: copied ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                    border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'}`,
+                  }}
+                  title="Share spectate link"
+                >
+                  {copied ? '✓ Copied!' : '🔗 Share'}
+                </button>
+                <button
+                  onClick={() => setShowEmotePalette(!showEmotePalette)}
+                  className="px-3 py-1.5 rounded-lg text-lg transition-all duration-200"
+                  style={{
+                    backgroundColor: showEmotePalette ? 'var(--color-primary)' : 'var(--color-bg-input)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                  title="Emotes"
+                >
+                  😂
+                </button>
+                <button
+                  onClick={handleForfeit}
+                  className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+                  style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
+                >
+                  {t('pong.forfeit')}
+                </button>
+              </>
             )}
           </div>
         </div>
