@@ -1,5 +1,7 @@
 .env
 *.tsbuildinfo
+node_modules/
+
 nginx/ssl/*.crt
 nginx/ssl/*.key
 nginx/ssl/*.pem

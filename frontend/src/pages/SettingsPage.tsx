@@ -80,7 +80,12 @@ export default function SettingsPage() {
 
     try {
       const updated = await updateProfile({ display_name: displayName, preferred_language: language });
-      setUser(updated);
+      if (user) {
+        setUser({
+          ...user,
+          ...updated,
+        });
+      }
     } catch (err: unknown) {
       const e = err as { detail?: string };
       setSaveError(e?.detail ?? t('settings.profile.save_failed'));
@@ -284,10 +289,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-6 flex items-center gap-4">
                   <div>
-                    <Avatar name={displayName || username} size="lg" />
+                    <Avatar name={user?.display_name || user?.username} size="lg" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-primary">{displayName || username}</p>
+                    <p className="text-sm font-medium text-primary">{user?.display_name || user?.username}</p>
                     <p className="text-xs text-muted">{email}</p>
                   </div>
                 </div>
