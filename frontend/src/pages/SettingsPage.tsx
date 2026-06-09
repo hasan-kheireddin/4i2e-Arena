@@ -304,18 +304,6 @@ export default function SettingsPage() {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                   />
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-primary">
-                      {t('settings.profile.bio')}
-                    </label>
-                    <textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      rows={3}
-                      className="w-full resize-none rounded-xl border border-border bg-input px-4 py-3 text-sm text-primary outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
-                      placeholder={t('settings.profile.bio_placeholder')}
-                    />
-                  </div>
                 </div>
               </SurfaceCard>
               {saveError && (
