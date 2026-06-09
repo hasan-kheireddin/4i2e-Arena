@@ -44,6 +44,71 @@ class LeaderboardQuerySerializer(serializers.Serializer):
     )
 
 
+class CreateLocalMatchSerializer(serializers.Serializer):
+    """Validate local/frontend-recorded match payloads."""
+
+    game_type = serializers.ChoiceField(choices=["pong", "tictactoe"])
+    game_mode = serializers.ChoiceField(
+        choices=["pvp", "pva", "pve"],
+        required=False,
+        default="pvp",
+    )
+    winner = serializers.ChoiceField(
+        choices=["X", "O"],
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    duration_seconds = serializers.FloatField(
+        required=False,
+        default=0.0,
+        min_value=0,
+    )
+    player1_score = serializers.IntegerField(
+        required=False,
+        default=0,
+        min_value=0,
+    )
+    player2_score = serializers.IntegerField(
+        required=False,
+        default=0,
+        min_value=0,
+    )
+    ai_difficulty = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        max_length=20,
+    )
+    metadata = serializers.JSONField(required=False, default=dict)
+
+    def validate_metadata(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Metadata must be an object.")
+        return value
+
+    def validate(self, attrs):
+        winner = attrs.get("winner")
+        player1_score = attrs["player1_score"]
+        player2_score = attrs["player2_score"]
+
+        if winner is None:
+            if player1_score != player2_score:
+                raise serializers.ValidationError({
+                    "winner": "Winner may be omitted only for a draw.",
+                })
+        elif winner == "X" and player1_score <= player2_score:
+            raise serializers.ValidationError({
+                "winner": "Winner X must have a higher player1_score.",
+            })
+        elif winner == "O" and player2_score <= player1_score:
+            raise serializers.ValidationError({
+                "winner": "Winner O must have a higher player2_score.",
+            })
+
+        return attrs
+
+
 class MatchQuerySerializer(serializers.Serializer):
     """Validate query parameters for match list endpoints."""
 
@@ -99,6 +164,7 @@ class MatchQuerySerializer(serializers.Serializer):
         required=False,
     )
 
+
 class MatchPlayerSerializer(serializers.ModelSerializer):
     """Serializes a single player's participation in a match."""
 
@@ -140,6 +206,7 @@ class MatchListSerializer(serializers.ModelSerializer):
     winner_username = serializers.CharField(
         source="winner.username", read_only=True, allow_null=True,
     )
+
     class Meta:
         model = Match
         fields = [

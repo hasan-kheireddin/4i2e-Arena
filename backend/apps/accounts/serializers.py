@@ -11,6 +11,7 @@ from .validators import (
 
 User = get_user_model()
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializes the public profile of a user.
@@ -70,12 +71,21 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        """Ensure the two password fields match."""
+        """Ensure passwords match and the effective display name is available."""
         if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError(
                 {"password2": "Passwords do not match."}
             )
+
+        display_name = attrs.get("display_name", "").strip()
+        effective_display_name = display_name or attrs["username"].strip()
+        if User.objects.filter(display_name__iexact=effective_display_name).exists():
+            raise serializers.ValidationError({
+                "display_name": "This display name is already taken.",
+            })
+        attrs["display_name"] = display_name
         return attrs
+
 
 class LoginSerializer(serializers.Serializer):
     """
@@ -111,7 +121,12 @@ class LoginSerializer(serializers.Serializer):
 
         if user_obj is not None and user_obj.is_oauth_user:
             raise serializers.ValidationError(
-                {"detail": "This account uses 42 OAuth sign-in. Use the 42 login button."}
+                {
+                    "detail": (
+                        "This account uses 42 OAuth sign-in. "
+                        "Use the 42 login button."
+                    )
+                }
             )
 
         user = authenticate(username=username_or_email, password=password)
@@ -128,6 +143,7 @@ class LoginSerializer(serializers.Serializer):
 
         attrs["user"] = user
         return attrs
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """
@@ -149,6 +165,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 "Display name must be at least 2 characters."
             )
         return value
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     """

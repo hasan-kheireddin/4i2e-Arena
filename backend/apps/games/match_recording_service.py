@@ -17,12 +17,13 @@ from apps.games.session import (
     GameSession,
     GameType,
 )
-from apps.games.stats_service import invalidate_user_stats
+from apps.games.stats_service import invalidate_match_stats
 from apps.analytics.tracking_service import track_match_completed
 
 logger = logging.getLogger("games.match_recording")
 
 User = get_user_model()
+
 
 async def record_match(
     session: GameSession,
@@ -51,6 +52,7 @@ async def record_match(
 
     match_id = await _create_match_record(session, xp_awards=xp_awards)
     return match_id
+
 
 @sync_to_async
 def _create_match_record(
@@ -143,8 +145,10 @@ def _create_match_record(
     )
 
     # Invalidate cached stats for all human participants
-    for _slot, player_slot in session.players.items():
-        invalidate_user_stats(player_slot.user_id)
+    invalidate_match_stats([
+        player_slot.user_id
+        for player_slot in session.players.values()
+    ])
 
     # Track activity analytics only for online Pong matches.
     if game_type == DBGameType.PONG and game_mode == GameMode.PVP:
@@ -166,6 +170,7 @@ def _create_match_record(
             )
 
     return str(match.id)
+
 
 def _map_game_type(game_type: GameType) -> str:
     """Map in-memory GameType enum to DB GameType choice."""
@@ -259,6 +264,7 @@ def _resolve_winner_user_id(session: GameSession) -> int | None:
 
     return None
 
+
 def _extract_scores(session: GameSession) -> tuple[int, int]:
     """
     Extract player 1 / player 2 scores from the engine state.
@@ -324,6 +330,7 @@ def _get_player_score(session: GameSession, slot: int) -> int:
         return 0
 
     return 0
+
 
 def _extract_metadata(session: GameSession) -> dict[str, Any]:
     """

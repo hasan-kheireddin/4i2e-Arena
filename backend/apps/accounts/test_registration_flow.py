@@ -25,7 +25,11 @@ class RegistrationFlowTests(TestCase):
 
     @patch("apps.accounts.views.send_otp_email")
     def test_register_creates_pending_registration_not_user(self, mock_send_otp):
-        response = self.client.post("/api/accounts/register/", self.payload, format="json")
+        response = self.client.post(
+            "/api/accounts/register/",
+            self.payload,
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(User.objects.count(), 0)
@@ -55,8 +59,15 @@ class RegistrationFlowTests(TestCase):
         self.assertEqual(response.json()["user"]["email"], "player@example.com")
 
     @patch("apps.accounts.views.send_otp_email")
-    def test_reregister_same_pending_account_does_not_fail_as_existing_user(self, mock_send_otp):
-        first = self.client.post("/api/accounts/register/", self.payload, format="json")
+    def test_reregister_same_pending_account_does_not_fail_as_existing_user(
+        self,
+        mock_send_otp,
+    ):
+        first = self.client.post(
+            "/api/accounts/register/",
+            self.payload,
+            format="json",
+        )
         self.assertEqual(first.status_code, 201)
 
         second_payload = {
@@ -64,7 +75,11 @@ class RegistrationFlowTests(TestCase):
             "password": "DifferentPass1!",
             "password2": "DifferentPass1!",
         }
-        second = self.client.post("/api/accounts/register/", second_payload, format="json")
+        second = self.client.post(
+            "/api/accounts/register/",
+            second_payload,
+            format="json",
+        )
 
         self.assertEqual(second.status_code, 201)
         self.assertEqual(User.objects.count(), 0)
@@ -73,6 +88,91 @@ class RegistrationFlowTests(TestCase):
         self.assertTrue(pending.code)
         self.assertTrue(pending.password_hash)
         self.assertEqual(mock_send_otp.call_count, 2)
+
+    @patch("apps.accounts.views.send_otp_email")
+    def test_register_duplicate_display_name_returns_400(self, mock_send_otp):
+        User.objects.create_user(
+            username="ExistingPlayer",
+            email="existing@example.com",
+            password="StrongPass1!",
+            display_name="Taken Name",
+        )
+        payload = {
+            **self.payload,
+            "username": "AnotherPlayer",
+            "email": "another@example.com",
+            "display_name": "Taken Name",
+        }
+
+        response = self.client.post("/api/accounts/register/", payload, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("display_name", response.json())
+        self.assertEqual(PendingRegistration.objects.count(), 0)
+        mock_send_otp.assert_not_called()
+
+    def test_verify_email_duplicate_display_name_returns_400(self):
+        User.objects.create_user(
+            username="VerifiedPlayer",
+            email="verified@example.com",
+            password="StrongPass1!",
+            display_name="Verified Name",
+        )
+        pending = PendingRegistration(
+            username="PendingPlayer",
+            email="pending@example.com",
+            display_name="Verified Name",
+        )
+        pending.set_password("StrongPass1!")
+        pending.issue_code()
+        pending.save()
+
+        response = self.client.post(
+            "/api/accounts/verify-email/",
+            {"email": pending.email, "code": pending.code},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("display_name", response.json())
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(PendingRegistration.objects.count(), 1)
+
+    def test_profile_preferred_language_accepts_supported_languages(self):
+        user = User.objects.create_user(
+            username="LanguagePlayer",
+            email="language@example.com",
+            password="StrongPass1!",
+        )
+        self.client.force_authenticate(user=user)
+
+        for language in ["en", "fr", "de", "ar"]:
+            with self.subTest(language=language):
+                response = self.client.patch(
+                    "/api/accounts/me/update/",
+                    {"preferred_language": language},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 200)
+                user.refresh_from_db()
+                self.assertEqual(user.preferred_language, language)
+
+    def test_profile_preferred_language_rejects_invalid_language(self):
+        user = User.objects.create_user(
+            username="InvalidLanguagePlayer",
+            email="invalid-language@example.com",
+            password="StrongPass1!",
+        )
+        self.client.force_authenticate(user=user)
+
+        response = self.client.patch(
+            "/api/accounts/me/update/",
+            {"preferred_language": "es"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("preferred_language", response.json())
 
     @override_settings(ALLOWED_HOSTS=["*"])
     def test_oauth_initiate_uses_request_host_when_redirect_env_is_blank(self):

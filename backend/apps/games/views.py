@@ -19,14 +19,19 @@
 # =============================================================================
 
 from __future__ import annotations
+import uuid
+from datetime import timedelta
+
 from django.db.models import Exists, IntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce, Greatest
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from apps.games.models import Match, MatchPlayer
+from apps.games.models import FinishReason, GameMode, Match, MatchOutcome, MatchPlayer
 from apps.games.serializers import (
+    CreateLocalMatchSerializer,
     LeaderboardQuerySerializer,
     MatchDetailSerializer,
     MatchListSerializer,
@@ -37,6 +42,7 @@ from apps.games.stats_service import (
     get_head_to_head,
     get_leaderboard,
     get_user_stats,
+    invalidate_match_stats,
 )
 
 
@@ -193,6 +199,21 @@ def _apply_user_filters(queryset, params, user):
     return queryset
 
 
+def _apply_public_pvp_scope(queryset, user_id=None):
+    queryset = (
+        queryset
+        .filter(game_mode=GameMode.PVP)
+        .exclude(game_session_id__startswith="local-")
+        .filter(Q(ai_difficulty="") | Q(ai_difficulty__isnull=True))
+    )
+    if user_id is not None:
+        public_opponent = MatchPlayer.objects.filter(
+            match_id=OuterRef("pk"),
+        ).exclude(user_id=user_id)
+        queryset = queryset.filter(Exists(public_opponent))
+    return queryset
+
+
 class MatchListView(generics.ListAPIView):
     """
     List all recorded matches with filtering and pagination.
@@ -285,12 +306,12 @@ class UserMatchHistoryView(generics.ListAPIView):
             Match.objects
             .filter(
                 players__user_id=user_id,
-                game_mode__in=["pvp"],
             )
             .select_related("winner")
             .prefetch_related("players__user")
         )
         qs = _apply_match_filters(qs, params)
+        qs = _apply_public_pvp_scope(qs, user_id=user_id)
         qs = _annotate_sort_score(qs)
         qs = _apply_ordering(qs, params.get("ordering"))
         return qs.distinct()
@@ -398,6 +419,7 @@ class MatchSummaryView(APIView):
             "recent_form": recent_form,
         }, status=status.HTTP_200_OK)
 
+
 def _compute_streak(outcomes: list[str]) -> dict[str, str | int]:
     """
     Compute the current streak from a list of outcomes
@@ -429,6 +451,7 @@ def _longest_win_streak(outcomes: list[str]) -> int:
             current = 0
     return max_streak
 
+
 class UserStatsView(APIView):
     """
     Return comprehensive statistics for the authenticated user.
@@ -452,6 +475,7 @@ class UserStatsView(APIView):
         stats = get_user_stats(request.user.pk, game_type=game_type, mode=mode)
         return Response(stats, status=status.HTTP_200_OK)
 
+
 class PublicUserStatsView(APIView):
     """
     Return statistics for any user (public view).
@@ -470,12 +494,7 @@ class PublicUserStatsView(APIView):
         query.is_valid(raise_exception=True)
 
         game_type = query.validated_data.get("game_type")
-        mode = query.validated_data.get("mode")
-        stats = get_user_stats(user_id, game_type=game_type, mode=mode)
-
-        # Remove AI-mode data from public view
-        stats.get("by_game_mode", {}).pop("pva", None)
-        stats.get("by_game_mode", {}).pop("pve", None)
+        stats = get_user_stats(user_id, game_type=game_type, mode="pvp")
 
         return Response(stats, status=status.HTTP_200_OK)
 
@@ -491,6 +510,7 @@ class HeadToHeadView(APIView):
     def get(self, request, opponent_id):
         stats = get_head_to_head(request.user.pk, opponent_id)
         return Response(stats, status=status.HTTP_200_OK)
+
 
 class LeaderboardView(APIView):
     """
@@ -535,49 +555,39 @@ class LeaderboardView(APIView):
 class CreateLocalMatchView(APIView):
     """
     Create a match record for a local (frontend-only) game.
-    
+
     Used when playing locally or vs AI without WebSocket connection.
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        from datetime import datetime, timezone as tz
-        from apps.games.models import Match, MatchPlayer, GameType, GameMode, FinishReason, MatchOutcome
-        from django.utils import timezone as dj_tz
-        import uuid
-
-        data = request.data
+        serializer = CreateLocalMatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
         user = request.user
 
-        # Validate required fields
-        game_type = data.get("game_type")
-        if game_type not in ("pong", "tictactoe"):
-            return Response({"error": "Invalid game_type"}, status=status.HTTP_400_BAD_REQUEST)
-
-        game_mode_input = data.get("game_mode", "pvp")
-        if game_mode_input not in ("pvp", "pva", "pve"):
-            return Response({"error": "Invalid game_mode"}, status=status.HTTP_400_BAD_REQUEST)
-        game_mode_str = "pva" if game_mode_input in ("pva", "pve") else "pvp"
-
-        # Extract result
-        winner = data.get("winner")  # "X", "O", or None for draw
-        duration_seconds = float(data.get("duration_seconds", 0))
+        game_type = data["game_type"]
+        game_mode_input = data.get("game_mode", GameMode.PVP)
+        game_mode_str = (
+            GameMode.PVA
+            if game_mode_input in (GameMode.PVA, "pve")
+            else GameMode.PVP
+        )
+        winner = data.get("winner")
+        duration_seconds = data["duration_seconds"]
         ai_difficulty = data.get("ai_difficulty", "")
-        player1_score = int(data.get("player1_score", 0))
-        player2_score = int(data.get("player2_score", 0))
+        player1_score = data["player1_score"]
+        player2_score = data["player2_score"]
 
         # Determine finish reason
-        if winner is None:
-            finish_reason = FinishReason.DRAW
-        else:
-            finish_reason = FinishReason.SCORE
+        finish_reason = FinishReason.DRAW if winner is None else FinishReason.SCORE
 
         # Determine winner
         winner_user = None
         player_outcome = MatchOutcome.DRAW
-        
-        if game_mode_str == "pva":
+
+        if game_mode_str == GameMode.PVA:
             # Player is always slot 1 (X), AI is slot 2 (O)
             if winner == "X":
                 winner_user = user
@@ -594,8 +604,11 @@ class CreateLocalMatchView(APIView):
                 player_outcome = MatchOutcome.LOSS
 
         # Create match
-        now = dj_tz.now()
-        started_at = now - dj_tz.timedelta(seconds=duration_seconds)
+        now = timezone.now()
+        started_at = now - timedelta(seconds=duration_seconds)
+        metadata = dict(data.get("metadata") or {})
+        if winner is not None:
+            metadata.setdefault("winner_symbol", winner)
 
         match = Match.objects.create(
             game_session_id=f"local-{uuid.uuid4().hex[:16]}",
@@ -609,7 +622,7 @@ class CreateLocalMatchView(APIView):
             player1_score=player1_score,
             player2_score=player2_score,
             ai_difficulty=ai_difficulty,
-            metadata=data.get("metadata", {}),
+            metadata=metadata,
         )
 
         # Create player record
@@ -623,8 +636,7 @@ class CreateLocalMatchView(APIView):
         )
 
         # Invalidate stats cache
-        from apps.games.stats_service import invalidate_user_stats
-        invalidate_user_stats(user.pk)
+        invalidate_match_stats([user.pk])
 
         return Response({
             "match_id": str(match.id),

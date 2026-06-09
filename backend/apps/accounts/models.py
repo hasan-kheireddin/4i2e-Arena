@@ -18,7 +18,12 @@ class User(AbstractUser):
     avatar_url = models.URLField(max_length=500, blank=True, default="")
     preferred_language = models.CharField(
         max_length=5,
-        choices=[("en", "English"), ("fr", "French"), ("ar", "Arabic")],
+        choices=[
+            ("en", "English"),
+            ("fr", "French"),
+            ("de", "German"),
+            ("ar", "Arabic"),
+        ],
         default="en",
     )
     xp = models.PositiveIntegerField(default=0, db_index=True)
@@ -96,6 +101,7 @@ class PendingRegistration(models.Model):
         self.code = str(random.randint(100000, 999999))
         self.expires_at = timezone.now() + timezone.timedelta(minutes=15)
 
+
 class OAuthAccount(models.Model):
     """
     Links a third-party OAuth provider (42) to a local User.
@@ -128,7 +134,7 @@ class OAuthAccount(models.Model):
 
     def __str__(self):
         return f"{self.provider} – {self.user.username}"
-    
+
 
 class TOTPDevice(models.Model):
     """

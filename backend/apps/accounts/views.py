@@ -1,7 +1,9 @@
 import logging
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -9,13 +11,19 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-from django.contrib.auth import get_user_model
+
+from apps.analytics.tracking_service import (
+    get_client_ip,
+    get_user_agent,
+    track_login,
+    track_logout,
+    track_profile_updated,
+    track_registration,
+)
+
+from .email_service import send_otp_email, send_password_reset_email
 from .models import EmailVerificationToken, PendingRegistration, TOTPDevice
 from .safety import non_blocking
-from .twofa_views import _issue_temp_token
-
-logger = logging.getLogger(__name__)
-from .email_service import send_otp_email, send_password_reset_email
 from .serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
@@ -27,16 +35,10 @@ from .serializers import (
     VerifyEmailSerializer,
     get_tokens_for_user,
 )
+from .twofa_views import _issue_temp_token
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
-from apps.analytics.tracking_service import (
-    get_client_ip,
-    get_user_agent,
-    track_login,
-    track_logout,
-    track_profile_updated,
-    track_registration,
-)
 safe_track_registration = non_blocking(track_registration)
 safe_track_login = non_blocking(track_login)
 safe_track_logout = non_blocking(track_logout)
@@ -45,6 +47,28 @@ safe_track_profile_updated = non_blocking(track_profile_updated)
 
 def _request_origin(request) -> str:
     return f"{request.scheme}://{request.get_host()}".rstrip("/")
+
+
+def _effective_display_name(username: str, display_name: str) -> str:
+    return display_name.strip() or username.strip()
+
+
+def _display_name_taken_response():
+    return Response(
+        {"display_name": ["This display name is already taken."]},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+def _pending_display_name_conflicts(display_name: str, pending_pk=None) -> bool:
+    queryset = PendingRegistration.objects.select_for_update().filter(
+        Q(display_name__iexact=display_name)
+        | (Q(display_name="") & Q(username__iexact=display_name))
+    )
+    if pending_pk is not None:
+        queryset = queryset.exclude(pk=pending_pk)
+    return queryset.exists()
+
 
 class RegisterView(APIView):
     """
@@ -93,6 +117,18 @@ class RegisterView(APIView):
                 )
 
             pending = pending_by_email or pending_by_username or PendingRegistration()
+            effective_display_name = _effective_display_name(username, display_name)
+            if User.objects.filter(
+                display_name__iexact=effective_display_name,
+            ).exists():
+                return _display_name_taken_response()
+
+            if _pending_display_name_conflicts(
+                effective_display_name,
+                pending.pk,
+            ):
+                return _display_name_taken_response()
+
             pending.username = username
             pending.email = email
             pending.display_name = display_name
@@ -115,6 +151,7 @@ class RegisterView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
 
 class LoginView(APIView):
     """
@@ -219,6 +256,7 @@ class LogoutView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class CustomTokenRefreshView(TokenRefreshView):
     """
     Accepts a refresh token and returns a new access + refresh token pair.
@@ -231,7 +269,7 @@ class CustomTokenRefreshView(TokenRefreshView):
         try:
             return super().post(request, *args, **kwargs)
         except TokenError as e:
-            # Token is blacklisted, expired, or invalid — return 401 instead of 500
+            # Token is blacklisted, expired, or invalid.
             return Response(
                 {"detail": str(e), "code": "token_not_valid"},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -244,6 +282,7 @@ class CustomTokenRefreshView(TokenRefreshView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+
 class ProfileView(generics.RetrieveAPIView):
     """
     Return the authenticated user's full profile.
@@ -254,6 +293,7 @@ class ProfileView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
 
 class ProfileUpdateView(generics.UpdateAPIView):
     """
@@ -267,7 +307,7 @@ class ProfileUpdateView(generics.UpdateAPIView):
 
     def get_object(self):
         return self.request.user
-    
+
     def perform_update(self, serializer):
         instance = serializer.save()
         changed = list(serializer.validated_data.keys())
@@ -363,6 +403,23 @@ class VerifyEmailView(APIView):
                         "detail": (
                             "That email is already associated with an account."
                         )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            effective_display_name = _effective_display_name(
+                pending.username,
+                pending.display_name,
+            )
+            if User.objects.filter(
+                display_name__iexact=effective_display_name,
+            ).exists():
+                return Response(
+                    {
+                        "display_name": [
+                            "That display name is no longer available. "
+                            "Please register again."
+                        ]
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
