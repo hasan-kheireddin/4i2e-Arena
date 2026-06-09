@@ -113,6 +113,16 @@ function App() {
             }
           />
           <Route
+            path="/profile/:userId"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/achievements"
             element={
               <ProtectedRoute>

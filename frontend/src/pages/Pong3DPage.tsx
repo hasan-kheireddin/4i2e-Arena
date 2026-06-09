@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { createLocalMatch } from '../services/games';
+import { getOrCreateDM } from '../services/chat';
 import Renderer3D from '../components/Renderer3D/Renderer';
 import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay, { useFloatingEmotes } from '../components/Chat/FloatingEmote';
+import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 
 const DEBUG = false;
 function debugLog(...args: unknown[]) {
@@ -138,7 +140,8 @@ export default function Pong3DPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode') ?? 'local';
-  const mode: Mode = rawMode === 'online' ? 'online' : rawMode === 'ai' ? 'ai' : 'local';
+  const hasGameId = searchParams.has('game_id');
+  const mode: Mode = hasGameId ? 'online' : rawMode === 'online' ? 'online' : rawMode === 'ai' ? 'ai' : 'local';
   const rawDiff = searchParams.get('difficulty') ?? 'medium';
   const difficulty: Difficulty = (['easy', 'medium', 'hard'] as Difficulty[]).includes(rawDiff as Difficulty)
     ? rawDiff as Difficulty : 'medium';
@@ -206,6 +209,16 @@ export default function Pong3DPage() {
 
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
+
+  useEffect(() => {
+    const gid = searchParams.get('game_id');
+    if (gid) {
+      setGameId(gid);
+      setGamePath(`/ws/game/pong/${gid}/`);
+      setOnlinePhase('waiting');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const prevDirectionRef = useRef<'up' | 'down' | 'stop'>('stop');
 
@@ -524,6 +537,18 @@ export default function Pong3DPage() {
         }
         setOnlinePhase('over');
       } else if (type === 'both_connected') {
+        const info = data.game_info as Record<string, unknown> | undefined;
+        if (info) {
+          const players = info.players as Record<string, { user_id: string; username: string }> | undefined;
+          if (players) {
+            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
+            const opp = players[oppSlot];
+            if (opp) {
+              setOpponentName(opp.username);
+              getOrCreateDM(opp.user_id).catch(() => {});
+            }
+          }
+        }
       } else if (type === 'player_ready') {
         const slot = data.slot as number;
         if (slot === mySlotRef.current) setIReady(true);
@@ -532,6 +557,14 @@ export default function Pong3DPage() {
         const slot = data.slot as number;
         const connected = data.connected as boolean;
         if (slot !== mySlotRef.current) setOpponentLeft(!connected);
+        const info = data.game_info as Record<string, unknown> | undefined;
+        if (info) {
+          const players = info.players as Record<string, { username: string }> | undefined;
+          if (players) {
+            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
+            if (players[oppSlot]) setOpponentName(players[oppSlot].username);
+          }
+        }
       } else if (type === 'game_paused') {
         setGamePaused(true);
       } else if (type === 'player_left') {
@@ -795,6 +828,7 @@ export default function Pong3DPage() {
     : { 1: gameState.current.p1, 2: gameState.current.p2 };
 
   return (
+    <>
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="max-w-[54rem] w-full space-y-4">
         <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
@@ -1046,5 +1080,7 @@ export default function Pong3DPage() {
         </div>
       </div>
     </div>
+      <FloatingChatWidget />
+    </>
   );
 }

@@ -1,7 +1,6 @@
 import { EMOTES, type EmoteDef } from "../../assets/emotes/emotes";
 import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 
-
 interface EmotePaletteProps {
   onEmote: (emote: EmoteDef) => void;
   inline?: boolean;

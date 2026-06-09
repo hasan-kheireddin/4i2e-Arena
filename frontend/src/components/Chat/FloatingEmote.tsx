@@ -1,14 +1,12 @@
 import { useRef, useState } from "react";
 import { EMOTES } from "../../assets/emotes/emotes";
-import { playEmoteSound, playEmoteMp3 } from "../../assets/emotes/sound";
+import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 
 interface FloatingEmoteData {
   id: number;
   emoji: string;
   webp?: string;
   color: string;
-  soundFreq: number;
-  soundDuration: number;
   side: "left" | "right";
   x: number;
   y: number;
@@ -31,8 +29,6 @@ export function useFloatingEmotes() {
       emoji: def.emoji,
       webp: def.webp,
       color: def.color,
-      soundFreq: def.soundFreq,
-      soundDuration: def.soundDuration,
       side,
       username,
       x: side === "left" ? 30 + Math.random() * 20 : 50 + Math.random() * 20,
@@ -56,8 +52,6 @@ export function useFloatingEmotes() {
       emoji: def.emoji,
       webp: def.webp,
       color: def.color,
-      soundFreq: def.soundFreq,
-      soundDuration: def.soundDuration,
       side: isLeft ? "left" : "right",
       x: isLeft ? 2 + Math.random() * 10 : 88 + Math.random() * 10,
       y: 10 + Math.random() * 80,
@@ -93,7 +87,7 @@ export default function FloatingEmoteOverlay({ emotes, flipped }: FloatingEmoteO
             }}
           >
             {emote.webp ? (
-              <img src={emote.webp} alt="" className="w-24 h-24" style={{ imageRendering: "auto" }} />
+              <img src={emote.webp} alt="" className="w-24 h-24 object-contain" style={{ imageRendering: "auto" }} />
             ) : (
               <span style={{ fontSize: "3rem", lineHeight: 1 }}>{emote.emoji}</span>
             )}

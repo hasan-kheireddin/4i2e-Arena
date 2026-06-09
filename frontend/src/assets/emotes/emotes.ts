@@ -3,10 +3,10 @@ export interface EmoteDef {
   label: string;
   emoji: string;
   color: string;
-  soundFreq: number;
-  soundDuration: number;
   webp?: string;
   mp3?: string;
+  soundFreq: number;
+  soundDuration: number;
 }
 
 export const EMOTES: EmoteDef[] = [

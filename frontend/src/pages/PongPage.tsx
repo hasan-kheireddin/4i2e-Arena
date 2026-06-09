@@ -6,6 +6,8 @@ import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay, { useFloatingEmotes } from '../components/Chat/FloatingEmote';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { createLocalMatch } from '../services/games';
+import { getOrCreateDM } from '../services/chat';
+import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 
 interface PaddleState { y: number }
 interface BallState { x: number; y: number; vx: number; vy: number }
@@ -194,7 +196,8 @@ export default function PongPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode') ?? 'local';
-  const mode: Mode = rawMode === 'online' ? 'online' : rawMode === 'ai' ? 'ai' : 'local';
+  const hasGameId = searchParams.has('game_id');
+  const mode: Mode = hasGameId ? 'online' : rawMode === 'online' ? 'online' : rawMode === 'ai' ? 'ai' : 'local';
   // Difficulty is locked at start — read once from URL, never changes
   const rawDiff = searchParams.get('difficulty') ?? 'medium';
   const difficulty: Difficulty = (['easy','medium','hard'] as Difficulty[]).includes(rawDiff as Difficulty)
@@ -271,6 +274,17 @@ export default function PongPage() {
 
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
+
+  // Check for direct game_id param (from game invite)
+  useEffect(() => {
+    const gid = searchParams.get('game_id');
+    if (gid) {
+      setGameId(gid);
+      setGamePath(`/ws/game/pong/${gid}/`);
+      setOnlinePhase('waiting');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Tracks last sent direction to avoid spamming identical messages
   const prevDirectionRef = useRef<'up' | 'down' | 'stop'>('stop');
@@ -603,7 +617,18 @@ export default function PongPage() {
         }
         setOnlinePhase('over');
       } else if (type === 'both_connected') {
-        // Both players joined the lobby — ready to accept Ready clicks
+        const info = data.game_info as Record<string, unknown> | undefined;
+        if (info) {
+          const players = info.players as Record<string, { user_id: string; username: string }> | undefined;
+          if (players) {
+            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
+            const opp = players[oppSlot];
+            if (opp) {
+              setOpponentName(opp.username);
+              getOrCreateDM(opp.user_id).catch(() => {});
+            }
+          }
+        }
       } else if (type === 'player_ready') {
         const slot = data.slot as number;
         if (slot === mySlotRef.current) {
@@ -616,6 +641,14 @@ export default function PongPage() {
         const connected = data.connected as boolean;
         if (slot !== mySlotRef.current) {
           setOpponentLeft(!connected);
+        }
+        const info = data.game_info as Record<string, unknown> | undefined;
+        if (info) {
+          const players = info.players as Record<string, { username: string }> | undefined;
+          if (players) {
+            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
+            if (players[oppSlot]) setOpponentName(players[oppSlot].username);
+          }
         }
       } else if (type === 'game_paused') {
         setGamePaused(true);
@@ -1176,6 +1209,7 @@ export default function PongPage() {
           </div>
         </div>
       </div>
+      <FloatingChatWidget />
     </div>
   );
 }

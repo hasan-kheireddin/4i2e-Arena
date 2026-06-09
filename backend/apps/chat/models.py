@@ -64,6 +64,8 @@ class ChannelMembership(models.Model):
     )
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default=ROLE_MEMBER)
     muted_until = models.DateTimeField(null=True, blank=True)
+    notifications_muted = models.BooleanField(default=False)
+    read_until = models.DateTimeField(null=True, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -80,6 +82,66 @@ class ChannelMembership(models.Model):
         if self.muted_until is None:
             return False
         return timezone.now() < self.muted_until
+
+
+class Friendship(models.Model):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    BLOCKED = "blocked"
+
+    STATUS_CHOICES = [
+        (PENDING, "Pending"),
+        (ACCEPTED, "Accepted"),
+        (BLOCKED, "Blocked"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="friend_requests_sent",
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="friend_requests_received",
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "chat_friendships"
+        unique_together = [("from_user", "to_user")]
+        verbose_name = "Friendship"
+        verbose_name_plural = "Friendships"
+
+    def __str__(self):
+        return f"{self.from_user.username} → {self.to_user.username} ({self.status})"
+
+
+class Block(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    blocker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="blocking",
+    )
+    blocked = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="blocked_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "chat_blocks"
+        unique_together = [("blocker", "blocked")]
+        verbose_name = "Block"
+        verbose_name_plural = "Blocks"
+
+    def __str__(self):
+        return f"{self.blocker.username} blocked {self.blocked.username}"
 
 
 class Message(models.Model):
