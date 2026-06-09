@@ -1084,35 +1084,79 @@ export default function PongPage() {
         </div>
 
         {/* Controls Bar */}
-        <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {mode === 'local' ? (
-              <>
-                <span><span className="font-bold" style={{ color: '#3B82F6' }}>{localPlayerNames.p1.trim() || t('pong.player1_short')}</span> {t('pong.controls_p1')}</span>
-                <span className="opacity-30">|</span>
-                <span><span className="font-bold" style={{ color: '#EF4444' }}>{localPlayerNames.p2.trim() || t('pong.player2_short')}</span> {t('pong.controls_p2')}</span>
-              </>
-            ) : (
-              <span>{t('pong.controls_shared')}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {mode === 'online' && onlinePhase === 'playing' && (
-              <button
-                onClick={handleForfeit}
-                className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
-                style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
-              >
-                {t('pong.forfeit')}
-              </button>
-            )}
-          </div>
-        </div>
+    <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
+      <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+        {mode === 'local' ? (
+          <>
+            <span><span className="font-bold" style={{ color: '#3B82F6' }}>{localPlayerNames.p1.trim() || t('pong.player1_short')}</span> {t('pong.controls_p1')}</span>
+            <span className="opacity-30">|</span>
+            <span><span className="font-bold" style={{ color: '#EF4444' }}>{localPlayerNames.p2.trim() || t('pong.player2_short')}</span> {t('pong.controls_p2')}</span>
+          </>
+        ) : (
+          <span>{t('pong.controls_shared')}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+
+        {/* ⏸️ Pause / ▶️ Resume — local and AI only */}
+        {(mode === 'local' || mode === 'ai') && !gameOver && localNamesReady && (
+          <button
+            onClick={() => {
+              gameOverRef.current = !gameOverRef.current;
+              if (!gameOverRef.current) {
+                localLastFrameTsRef.current = null;
+                localAccumulatorMsRef.current = 0;
+                requestAnimationFrame(animate);
+              }
+            }}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+            style={{
+              backgroundColor: 'var(--color-bg-input)',
+              color: 'var(--color-text-primary)',
+              border: '1px solid var(--color-border)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
+          >
+            {gameOverRef.current ? '▶️ Resume' : '⏸️ Pause'}
+          </button>
+        )}
+
+        {/* 🚪 Exit — local and AI only */}
+        {(mode === 'local' || mode === 'ai') && !gameOver && localNamesReady && (
+          <button
+            onClick={() => navigate('/games/playpage')}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+            style={{
+              backgroundColor: 'var(--color-bg-input)',
+              color: 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
+          >
+            🚪 Exit
+          </button>
+        )}
+
+        {/* 🏳️ Forfeit — online only */}
+        {mode === 'online' && onlinePhase === 'playing' && (
+          <button
+            onClick={handleForfeit}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+            style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
+          >
+            🏳️ {t('pong.forfeit')}
+          </button>
+        )}
+
       </div>
     </div>
-  );
+          </div>
+        </div>
+      );
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
