@@ -642,3 +642,49 @@ class CreateLocalMatchView(APIView):
             "match_id": str(match.id),
             "status": "created"
         }, status=status.HTTP_201_CREATED)
+
+
+class LiveGamesView(APIView):
+    """List currently active (in-progress) game sessions."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.games.session import active_sessions, SessionStatus
+        sessions = active_sessions()
+        games = []
+        for gid, s in sessions.items():
+            if s.status != SessionStatus.PLAYING:
+                continue
+            games.append({
+                "game_id": gid,
+                "game_type": s.game_type.value,
+                "players": [
+                    {"username": ps.username, "slot": ps.slot}
+                    for ps in s.players.values()
+                ],
+                "spectator_count": s.spectator_count,
+            })
+        return Response(games, status=status.HTTP_200_OK)
+
+
+class GameInfoView(APIView):
+    """Get info for a specific active game (for share/spectate)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, game_id):
+        from apps.games.session import get_session
+        session = get_session(game_id)
+        if session is None:
+            return Response({"detail": "Game not found"}, status=404)
+        return Response({
+            "game_id": session.game_id,
+            "game_type": session.game_type.value,
+            "status": session.status.value,
+            "players": {
+                str(slot): {"username": ps.username, "slot": ps.slot}
+                for slot, ps in session.players.items()
+            },
+            "spectator_count": session.spectator_count,
+        })

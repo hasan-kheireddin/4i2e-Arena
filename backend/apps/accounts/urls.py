@@ -22,6 +22,7 @@
 # =============================================================================
 
 from django.urls import path
+from django.urls import path, re_path
 from . import oauth_views, twofa_views, views
 
 urlpatterns = [
@@ -39,6 +40,8 @@ urlpatterns = [
     # Profile
     path("me/", views.ProfileView.as_view(), name="profile"),
     path("me/update/", views.ProfileUpdateView.as_view(), name="profile-update"),
+    path("users/<uuid:pk>/", views.PublicProfileView.as_view(), name="public-profile"),
+    path("users/search/", views.UserSearchView.as_view(), name="user-search"),
     path(
         "me/change-password/",
         views.ChangePasswordView.as_view(),

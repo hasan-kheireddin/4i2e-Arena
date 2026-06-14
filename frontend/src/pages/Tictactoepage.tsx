@@ -5,6 +5,8 @@ import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../lib/utils';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { createLocalMatch } from '../services/games';
+import { getOrCreateDM } from '../services/chat';
+import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 
 type CellValue = 'X' | 'O' | null;
 type GameResult = 'X' | 'O' | 'draw' | null;
@@ -36,7 +38,8 @@ export default function TicTacToePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode') ?? 'local';
-  const mode: Mode = rawMode === 'online' ? 'online' : 'local';
+  const hasGameId = searchParams.has('game_id');
+  const mode: Mode = hasGameId ? 'online' : rawMode === 'online' ? 'online' : 'local';
 
   // ── Local mode state ──────────────────────────────────────────────────────
   const [board, setBoard] = useState<CellValue[]>(Array(9).fill(null));
@@ -75,6 +78,15 @@ export default function TicTacToePage() {
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
 
+  useEffect(() => {
+    const gid = searchParams.get('game_id');
+    if (gid) {
+      setGameId(gid);
+      setGamePath(`/ws/game/tictactoe/${gid}/`);
+      setOnlinePhase('waiting');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const handleFindMatch = useCallback(() => {
     setOnlinePhase('searching');
     setOnlineGameState(null);
@@ -243,7 +255,18 @@ export default function TicTacToePage() {
         setGamePaused(false);
         setOnlinePhase('playing');
       } else if (type === 'both_connected') {
-        // both players in lobby — ready to accept Ready clicks
+        const info = data.game_info as Record<string, unknown> | undefined;
+        if (info) {
+          const players = info.players as Record<string, { user_id: string; username: string }> | undefined;
+          if (players) {
+            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
+            const opp = players[oppSlot];
+            if (opp) {
+              setOpponentName(opp.username);
+              getOrCreateDM(opp.user_id).catch(() => {});
+            }
+          }
+        }
       } else if (type === 'player_ready') {
         const slot = data.slot as number;
         if (slot === mySlotRef.current) {
@@ -256,6 +279,14 @@ export default function TicTacToePage() {
         const connected = data.connected as boolean;
         if (slot !== mySlotRef.current && connected) {
           setOpponentLeftMsg(null);
+        }
+        const info = data.game_info as Record<string, unknown> | undefined;
+        if (info) {
+          const players = info.players as Record<string, { username: string }> | undefined;
+          if (players) {
+            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
+            if (players[oppSlot]) setOpponentName(players[oppSlot].username);
+          }
         }
       } else if (type === 'opponent_left_lobby') {
         setOpponentLeftMsg((data.username as string) || defaultOpponentName);
@@ -491,9 +522,9 @@ export default function TicTacToePage() {
             {mode === 'online' && onlinePhase === 'waiting' && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 z-10 rounded-xl"
                 style={{ backgroundColor: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(8px)' }}>
-              <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                {t('ttt.vs_opponent', { name: opponentName })}
-              </p>
+                <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                  {t('ttt.vs_opponent', { name: opponentName })}
+                </p>
 
                 <div className="flex gap-8 text-sm">
                   <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
@@ -753,6 +784,7 @@ export default function TicTacToePage() {
 
       </div>
     </div>
+      <FloatingChatWidget />
     </>
   );
 }

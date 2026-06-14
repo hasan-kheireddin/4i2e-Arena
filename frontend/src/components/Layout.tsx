@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
 import { trackPageView } from "../services/analytics";
+import FloatingChatWidget from "./Chat/FloatingChatWidget";
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,6 +26,7 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </div>
       </main>
+      <FloatingChatWidget />
     </div>
   );
 }

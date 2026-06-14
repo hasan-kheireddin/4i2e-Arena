@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db import models
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from .validators import (
@@ -19,6 +20,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
 
     is_oauth_user = serializers.ReadOnlyField()
+    friend_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -35,8 +37,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "is_oauth_user",
             "last_activity",
             "date_joined",
+            "friend_count",
         ]
         read_only_fields = fields
+
+    def get_friend_count(self, obj):
+        from apps.chat.models import Friendship
+        return Friendship.objects.filter(
+            models.Q(from_user=obj) | models.Q(to_user=obj),
+            status=Friendship.ACCEPTED,
+        ).count()
 
 
 class RegisterSerializer(serializers.Serializer):

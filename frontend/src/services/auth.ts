@@ -13,6 +13,7 @@ export interface User {
   is_oauth_user: boolean;
   last_activity: string | null;
   date_joined: string;
+  friend_count: number;
 }
 
 export interface Tokens {
@@ -192,6 +193,11 @@ export async function logout(): Promise<void> {
 /** GET /api/accounts/me/ — fetch current user profile */
 export async function getProfile(): Promise<User> {
   return apiFetch<User>(`${AUTH}/me/`);
+}
+
+/** GET /api/accounts/users/<uuid>/ — fetch any user's public profile */
+export async function getUserProfile(userId: string): Promise<User> {
+  return apiFetch<User>(`${AUTH}/users/${userId}/`);
 }
 
 /** PATCH /api/accounts/me/update/ */

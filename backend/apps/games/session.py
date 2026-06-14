@@ -54,6 +54,16 @@ class PlayerSlot:
 
 
 @dataclass
+class SpectatorSlot:
+    """Tracks a spectator connected to a session."""
+    user_id: int | str | uuid.UUID
+    username: str
+    channel_name: str
+    side: int | None                     # 1 (Blue), 2 (Red), or None (neutral)
+    joined_at: float = field(default_factory=time.time)
+
+
+@dataclass
 class GameSession:
     """
     Holds all runtime state for a single game.
@@ -92,6 +102,7 @@ class GameSession:
     tick_task: Any = None
     tick_owner: int | None = None
     disconnect_tasks: dict[int, Any] = field(default_factory=dict, repr=False)
+    spectators: dict[str, SpectatorSlot] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.group_name:
@@ -177,6 +188,18 @@ class GameSession:
         if not self.players:
             return False
         return all(ps.connected for ps in self.players.values())
+
+    @property
+    def spectator_count(self) -> int:
+        return len(self.spectators)
+
+    @property
+    def spectator_count_side1(self) -> int:
+        return sum(1 for s in self.spectators.values() if s.side == 1)
+
+    @property
+    def spectator_count_side2(self) -> int:
+        return sum(1 for s in self.spectators.values() if s.side == 2)
 
     def to_info(self) -> dict[str, Any]:
         """Lobby-safe summary (no engine internals)."""

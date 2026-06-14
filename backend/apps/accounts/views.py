@@ -11,6 +11,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+from .models import EmailVerificationToken, PendingRegistration, TOTPDevice
+from .safety import non_blocking
+from .twofa_views import _issue_temp_token
+
 
 from apps.analytics.tracking_service import (
     get_client_ip,
@@ -294,6 +298,14 @@ class ProfileView(generics.RetrieveAPIView):
     def get_object(self):
         return self.request.user
 
+class PublicProfileView(generics.RetrieveAPIView):
+    """
+    Return any user's public profile by ID.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileSerializer
+    queryset = get_user_model().objects.all()
 
 class ProfileUpdateView(generics.UpdateAPIView):
     """
@@ -572,3 +584,16 @@ class PasswordResetConfirmView(APIView):
             {"detail": "Password reset successfully."},
             status=status.HTTP_200_OK,
         )
+
+
+class UserSearchView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileSerializer
+
+    def get_queryset(self):
+        q = self.request.query_params.get("q", "").strip()
+        if not q or len(q) < 2:
+            return get_user_model().objects.none()
+        return get_user_model().objects.filter(
+            Q(username__icontains=q) | Q(display_name__icontains=q)
+        ).exclude(id=self.request.user.id)[:10]

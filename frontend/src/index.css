@@ -358,3 +358,18 @@ button::-moz-focus-inner {
     background-color: rgba(10, 14, 26, 0.97) !important;
   }
 }
+
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-60px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-120px) scale(0.8);
+  }
+}
