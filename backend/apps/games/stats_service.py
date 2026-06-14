@@ -4,15 +4,16 @@ from datetime import timedelta
 from typing import Any, Optional
 from uuid import UUID
 from django.core.cache import cache
-from django.db import models
 from django.db.models import (
     Avg,
     Case,
     Count,
+    Exists,
     F,
     FloatField,
     Max,
     Min,
+    OuterRef,
     Q,
     Sum,
     Value,
@@ -22,9 +23,7 @@ from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from apps.games.models import (
     GameMode,
-    GameType,
     Match,
-    MatchOutcome,
     MatchPlayer,
 )
 
@@ -33,6 +32,7 @@ logger = logging.getLogger("games.stats")
 
 STATS_CACHE_TTL = 300  # 5 minutes
 LEADERBOARD_CACHE_TTL = 600  # 10 minutes
+
 
 def _user_stats_key(
     user_id: UUID | int,
@@ -45,9 +45,7 @@ def _user_stats_key(
 
 
 def _h2h_key(user_id: UUID | int, opponent_id: UUID | int) -> str:
-    # Canonical ordering so A-vs-B and B-vs-A share the same key
-    a, b = sorted([str(user_id), str(opponent_id)])
-    return f"stats:h2h:{a}:{b}"
+    return f"stats:h2h:{user_id}:vs:{opponent_id}"
 
 
 def _leaderboard_key(
@@ -80,6 +78,30 @@ def invalidate_user_stats(user_id: UUID | int) -> None:
                 cache.delete(_leaderboard_key(gt, period, limit))
 
     logger.debug("Invalidated stats cache for user %s", user_id)
+
+
+def invalidate_head_to_head_stats(user_ids: list[UUID | int]) -> None:
+    """Bust cached H2H statistics for every ordered pair in ``user_ids``."""
+    unique_ids = list(dict.fromkeys(user_ids))
+    if len(unique_ids) < 2:
+        return
+
+    keys = [
+        _h2h_key(user_id, opponent_id)
+        for user_id in unique_ids
+        for opponent_id in unique_ids
+        if user_id != opponent_id
+    ]
+    cache.delete_many(keys)
+    logger.debug("Invalidated H2H stats cache for users %s", unique_ids)
+
+
+def invalidate_match_stats(user_ids: list[UUID | int]) -> None:
+    """Bust all stats caches affected by a match involving ``user_ids``."""
+    unique_ids = list(dict.fromkeys(user_ids))
+    for user_id in unique_ids:
+        invalidate_user_stats(user_id)
+    invalidate_head_to_head_stats(unique_ids)
 
 
 def get_user_stats(
@@ -127,10 +149,16 @@ def _compute_user_stats(
             Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
         )
     elif mode == "pvp":
+        opponent_exists = MatchPlayer.objects.filter(
+            match_id=OuterRef("match_id"),
+        ).exclude(user_id=user_id)
         base_qs = base_qs.filter(
             match__game_mode="pvp",
         ).exclude(
             match__game_session_id__startswith="local-",
+        ).filter(
+            Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
+            Exists(opponent_exists),
         )
     elif mode == "pva":
         base_qs = base_qs.filter(
@@ -409,8 +437,6 @@ def _tictactoe_specific_stats(
 ) -> dict[str, Any]:
     """Tic-Tac-Toe-specific aggregations."""
 
-    wins = qs.filter(outcome="win").count()
-    losses = qs.filter(outcome="loss").count()
     draws_count = qs.filter(outcome="draw").count()
     draw_rate = round(draws_count / total, 4) if total > 0 else 0.0
 
@@ -560,14 +586,14 @@ def _compute_head_to_head(
 
     # Recent matches (last 10)
     recent = (
-        user_parts.order_by("-match__finished_at")[:10]
+        user_parts.order_by("-match__finished_at")
         .values(
-            match_id=F("match__id"),
+            match_uuid=F("match__id"),
             game_type=F("match__game_type"),
             finished_at=F("match__finished_at"),
             user_outcome=F("outcome"),
             user_score=F("score"),
-        )
+        )[:10]
     )
 
     return {
@@ -587,9 +613,11 @@ def _compute_head_to_head(
         },
         "recent_matches": [
             {
-                "match_id": str(r["match_id"]),
+                "match_id": str(r["match_uuid"]),
                 "game_type": r["game_type"],
-                "finished_at": r["finished_at"].isoformat() if r["finished_at"] else None,
+                "finished_at": (
+                    r["finished_at"].isoformat() if r["finished_at"] else None
+                ),
                 "outcome": r["user_outcome"],
                 "score": r["user_score"],
             }

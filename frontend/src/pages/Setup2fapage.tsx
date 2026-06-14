@@ -44,7 +44,7 @@ export default function Setup2FAPage() {
 
     fetchSetup();
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
   const copyToClipboard = async (text: string) => {
     setCopyError("");

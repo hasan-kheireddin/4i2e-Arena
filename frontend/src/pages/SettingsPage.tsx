@@ -80,7 +80,12 @@ export default function SettingsPage() {
 
     try {
       const updated = await updateProfile({ display_name: displayName, preferred_language: language });
-      setUser(updated);
+      if (user) {
+        setUser({
+          ...user,
+          ...updated,
+        });
+      }
     } catch (err: unknown) {
       const e = err as { detail?: string };
       setSaveError(e?.detail ?? t('settings.profile.save_failed'));
@@ -284,10 +289,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-6 flex items-center gap-4">
                   <div>
-                    <Avatar name={displayName || username} size="lg" />
+                    <Avatar name={user?.display_name || user?.username} size="lg" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-primary">{displayName || username}</p>
+                    <p className="text-sm font-medium text-primary">{user?.display_name || user?.username}</p>
                     <p className="text-xs text-muted">{email}</p>
                   </div>
                 </div>
@@ -299,18 +304,6 @@ export default function SettingsPage() {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                   />
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-primary">
-                      {t('settings.profile.bio')}
-                    </label>
-                    <textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      rows={3}
-                      className="w-full resize-none rounded-xl border border-border bg-input px-4 py-3 text-sm text-primary outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
-                      placeholder={t('settings.profile.bio_placeholder')}
-                    />
-                  </div>
                 </div>
               </SurfaceCard>
               {saveError && (

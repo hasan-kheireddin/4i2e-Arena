@@ -87,6 +87,21 @@ export default function TicTacToePage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const handleFindMatch = useCallback(() => {
+    setOnlinePhase('searching');
+    setOnlineGameState(null);
+    setOnlineWinner(null);
+    mySlotRef.current = null;
+    setMySymbol(null);
+    setOpponentName(defaultOpponentName);
+    setGameId(null);
+    setGamePath(null);
+    setQueuePosition(null);
+    setIReady(false);
+    setOpponentReady(false);
+    setGamePaused(false);
+    setMmPath('/ws/matchmaking/');
+  }, [defaultOpponentName]);
 
   // ── Local game handlers ───────────────────────────────────────────────────
   const handleClick = async (i: number) => {
@@ -168,11 +183,7 @@ export default function TicTacToePage() {
   };
 
   // ── Online matchmaking socket ─────────────────────────────────────────────
-  const { send: mmSend } = useGameSocket(mmPath, {
-    onOpen: useCallback(() => {
-      mmSend({ type: 'find_match', game_type: 'tictactoe' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
+  const { send: mmSend, status: mmSocketStatus } = useGameSocket(mmPath, {
     onMessage: useCallback((data: Record<string, unknown>) => {
       if (data.type === 'match_found') {
         const gid = data.game_id as string;
@@ -185,8 +196,14 @@ export default function TicTacToePage() {
       } else if (data.type === 'queue_update') {
         setQueuePosition(data.position as number);
       }
-    }, [defaultOpponentName]),
+    }, []),
   });
+
+  useEffect(() => {
+    if (mmPath && mmSocketStatus === 'open') {
+      mmSend({ type: 'find_match', game_type: 'tictactoe' });
+    }
+  }, [mmPath, mmSocketStatus, mmSend]);
 
   // ── Online game socket ────────────────────────────────────────────────────
   const {
@@ -195,10 +212,6 @@ export default function TicTacToePage() {
     latency: gameLatency,
   } = useGameSocket(gamePath, {
     enableLatencyProbe: true,
-    onOpen: useCallback(() => {
-      if (gameId) gameSend({ type: 'join', game_id: gameId });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gameId]),
     onMessage: useCallback((data: Record<string, unknown>) => {
       const type = data.type as string;
 
@@ -287,25 +300,15 @@ export default function TicTacToePage() {
         setGamePaused(false);
         setOnlinePhase('game_over');
       }
-    }, []),
+    }, [defaultOpponentName]),
   });
 
   // ── Online helpers ────────────────────────────────────────────────────────
-  const handleFindMatch = () => {
-    setOnlinePhase('searching');
-    setOnlineGameState(null);
-    setOnlineWinner(null);
-    mySlotRef.current = null;
-    setMySymbol(null);
-    setOpponentName(defaultOpponentName);
-    setGameId(null);
-    setGamePath(null);
-    setQueuePosition(null);
-    setIReady(false);
-    setOpponentReady(false);
-    setGamePaused(false);
-    setMmPath('/ws/matchmaking/');
-  };
+  useEffect(() => {
+    if (gamePath && gameSocketStatus === 'open' && gameId) {
+      gameSend({ type: 'join', game_id: gameId });
+    }
+  }, [gamePath, gameSocketStatus, gameId, gameSend]);
 
   const handleReady = () => {
     if (iReady) return;
@@ -325,8 +328,7 @@ export default function TicTacToePage() {
     if (mode === 'online' && onlinePhase === 'idle') {
       handleFindMatch();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, onlinePhase, handleFindMatch]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
   const displayBoard = mode === 'online' ? (onlineGameState?.board ?? Array(9).fill(null)) : board;

@@ -100,3 +100,70 @@ The project follows a **full-stack modular architecture** with real-time capabil
 * **Nginx** – Reverse proxy with HTTPS support.
 * **SSL:** Self-signed certificates (development).
 * **Makefile** – Automation for common tasks.
+
+### mjamil part
+
+My part in this project is the entire frontend, built with React + TypeScript + Vite.
+
+_Style & Theme
+The whole UI uses a dark gaming aesthetic with a purple/pink neon color scheme.
+All colors are defined as CSS variables so every component automatically supports dark/light mode:
+
+Dark mode is on by default and toggled via a button that saves the preference to localStorage.
+
+What I Built
+Auth Pages
+
+Login, Register, Forgot Password, Reset Password
+Two-Factor Authentication (setup + verify)
+OAuth callback (Google & 42)
+
+Each auth page has a split layout — form on one side, a custom image on the other. The image switches automatically between a dark version and a light version based on the current theme.
+Dashboard & Layout
+
+Navbar — search bar, notifications, user menu, dark mode toggle
+Sidebar — collapsible navigation with links to all pages
+Dashboard — welcome banner with XP bar, stats, quick play, recent matches, leaderboard preview
+
+Game Pages
+
+Pong — canvas-based game, mouse-controlled paddle, AI opponent, 2D/3D toggle
+Tic-Tac-Toe — win detection, move history, score tracking
+
+Other Pages
+
+Play (game mode + difficulty selector)
+Tournaments (brackets, registration, live status)
+Leaderboard (top 3 podium + rankings table)
+Match History (filters by game and result)
+Analytics (weekly chart, performance metrics)
+Settings (profile, security, notifications, appearance, audio)
+
+
+Login & Register Images
+The login and register pages use a custom split-screen layout.
+The right side shows a themed image that changes based on dark/light mode:
+tsx// Switches image based on current theme
+src={isDark ? loginImgDark : loginImg}
+Images are stored in frontend/src/images/:
+
+loginimg.png — light mode version
+loginimgDark.png — dark mode version
+
+Languages
+The UI supports 4 languages switchable from the Settings page:
+en : English
+fr : Français
+de : Deutsch
+ar : Arabic
+
+Arabic automatically flips the page to right-to-left layout.
+
+Tech Used
+
+React 18 + TypeScript
+Vite
+React Router v6
+Tailwind CSS + CSS Variables
+i18next (translations)
+Canvas API (Pong game)
