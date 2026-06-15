@@ -1156,58 +1156,7 @@ export default function PongPage() {
           )}
         </div>
 
-        {/* Controls Bar */}
-        <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {mode === 'local' ? (
-              <>
-                <span><span className="font-bold" style={{ color: '#3B82F6' }}>{localPlayerNames.p1.trim() || t('pong.player1_short')}</span> {t('pong.controls_p1')}</span>
-                <span className="opacity-30">|</span>
-                <span><span className="font-bold" style={{ color: '#EF4444' }}>{localPlayerNames.p2.trim() || t('pong.player2_short')}</span> {t('pong.controls_p2')}</span>
-              </>
-            ) : (
-              <span>{t('pong.controls_shared')}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {mode === 'online' && onlinePhase === 'playing' && (
-              <>
-                <button
-                  onClick={handleShare}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
-                  style={{
-                    backgroundColor: copied ? 'rgba(34,197,94,0.15)' : 'var(--color-bg-input)',
-                    color: copied ? 'var(--color-success)' : 'var(--color-text-secondary)',
-                    border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'}`,
-                  }}
-                  title="Share spectate link"
-                >
-                  {copied ? '✓ Copied!' : '🔗 Share'}
-                </button>
-                <button
-                  onClick={() => setShowEmotePalette(!showEmotePalette)}
-                  className="px-3 py-1.5 rounded-lg text-lg transition-all duration-200"
-                  style={{
-                    backgroundColor: showEmotePalette ? 'var(--color-primary)' : 'var(--color-bg-input)',
-                    border: '1px solid var(--color-border)',
-                  }}
-                  title="Emotes"
-                >
-                  😂
-                </button>
-                <button
-                  onClick={handleForfeit}
-                  className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
-                  style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
-                >
-                  {t('pong.forfeit')}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        
     <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
       <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
         {mode === 'local' ? (
