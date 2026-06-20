@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import type { TFunction } from 'i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
@@ -12,10 +14,375 @@ type CellValue = 'X' | 'O' | null;
 type GameResult = 'X' | 'O' | 'draw' | null;
 type Mode = 'local' | 'online';
 type OnlinePhase = 'idle' | 'searching' | 'waiting' | 'playing' | 'game_over';
+type SocketMessage = Record<string, unknown>;
 
 interface OnlineGameState {
   board: CellValue[];
   current_turn: 'X' | 'O';
+}
+
+interface LocalScores {
+  X: number;
+  O: number;
+  draw: number;
+}
+
+interface LocalPlayerNames {
+  p1: string;
+  p2: string;
+}
+
+interface GameInfoPlayer {
+  username: string;
+  user_id?: string;
+}
+
+interface MatchmakingMessageContext {
+  setOpponentName: Dispatch<SetStateAction<string>>;
+  setGameId: Dispatch<SetStateAction<string | null>>;
+  setMmPath: Dispatch<SetStateAction<string | null>>;
+  setGamePath: Dispatch<SetStateAction<string | null>>;
+  setOnlinePhase: Dispatch<SetStateAction<OnlinePhase>>;
+  setQueuePosition: Dispatch<SetStateAction<number | null>>;
+}
+
+interface OnlineGameMessageContext {
+  defaultOpponentName: string;
+  mySlot: number | null;
+  setMySlot: (slot: number | null) => void;
+  setOpponentName: Dispatch<SetStateAction<string>>;
+  setGamePath: Dispatch<SetStateAction<string | null>>;
+  setOnlinePhase: Dispatch<SetStateAction<OnlinePhase>>;
+  setMySymbol: Dispatch<SetStateAction<'X' | 'O' | null>>;
+  setOnlineGameState: Dispatch<SetStateAction<OnlineGameState | null>>;
+  setIReady: Dispatch<SetStateAction<boolean>>;
+  setOpponentReady: Dispatch<SetStateAction<boolean>>;
+  setGamePaused: Dispatch<SetStateAction<boolean>>;
+  setOnlineWinner: Dispatch<SetStateAction<'X' | 'O' | 'draw' | null>>;
+  setOpponentLeftMsg: Dispatch<SetStateAction<string | null>>;
+}
+
+const POSITION_NAMES = [
+  'top_left', 'top_center', 'top_right',
+  'mid_left', 'center', 'mid_right',
+  'bot_left', 'bot_center', 'bot_right',
+] as const;
+
+function createEmptyBoard(): CellValue[] {
+  return Array(9).fill(null);
+}
+
+function resolveMode(rawMode: string, hasGameId: boolean): Mode {
+  if (hasGameId) return 'online';
+  return rawMode === 'online' ? 'online' : 'local';
+}
+
+function getOpponentSymbol(mySymbol: 'X' | 'O' | null): 'X' | 'O' | '?' {
+  if (mySymbol === 'X') return 'O';
+  if (mySymbol === 'O') return 'X';
+  return '?';
+}
+
+function getOpponentSlot(slot: number | null): '1' | '2' | null {
+  if (slot === 1) return '2';
+  if (slot === 2) return '1';
+  return null;
+}
+
+function getOpponentFromGameInfo(
+  info: SocketMessage | undefined,
+  mySlot: number | null,
+): GameInfoPlayer | null {
+  const opponentSlot = getOpponentSlot(mySlot);
+  if (!opponentSlot) return null;
+
+  const players = info?.players as Record<string, GameInfoPlayer> | undefined;
+  if (!players) return null;
+
+  return players[opponentSlot] ?? null;
+}
+
+function incrementLocalScore(
+  nextWinner: GameResult,
+  setScores: Dispatch<SetStateAction<LocalScores>>,
+) {
+  if (nextWinner === 'X') {
+    setScores((prev) => ({ ...prev, X: prev.X + 1 }));
+    return;
+  }
+  if (nextWinner === 'O') {
+    setScores((prev) => ({ ...prev, O: prev.O + 1 }));
+    return;
+  }
+  if (nextWinner === 'draw') {
+    setScores((prev) => ({ ...prev, draw: prev.draw + 1 }));
+  }
+}
+
+async function persistFinishedLocalMatch({
+  winner,
+  board,
+  gameStartTime,
+  localPlayerNames,
+}: {
+  winner: GameResult;
+  board: CellValue[];
+  gameStartTime: number | null;
+  localPlayerNames: LocalPlayerNames;
+}) {
+  if (winner === null || !gameStartTime) return;
+
+  const durationSeconds = Math.round((Date.now() - gameStartTime) / 1000);
+  try {
+    await createLocalMatch({
+      game_type: 'tictactoe',
+      game_mode: 'pvp',
+      winner: winner === 'draw' ? null : winner,
+      duration_seconds: durationSeconds,
+      player1_score: winner === 'X' ? 1 : 0,
+      player2_score: winner === 'O' ? 1 : 0,
+      metadata: {
+        board,
+        local_players: {
+          player1_name: localPlayerNames.p1.trim(),
+          player2_name: localPlayerNames.p2.trim(),
+        },
+      },
+    });
+  } catch {}
+}
+
+async function playLocalMove({
+  index,
+  board,
+  winner,
+  isXTurn,
+  localNamesReady,
+  gameStartTime,
+  localPlayerNames,
+  setGameStartTime,
+  setBoard,
+  setIsXTurn,
+  setMoves,
+  setScores,
+  t,
+}: {
+  index: number;
+  board: CellValue[];
+  winner: GameResult;
+  isXTurn: boolean;
+  localNamesReady: boolean;
+  gameStartTime: number | null;
+  localPlayerNames: LocalPlayerNames;
+  setGameStartTime: Dispatch<SetStateAction<number | null>>;
+  setBoard: Dispatch<SetStateAction<CellValue[]>>;
+  setIsXTurn: Dispatch<SetStateAction<boolean>>;
+  setMoves: Dispatch<SetStateAction<string[]>>;
+  setScores: Dispatch<SetStateAction<LocalScores>>;
+  t: TFunction;
+}) {
+  if (!localNamesReady || board[index] || winner) return;
+
+  const startTime = gameStartTime ?? Date.now();
+  if (gameStartTime === null) {
+    setGameStartTime(startTime);
+  }
+
+  const nextBoard = [...board];
+  const mark = isXTurn ? 'X' : 'O';
+  nextBoard[index] = mark;
+
+  setBoard(nextBoard);
+  setIsXTurn((prev) => !prev);
+  setMoves((prev) => [
+    ...prev,
+    t('ttt.move_entry', {
+      mark,
+      position: t(`ttt.position_${POSITION_NAMES[index]}`),
+    }),
+  ]);
+
+  const result = checkWinner(nextBoard);
+  incrementLocalScore(result.winner, setScores);
+
+  await persistFinishedLocalMatch({
+    winner: result.winner,
+    board: nextBoard,
+    gameStartTime: startTime,
+    localPlayerNames,
+  });
+}
+
+function playOnlineMove({
+  index,
+  onlineGameState,
+  mySymbol,
+  gameSend,
+}: {
+  index: number;
+  onlineGameState: OnlineGameState | null;
+  mySymbol: 'X' | 'O' | null;
+  gameSend: (payload: SocketMessage) => void;
+}) {
+  if (!onlineGameState || onlineGameState.board[index]) return;
+  if (onlineGameState.current_turn !== mySymbol) return;
+  gameSend({ type: 'move', cell: index });
+}
+
+function syncOpponentFromGameInfo({
+  info,
+  mySlot,
+  setOpponentName,
+  shouldCreateDm = false,
+}: {
+  info: SocketMessage | undefined;
+  mySlot: number | null;
+  setOpponentName: Dispatch<SetStateAction<string>>;
+  shouldCreateDm?: boolean;
+}) {
+  const opponent = getOpponentFromGameInfo(info, mySlot);
+  if (!opponent) return;
+
+  setOpponentName(opponent.username);
+
+  if (shouldCreateDm && opponent.user_id) {
+    void getOrCreateDM(opponent.user_id).catch(() => {});
+  }
+}
+
+function handleMatchmakingMessage(data: SocketMessage, ctx: MatchmakingMessageContext) {
+  switch (data.type) {
+    case 'match_found': {
+      const gid = data.game_id as string;
+      const opponent = data.opponent as { username?: string } | undefined;
+      if (opponent?.username) {
+        ctx.setOpponentName(opponent.username);
+      }
+      ctx.setGameId(gid);
+      ctx.setMmPath(null);
+      ctx.setGamePath(`/ws/game/tictactoe/${gid}/`);
+      ctx.setOnlinePhase('waiting');
+      return;
+    }
+    case 'queue_update':
+      ctx.setQueuePosition(data.position as number);
+      return;
+    default:
+      return;
+  }
+}
+
+function setOnlineBoardState(
+  data: SocketMessage,
+  setOnlineGameState: Dispatch<SetStateAction<OnlineGameState | null>>,
+) {
+  setOnlineGameState({
+    board: data.board as CellValue[],
+    current_turn: data.current_turn as 'X' | 'O',
+  });
+}
+
+function handleOnlineGameMessage(data: SocketMessage, ctx: OnlineGameMessageContext) {
+  switch (data.type) {
+    case 'game_joined': {
+      const slot = data.slot as number;
+      ctx.setMySlot(slot);
+      ctx.setMySymbol(slot === 1 ? 'X' : 'O');
+      syncOpponentFromGameInfo({
+        info: data.game_info as SocketMessage | undefined,
+        mySlot: slot,
+        setOpponentName: ctx.setOpponentName,
+      });
+      return;
+    }
+    case 'game_start':
+      ctx.setOnlinePhase('playing');
+      ctx.setGamePaused(false);
+      ctx.setOnlineGameState({
+        board: createEmptyBoard(),
+        current_turn: 'X',
+      });
+      return;
+    case 'game_state':
+      setOnlineBoardState(data, ctx.setOnlineGameState);
+      return;
+    case 'game_resumed':
+      setOnlineBoardState(data, ctx.setOnlineGameState);
+      ctx.setGamePaused(false);
+      ctx.setOnlinePhase('playing');
+      return;
+    case 'both_connected':
+      syncOpponentFromGameInfo({
+        info: data.game_info as SocketMessage | undefined,
+        mySlot: ctx.mySlot,
+        setOpponentName: ctx.setOpponentName,
+        shouldCreateDm: true,
+      });
+      return;
+    case 'player_ready':
+      if ((data.slot as number) === ctx.mySlot) {
+        ctx.setIReady(true);
+        return;
+      }
+      ctx.setOpponentReady(true);
+      return;
+    case 'player_presence':
+      if ((data.slot as number) !== ctx.mySlot && (data.connected as boolean)) {
+        ctx.setOpponentLeftMsg(null);
+      }
+      syncOpponentFromGameInfo({
+        info: data.game_info as SocketMessage | undefined,
+        mySlot: ctx.mySlot,
+        setOpponentName: ctx.setOpponentName,
+      });
+      return;
+    case 'opponent_left_lobby':
+      ctx.setOpponentLeftMsg((data.username as string) || ctx.defaultOpponentName);
+      ctx.setGamePath(null);
+      ctx.setOnlinePhase('idle');
+      return;
+    case 'game_paused':
+      ctx.setGamePaused(true);
+      return;
+    case 'game_over':
+      ctx.setOnlineWinner(data.winner as 'X' | 'O' | 'draw' | null);
+      ctx.setGamePaused(false);
+      ctx.setOnlinePhase('game_over');
+      return;
+    default:
+      return;
+  }
+}
+
+function getStatusLabel({
+  t,
+  mode,
+  displayWinner,
+  gameSocketStatus,
+  gamePaused,
+  onlinePhase,
+}: {
+  t: TFunction;
+  mode: Mode;
+  displayWinner: GameResult;
+  gameSocketStatus: string;
+  gamePaused: boolean;
+  onlinePhase: OnlinePhase;
+}) {
+  if (mode === 'local') {
+    return displayWinner ? t('ttt.game_over') : t('ttt.live');
+  }
+
+  if (gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting') {
+    return t('ttt.reconnecting');
+  }
+  if (gamePaused) return t('ttt.paused');
+  if (onlinePhase === 'playing') return t('ttt.live');
+  if (onlinePhase === 'waiting') return t('ttt.waiting_opponent');
+  if (onlinePhase === 'searching') return t('ttt.searching');
+  if (onlinePhase === 'game_over') return t('ttt.game_over');
+
+  return t('ttt.mode_online');
 }
 
 function checkWinner(board: CellValue[]): { winner: GameResult; line: number[] | null } {
@@ -39,10 +406,10 @@ export default function TicTacToePage() {
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode') ?? 'local';
   const hasGameId = searchParams.has('game_id');
-  const mode: Mode = hasGameId ? 'online' : rawMode === 'online' ? 'online' : 'local';
+  const mode = resolveMode(rawMode, hasGameId);
 
   // ── Local mode state ──────────────────────────────────────────────────────
-  const [board, setBoard] = useState<CellValue[]>(Array(9).fill(null));
+  const [board, setBoard] = useState<CellValue[]>(createEmptyBoard);
   const [isXTurn, setIsXTurn] = useState(true);
   const [scores, setScores] = useState({ X: 0, O: 0, draw: 0 });
   const [moves, setMoves] = useState<string[]>([]);
@@ -53,12 +420,6 @@ export default function TicTacToePage() {
   const { winner, line } = checkWinner(board);
   const localP1Label = localPlayerNames.p1.trim() || t('ttt.player1');
   const localP2Label = localPlayerNames.p2.trim() || t('ttt.player2');
-
-  const positionNames = [
-    'top_left','top_center','top_right',
-    'mid_left','center','mid_right',
-    'bot_left','bot_center','bot_right',
-  ];
 
   // ── Online mode state ─────────────────────────────────────────────────────
   const [onlinePhase, setOnlinePhase] = useState<OnlinePhase>('idle');
@@ -104,64 +465,36 @@ export default function TicTacToePage() {
   }, [defaultOpponentName]);
 
   // ── Local game handlers ───────────────────────────────────────────────────
-  const handleClick = async (i: number) => {
+  const handleClick = (index: number) => {
     if (mode === 'local') {
-      if (!localNamesReady) return;
-      if (board[i] || winner) return;
-      
-      // Start timer on first move
-      if (!gameStartTime) setGameStartTime(Date.now());
-
-      const next = [...board];
-      const mark = isXTurn ? 'X' : 'O';
-      next[i] = mark;
-      setBoard(next);
-      setIsXTurn(!isXTurn);
-      setMoves((prev) => [
-        ...prev,
-        t('ttt.move_entry', {
-          mark,
-          position: t(`ttt.position_${positionNames[i]}`),
-        }),
-      ]);
-      
-      const result = checkWinner(next);
-      if (result.winner === 'X')     setScores((s) => ({ ...s, X: s.X + 1 }));
-      if (result.winner === 'O')     setScores((s) => ({ ...s, O: s.O + 1 }));
-      if (result.winner === 'draw')  setScores((s) => ({ ...s, draw: s.draw + 1 }));
-
-      // Save to history when game ends (win or draw)
-      if (result.winner !== null && gameStartTime) {
-        const durationSeconds = Math.round((Date.now() - gameStartTime) / 1000);
-        try {
-          await createLocalMatch({
-            game_type: 'tictactoe',
-            game_mode: 'pvp',
-            winner: result.winner === 'draw' ? null : result.winner,
-            duration_seconds: durationSeconds,
-            player1_score: result.winner === 'X' ? 1 : 0,
-            player2_score: result.winner === 'O' ? 1 : 0,
-            metadata: {
-              board: next,
-              local_players: {
-                player1_name: localPlayerNames.p1.trim(),
-                player2_name: localPlayerNames.p2.trim(),
-              },
-            },
-          });
-        } catch {}
-      }
-    } else if (mode === 'online') {
-      // Online mode: send move to server
-      if (!onlineGameState || onlineGameState.board[i]) return;
-      if (onlineGameState.current_turn !== mySymbol) return;
-      
-      gameSend({ type: 'move', cell: i });
+      void playLocalMove({
+        index,
+        board,
+        winner,
+        isXTurn,
+        localNamesReady,
+        gameStartTime,
+        localPlayerNames,
+        setGameStartTime,
+        setBoard,
+        setIsXTurn,
+        setMoves,
+        setScores,
+        t,
+      });
+      return;
     }
+
+    playOnlineMove({
+      index,
+      onlineGameState,
+      mySymbol,
+      gameSend,
+    });
   };
 
   const resetGame = () => {
-    setBoard(Array(9).fill(null));
+    setBoard(createEmptyBoard());
     setIsXTurn(true);
     setMoves([]);
     setGameStartTime(null);
@@ -175,7 +508,7 @@ export default function TicTacToePage() {
   const startLocalGame = () => {
     if (!localPlayerNames.p1.trim() || !localPlayerNames.p2.trim()) return;
     setLocalNamesReady(true);
-    setBoard(Array(9).fill(null));
+    setBoard(createEmptyBoard());
     setIsXTurn(true);
     setScores({ X: 0, O: 0, draw: 0 });
     setMoves([]);
@@ -184,18 +517,15 @@ export default function TicTacToePage() {
 
   // ── Online matchmaking socket ─────────────────────────────────────────────
   const { send: mmSend, status: mmSocketStatus } = useGameSocket(mmPath, {
-    onMessage: useCallback((data: Record<string, unknown>) => {
-      if (data.type === 'match_found') {
-        const gid = data.game_id as string;
-        const opponent = data.opponent as { username?: string } | undefined;
-        if (opponent?.username) setOpponentName(opponent.username);
-        setGameId(gid);
-        setMmPath(null);
-        setGamePath(`/ws/game/tictactoe/${gid}/`);
-        setOnlinePhase('waiting');
-      } else if (data.type === 'queue_update') {
-        setQueuePosition(data.position as number);
-      }
+    onMessage: useCallback((data: SocketMessage) => {
+      handleMatchmakingMessage(data, {
+        setOpponentName,
+        setGameId,
+        setMmPath,
+        setGamePath,
+        setOnlinePhase,
+        setQueuePosition,
+      });
     }, []),
   });
 
@@ -212,94 +542,24 @@ export default function TicTacToePage() {
     latency: gameLatency,
   } = useGameSocket(gamePath, {
     enableLatencyProbe: true,
-    onMessage: useCallback((data: Record<string, unknown>) => {
-      const type = data.type as string;
-
-      if (type === 'game_joined') {
-        const slot = data.slot as number;
-        mySlotRef.current = slot;
-        // slot 1 = X, slot 2 = O
-        setMySymbol(slot === 1 ? 'X' : 'O');
-        
-        const info = data.game_info as Record<string, unknown> | undefined;
-        if (info) {
-          const players = info.players as Record<string, { username: string }> | undefined;
-          if (players) {
-            const oppSlot = slot === 1 ? '2' : '1';
-            if (players[oppSlot]) setOpponentName(players[oppSlot].username);
-          }
-        }
-      } else if (type === 'game_start') {
-        setOnlinePhase('playing');
-        setGamePaused(false);
-        // Initialize board
-        setOnlineGameState({
-          board: Array(9).fill(null),
-          current_turn: 'X',
-        });
-      } else if (type === 'game_state') {
-        // Server sends updated board state
-        const boardData = data.board as CellValue[];
-        const currentTurn = data.current_turn as 'X' | 'O';
-        setOnlineGameState({
-          board: boardData,
-          current_turn: currentTurn,
-        });
-      } else if (type === 'game_resumed') {
-        const boardData = data.board as CellValue[];
-        const currentTurn = data.current_turn as 'X' | 'O';
-        setOnlineGameState({
-          board: boardData,
-          current_turn: currentTurn,
-        });
-        setGamePaused(false);
-        setOnlinePhase('playing');
-      } else if (type === 'both_connected') {
-        const info = data.game_info as Record<string, unknown> | undefined;
-        if (info) {
-          const players = info.players as Record<string, { user_id: string; username: string }> | undefined;
-          if (players) {
-            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
-            const opp = players[oppSlot];
-            if (opp) {
-              setOpponentName(opp.username);
-              getOrCreateDM(opp.user_id).catch(() => {});
-            }
-          }
-        }
-      } else if (type === 'player_ready') {
-        const slot = data.slot as number;
-        if (slot === mySlotRef.current) {
-          setIReady(true);
-        } else {
-          setOpponentReady(true);
-        }
-      } else if (type === 'player_presence') {
-        const slot = data.slot as number;
-        const connected = data.connected as boolean;
-        if (slot !== mySlotRef.current && connected) {
-          setOpponentLeftMsg(null);
-        }
-        const info = data.game_info as Record<string, unknown> | undefined;
-        if (info) {
-          const players = info.players as Record<string, { username: string }> | undefined;
-          if (players) {
-            const oppSlot = mySlotRef.current === 1 ? '2' : '1';
-            if (players[oppSlot]) setOpponentName(players[oppSlot].username);
-          }
-        }
-      } else if (type === 'opponent_left_lobby') {
-        setOpponentLeftMsg((data.username as string) || defaultOpponentName);
-        setGamePath(null);
-        setOnlinePhase('idle');
-      } else if (type === 'game_paused') {
-        setGamePaused(true);
-      } else if (type === 'game_over') {
-        const winnerData = data.winner as 'X' | 'O' | 'draw' | null;
-        setOnlineWinner(winnerData);
-        setGamePaused(false);
-        setOnlinePhase('game_over');
-      }
+    onMessage: useCallback((data: SocketMessage) => {
+      handleOnlineGameMessage(data, {
+        defaultOpponentName,
+        mySlot: mySlotRef.current,
+        setMySlot: (slot) => {
+          mySlotRef.current = slot;
+        },
+        setOpponentName,
+        setGamePath,
+        setOnlinePhase,
+        setMySymbol,
+        setOnlineGameState,
+        setIReady,
+        setOpponentReady,
+        setGamePaused,
+        setOnlineWinner,
+        setOpponentLeftMsg,
+      });
     }, [defaultOpponentName]),
   });
 
@@ -331,7 +591,7 @@ export default function TicTacToePage() {
   }, [mode, onlinePhase, handleFindMatch]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
-  const displayBoard = mode === 'online' ? (onlineGameState?.board ?? Array(9).fill(null)) : board;
+  const displayBoard = mode === 'online' ? (onlineGameState?.board ?? createEmptyBoard()) : board;
   const displayWinner = mode === 'online' ? onlineWinner : winner;
   const displayLine = mode === 'online' ? checkWinner(displayBoard).line : line;
   
@@ -344,21 +604,14 @@ export default function TicTacToePage() {
     && (gamePaused || gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting');
 
   const modeLabel = mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local');
-  const statusLabel = mode === 'local'
-    ? (displayWinner ? t('ttt.game_over') : t('ttt.live'))
-    : gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting'
-      ? t('ttt.reconnecting')
-      : gamePaused
-        ? t('ttt.paused')
-        : onlinePhase === 'playing'
-          ? t('ttt.live')
-          : onlinePhase === 'waiting'
-            ? t('ttt.waiting_opponent')
-            : onlinePhase === 'searching'
-              ? t('ttt.searching')
-              : onlinePhase === 'game_over'
-                ? t('ttt.game_over')
-                : t('ttt.mode_online');
+  const statusLabel = getStatusLabel({
+    t,
+    mode,
+    displayWinner,
+    gameSocketStatus,
+    gamePaused,
+    onlinePhase,
+  });
 
   return (
     <>

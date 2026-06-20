@@ -23,6 +23,7 @@ from apps.analytics.tracking_service import track_match_completed
 logger = logging.getLogger("games.match_recording")
 
 User = get_user_model()
+FORFEIT_REASONS = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
 
 
 async def record_match(
@@ -52,6 +53,76 @@ async def record_match(
 
     match_id = await _create_match_record(session, xp_awards=xp_awards)
     return match_id
+
+
+def _winner_user(winner_user_id: int | None):
+    if winner_user_id is None:
+        return None
+
+    try:
+        return User.objects.get(pk=winner_user_id)
+    except User.DoesNotExist:
+        logger.warning("Winner user %s not found", winner_user_id)
+        return None
+
+
+def _scores_by_slot(session: GameSession) -> dict[int, int]:
+    p1_score, p2_score = _extract_scores(session)
+    return {
+        1: p1_score,
+        2: p2_score,
+    }
+
+
+def _build_player_results(
+    session: GameSession,
+    winner_user_id: int | None,
+    xp_awards: Mapping[Any, int] | None = None,
+) -> list[dict[str, Any]]:
+    scores = _scores_by_slot(session)
+    player_results = []
+
+    for slot, player_slot in session.players.items():
+        player_results.append(
+            {
+                "slot": slot,
+                "user_id": player_slot.user_id,
+                "outcome": _determine_outcome(
+                    session,
+                    player_slot.user_id,
+                    winner_user_id=winner_user_id,
+                ),
+                "score": scores.get(slot, 0),
+                "xp_earned": int(xp_awards.get(player_slot.user_id, 0))
+                if xp_awards
+                else 0,
+            }
+        )
+
+    return player_results
+
+
+def _track_online_pong_match(
+    match_id: str,
+    game_type: str,
+    game_mode: str,
+    duration: float,
+    player_results: list[dict[str, Any]],
+) -> None:
+    if game_type != DBGameType.PONG or game_mode != GameMode.PVP:
+        return
+
+    duration_seconds = round(max(duration, 0), 2)
+    for player_result in player_results:
+        track_match_completed(
+            player_result["user_id"],
+            match_id=match_id,
+            game_type=game_type,
+            game_mode=game_mode,
+            outcome=player_result["outcome"],
+            duration_seconds=duration_seconds,
+            score=player_result["score"],
+        )
 
 
 @sync_to_async
@@ -87,17 +158,11 @@ def _create_match_record(
 
     winner_user_id = _resolve_winner_user_id(session)
     finish_reason = _normalize_finish_reason(finish_reason, winner_user_id)
-
-    # Winner user object (for FK)
-    winner_user = None
-    if winner_user_id is not None:
-        try:
-            winner_user = User.objects.get(pk=winner_user_id)
-        except User.DoesNotExist:
-            logger.warning("Winner user %s not found", winner_user_id)
+    winner_user = _winner_user(winner_user_id)
 
     # Metadata from engine
     metadata = _extract_metadata(session)
+    player_results = _build_player_results(session, winner_user_id, xp_awards)
 
     # --- Create Match row ---
     match = Match.objects.create(
@@ -116,21 +181,14 @@ def _create_match_record(
     )
 
     # --- Create MatchPlayer rows ---
-    for slot, player_slot in session.players.items():
-        outcome = _determine_outcome(
-            session,
-            player_slot.user_id,
-            winner_user_id=winner_user_id,
-        )
-        score = _get_player_score(session, slot)
-
+    for player_result in player_results:
         MatchPlayer.objects.create(
             match=match,
-            user_id=player_slot.user_id,
-            slot=slot,
-            outcome=outcome,
-            score=score,
-            xp_earned=int(xp_awards.get(player_slot.user_id, 0)) if xp_awards else 0,
+            user_id=player_result["user_id"],
+            slot=player_result["slot"],
+            outcome=player_result["outcome"],
+            score=player_result["score"],
+            xp_earned=player_result["xp_earned"],
         )
 
     logger.info(
@@ -145,29 +203,14 @@ def _create_match_record(
     )
 
     # Invalidate cached stats for all human participants
-    invalidate_match_stats([
-        player_slot.user_id
-        for player_slot in session.players.values()
-    ])
-
-    # Track activity analytics only for online Pong matches.
-    if game_type == DBGameType.PONG and game_mode == GameMode.PVP:
-        for slot, player_slot in session.players.items():
-            outcome = _determine_outcome(
-                session,
-                player_slot.user_id,
-                winner_user_id=winner_user_id,
-            )
-            score = _get_player_score(session, slot)
-            track_match_completed(
-                player_slot.user_id,
-                match_id=str(match.id),
-                game_type=game_type,
-                game_mode=game_mode,
-                outcome=outcome,
-                duration_seconds=round(max(duration, 0), 2),
-                score=score,
-            )
+    invalidate_match_stats([player_result["user_id"] for player_result in player_results])
+    _track_online_pong_match(
+        match_id=str(match.id),
+        game_type=game_type,
+        game_mode=game_mode,
+        duration=duration,
+        player_results=player_results,
+    )
 
     return str(match.id)
 
@@ -265,6 +308,48 @@ def _resolve_winner_user_id(session: GameSession) -> int | None:
     return None
 
 
+def _engine_state(session: GameSession) -> dict[str, Any]:
+    try:
+        state = session.engine.get_state()
+    except Exception:
+        return {}
+    return state if isinstance(state, dict) else {}
+
+
+def _winner_slot(session: GameSession) -> int | None:
+    if session.winner_id is None:
+        return None
+
+    for slot, player_slot in session.players.items():
+        if player_slot.user_id == session.winner_id:
+            return slot
+    return None
+
+
+def _forfeit_score_tuple(winner_slot: int | None, win_score: int) -> tuple[int, int]:
+    if winner_slot == 1:
+        return (win_score, 0)
+    if winner_slot == 2:
+        return (0, win_score)
+    return (0, 0)
+
+
+def _extract_pong_scores(session: GameSession) -> tuple[int, int]:
+    if session.finish_reason in FORFEIT_REASONS and session.winner_id is not None:
+        return _forfeit_score_tuple(_winner_slot(session), 7)
+
+    state = _engine_state(session)
+    p1 = state.get("player1", {}).get("score", 0)
+    p2 = state.get("player2", {}).get("score", 0)
+    return (int(p1), int(p2))
+
+
+def _extract_tictactoe_scores(session: GameSession) -> tuple[int, int]:
+    if session.winner_id is None:
+        return (0, 0)
+    return _forfeit_score_tuple(_winner_slot(session), 1)
+
+
 def _extract_scores(session: GameSession) -> tuple[int, int]:
     """
     Extract player 1 / player 2 scores from the engine state.
@@ -273,63 +358,68 @@ def _extract_scores(session: GameSession) -> tuple[int, int]:
     On forfeit/disconnect the score is enforced as 7-0 for the winner.
     For TTT, the winner gets 1 and the loser/draw gets 0.
     """
-    _forfeit_reasons = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
-
     if session.game_type == GameType.PONG:
-        # Forfeit → always 7-0 for the winner
-        if session.finish_reason in _forfeit_reasons and session.winner_id is not None:
-            for slot, ps in session.players.items():
-                if ps.user_id == session.winner_id:
-                    return (7, 0) if slot == 1 else (0, 7)
-
-        try:
-            state = session.engine.get_state()
-        except Exception:
-            return (0, 0)
-
-        p1 = state.get("player1", {}).get("score", 0)
-        p2 = state.get("player2", {}).get("score", 0)
-        return (int(p1), int(p2))
-
-    elif session.game_type == GameType.TICTACTOE:
-        # Winner gets 1, loser/draw gets 0
-        if session.winner_id is not None:
-            for slot, ps in session.players.items():
-                if ps.user_id == session.winner_id:
-                    return (1, 0) if slot == 1 else (0, 1)
-        return (0, 0)  # draw
+        return _extract_pong_scores(session)
+    if session.game_type == GameType.TICTACTOE:
+        return _extract_tictactoe_scores(session)
 
     return (0, 0)
 
 
 def _get_player_score(session: GameSession, slot: int) -> int:
     """Get a specific player's score."""
-    _forfeit_reasons = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
+    return _scores_by_slot(session).get(slot, 0)
 
-    if session.game_type == GameType.PONG:
-        # Forfeit → winner gets 7, loser gets 0
-        if session.finish_reason in _forfeit_reasons and session.winner_id is not None:
-            ps = session.players.get(slot)
-            if ps is not None:
-                return 7 if ps.user_id == session.winner_id else 0
 
-        try:
-            state = session.engine.get_state()
-        except Exception:
-            return 0
-        player_key = f"player{slot}"
-        return int(state.get(player_key, {}).get("score", 0))
+def _extract_pong_metadata(state: dict[str, Any]) -> dict[str, Any]:
+    metadata = {
+        "final_scores": {
+            "1": state.get("player1", {}).get("score", 0),
+            "2": state.get("player2", {}).get("score", 0),
+        },
+        "ball_speed": state.get("ball", {}).get("speed"),
+    }
+    stats = state.get("stats", {})
+    if not isinstance(stats, dict):
+        return metadata
 
-    elif session.game_type == GameType.TICTACTOE:
-        # Winner gets 1, loser/draw gets 0
-        ps = session.players.get(slot)
-        if ps is None:
-            return 0
-        if session.winner_id is not None and ps.user_id == session.winner_id:
-            return 1
-        return 0
+    metadata["pong_stats"] = {
+        "max_rally_hits": int(stats.get("max_rally_hits", 0)),
+        "player_hits": stats.get("player_hits", {}),
+        "player_max_consecutive_blocks": stats.get(
+            "player_max_consecutive_blocks",
+            {},
+        ),
+        "player_misses": stats.get("player_misses", {}),
+        "player_max_deficit": stats.get("player_max_deficit", {}),
+        "player_scored_three_under_ten": stats.get(
+            "player_scored_three_under_ten",
+            {},
+        ),
+    }
+    return metadata
 
-    return 0
+
+def _count_non_empty_moves(board: list[Any]) -> int:
+    return sum(1 for cell in board if cell is not None and cell != "")
+
+
+def _extract_tictactoe_metadata(state: dict[str, Any]) -> dict[str, Any]:
+    board = state.get("board", [])
+    metadata = {
+        "final_board": board,
+        "total_moves": _count_non_empty_moves(board),
+        "is_draw": state.get("is_draw", False),
+        "winner_symbol": state.get("winner"),
+    }
+    stats = state.get("stats", {})
+    if not isinstance(stats, dict):
+        return metadata
+
+    metadata["ttt_stats"] = {
+        "player_block_counts": stats.get("player_block_counts", {}),
+    }
+    return metadata
 
 
 def _extract_metadata(session: GameSession) -> dict[str, Any]:
@@ -337,49 +427,17 @@ def _extract_metadata(session: GameSession) -> dict[str, Any]:
     Extract interesting metadata from the engine state for
     historical analysis.
     """
-    metadata: dict[str, Any] = {}
+    state = _engine_state(session)
+    if not state:
+        return {}
 
-    try:
-        state = session.engine.get_state()
-    except Exception:
-        return metadata
-
+    metadata: dict[str, Any]
     if session.game_type == GameType.PONG:
-        metadata["final_scores"] = {
-            "1": state.get("player1", {}).get("score", 0),
-            "2": state.get("player2", {}).get("score", 0),
-        }
-        metadata["ball_speed"] = state.get("ball", {}).get("speed")
-        stats = state.get("stats", {})
-        if isinstance(stats, dict):
-            metadata["pong_stats"] = {
-                "max_rally_hits": int(stats.get("max_rally_hits", 0)),
-                "player_hits": stats.get("player_hits", {}),
-                "player_max_consecutive_blocks": stats.get(
-                    "player_max_consecutive_blocks",
-                    {},
-                ),
-                "player_misses": stats.get("player_misses", {}),
-                "player_max_deficit": stats.get("player_max_deficit", {}),
-                "player_scored_three_under_ten": stats.get(
-                    "player_scored_three_under_ten",
-                    {},
-                ),
-            }
-
+        metadata = _extract_pong_metadata(state)
     elif session.game_type == GameType.TICTACTOE:
-        metadata["final_board"] = state.get("board", [])
-        metadata["total_moves"] = sum(
-            1 for cell in state.get("board", [])
-            if cell is not None and cell != ""
-        )
-        metadata["is_draw"] = state.get("is_draw", False)
-        metadata["winner_symbol"] = state.get("winner")
-        stats = state.get("stats", {})
-        if isinstance(stats, dict):
-            metadata["ttt_stats"] = {
-                "player_block_counts": stats.get("player_block_counts", {}),
-            }
+        metadata = _extract_tictactoe_metadata(state)
+    else:
+        metadata = {}
 
     metadata["game_type"] = session.game_type.value
     metadata["ai_opponent"] = session.ai is not None

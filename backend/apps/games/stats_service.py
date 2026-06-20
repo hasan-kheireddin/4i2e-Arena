@@ -32,6 +32,7 @@ logger = logging.getLogger("games.stats")
 
 STATS_CACHE_TTL = 300  # 5 minutes
 LEADERBOARD_CACHE_TTL = 600  # 10 minutes
+FORFEIT_FINISH_REASONS = ["forfeit", "disconnect_forfeit"]
 
 
 def _user_stats_key(
@@ -132,27 +133,19 @@ def get_user_stats(
     return stats
 
 
-def _compute_user_stats(
-    user_id: UUID | int,
-    game_type: Optional[str] = None,
-    mode: Optional[str] = None,
-) -> dict[str, Any]:
-    """Heavy lifting — aggregate DB queries for one player."""
-
-    base_qs = MatchPlayer.objects.filter(user_id=user_id).select_related("match")
-    if game_type:
-        base_qs = base_qs.filter(match__game_type=game_type)
+def _apply_mode_filter(base_qs, user_id: UUID | int, mode: Optional[str]):
     if mode == "local":
-        base_qs = base_qs.filter(
+        return base_qs.filter(
             match__game_session_id__startswith="local-",
         ).filter(
             Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
         )
-    elif mode == "pvp":
+
+    if mode == "pvp":
         opponent_exists = MatchPlayer.objects.filter(
             match_id=OuterRef("match_id"),
         ).exclude(user_id=user_id)
-        base_qs = base_qs.filter(
+        return base_qs.filter(
             match__game_mode="pvp",
         ).exclude(
             match__game_session_id__startswith="local-",
@@ -160,13 +153,17 @@ def _compute_user_stats(
             Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
             Exists(opponent_exists),
         )
-    elif mode == "pva":
-        base_qs = base_qs.filter(
+
+    if mode == "pva":
+        return base_qs.filter(
             Q(match__game_mode__in=["pva", "pve"]) | ~Q(match__ai_difficulty=""),
         )
 
-    # --- Overview -----------------------------------------------------------
-    overview = base_qs.aggregate(
+    return base_qs
+
+
+def _aggregate_overview(base_qs) -> dict[str, Any]:
+    return base_qs.aggregate(
         total=Count("id"),
         wins=Count("id", filter=Q(outcome="win")),
         losses=Count("id", filter=Q(outcome="loss")),
@@ -191,74 +188,81 @@ def _compute_user_stats(
         ),
     )
 
-    total = overview["total"]
-    wins = overview["wins"]
-    losses = overview["losses"]
-    draws = overview["draws"]
-    win_rate = round(wins / total, 4) if total > 0 else 0.0
 
-    # --- Streaks ------------------------------------------------------------
-    recent_outcomes = list(
+def _recent_outcomes(base_qs, limit: int = 100) -> list[str]:
+    return list(
         base_qs.order_by("-match__finished_at")
-        .values_list("outcome", flat=True)[:100]
+        .values_list("outcome", flat=True)[:limit]
     )
-    current_streak = _compute_streak(recent_outcomes)
-    longest_win = _longest_win_streak(recent_outcomes)
-    longest_loss = _longest_loss_streak(recent_outcomes)
 
-    # --- By game type breakdown (only when game_type is None) ---------------
-    by_game_type = {}
-    if not game_type:
-        for gt in ["pong", "tictactoe"]:
-            gt_agg = base_qs.filter(match__game_type=gt).aggregate(
-                total=Count("id"),
-                wins=Count("id", filter=Q(outcome="win")),
-                losses=Count("id", filter=Q(outcome="loss")),
-                draws=Count("id", filter=Q(outcome="draw")),
-                avg_score=Coalesce(Avg("score"), 0.0, output_field=FloatField()),
-                avg_duration=Coalesce(
-                    Avg("match__duration_seconds"), 0.0, output_field=FloatField()
-                ),
-            )
-            if gt_agg["total"] > 0:
-                gt_total = gt_agg["total"]
-                by_game_type[gt] = {
-                    **gt_agg,
-                    "win_rate": round(gt_agg["wins"] / gt_total, 4),
-                    "avg_score": round(gt_agg["avg_score"], 2),
-                    "avg_duration": round(gt_agg["avg_duration"], 2),
-                }
 
-    # --- By game mode breakdown ---------------------------------------------
-    by_game_mode = {}
-    for gm, gm_filter in (
-        ("pvp", Q(match__game_mode="pvp")),
-        ("pva", Q(match__game_mode__in=["pva", "pve"])),
-    ):
-        gm_agg = base_qs.filter(gm_filter).aggregate(
+def _breakdown_for_query(qs) -> dict[str, Any]:
+    return qs.aggregate(
+        total=Count("id"),
+        wins=Count("id", filter=Q(outcome="win")),
+        losses=Count("id", filter=Q(outcome="loss")),
+        draws=Count("id", filter=Q(outcome="draw")),
+    )
+
+
+def _build_by_game_type(base_qs) -> dict[str, Any]:
+    by_game_type: dict[str, Any] = {}
+    for gt in ["pong", "tictactoe"]:
+        gt_agg = base_qs.filter(match__game_type=gt).aggregate(
             total=Count("id"),
             wins=Count("id", filter=Q(outcome="win")),
             losses=Count("id", filter=Q(outcome="loss")),
             draws=Count("id", filter=Q(outcome="draw")),
+            avg_score=Coalesce(Avg("score"), 0.0, output_field=FloatField()),
+            avg_duration=Coalesce(
+                Avg("match__duration_seconds"), 0.0, output_field=FloatField()
+            ),
         )
-        if gm_agg["total"] > 0:
-            gm_total = gm_agg["total"]
-            by_game_mode[gm] = {
-                **gm_agg,
-                "win_rate": round(gm_agg["wins"] / gm_total, 4),
-            }
+        if gt_agg["total"] <= 0:
+            continue
 
-    # --- By finish reason ---------------------------------------------------
-    by_finish_reason = {}
-    fr_qs = (
+        gt_total = gt_agg["total"]
+        by_game_type[gt] = {
+            **gt_agg,
+            "win_rate": round(gt_agg["wins"] / gt_total, 4),
+            "avg_score": round(gt_agg["avg_score"], 2),
+            "avg_duration": round(gt_agg["avg_duration"], 2),
+        }
+    return by_game_type
+
+
+def _build_by_game_mode(base_qs) -> dict[str, Any]:
+    by_game_mode: dict[str, Any] = {}
+    mode_filters = (
+        ("pvp", Q(match__game_mode="pvp")),
+        ("pva", Q(match__game_mode__in=["pva", "pve"])),
+    )
+    for mode_name, mode_filter in mode_filters:
+        mode_agg = _breakdown_for_query(base_qs.filter(mode_filter))
+        if mode_agg["total"] <= 0:
+            continue
+
+        mode_total = mode_agg["total"]
+        by_game_mode[mode_name] = {
+            **mode_agg,
+            "win_rate": round(mode_agg["wins"] / mode_total, 4),
+        }
+    return by_game_mode
+
+
+def _build_finish_reason_breakdown(base_qs) -> dict[str, int]:
+    finish_reasons: dict[str, int] = {}
+    rows = (
         base_qs.values("match__finish_reason")
         .annotate(count=Count("id"))
         .order_by("-count")
     )
-    for row in fr_qs:
-        by_finish_reason[row["match__finish_reason"]] = row["count"]
+    for row in rows:
+        finish_reasons[row["match__finish_reason"]] = row["count"]
+    return finish_reasons
 
-    # --- Performance trend (last 30 days, grouped by day) -------------------
+
+def _build_performance_trend(base_qs) -> list[dict[str, Any]]:
     thirty_days_ago = timezone.now() - timedelta(days=30)
     daily_qs = (
         base_qs.filter(match__finished_at__gte=thirty_days_ago)
@@ -273,7 +277,7 @@ def _compute_user_stats(
         )
         .order_by("day")
     )
-    performance_trend = [
+    return [
         {
             "date": row["day"].isoformat() if row["day"] else None,
             "matches": row["matches"],
@@ -285,30 +289,59 @@ def _compute_user_stats(
         for row in daily_qs
     ]
 
-    # --- Game-specific metrics ----------------------------------------------
-    game_specific = _compute_game_specific_stats(base_qs, game_type, user_id)
 
-    # --- Recent form (last 10) ---------------------------------------------
+def _build_overview_payload(overview: dict[str, Any]) -> dict[str, Any]:
+    total = overview["total"]
+    wins = overview["wins"]
+    losses = overview["losses"]
+    draws = overview["draws"]
+    win_rate = round(wins / total, 4) if total > 0 else 0.0
+
+    return {
+        "total_matches": total,
+        "wins": wins,
+        "losses": losses,
+        "draws": draws,
+        "win_rate": win_rate,
+        "total_xp": overview["total_xp"],
+        "total_score": overview["total_score"],
+        "avg_score": round(overview["avg_score"], 2),
+        "max_score": overview["max_score"],
+        "avg_duration": round(overview["avg_duration"], 2),
+        "min_duration": round(overview["min_duration"], 2),
+        "max_duration": round(overview["max_duration"], 2),
+    }
+
+
+def _compute_user_stats(
+    user_id: UUID | int,
+    game_type: Optional[str] = None,
+    mode: Optional[str] = None,
+) -> dict[str, Any]:
+    """Heavy lifting — aggregate DB queries for one player."""
+
+    base_qs = MatchPlayer.objects.filter(user_id=user_id).select_related("match")
+    if game_type:
+        base_qs = base_qs.filter(match__game_type=game_type)
+    base_qs = _apply_mode_filter(base_qs, user_id, mode)
+
+    overview = _aggregate_overview(base_qs)
+    recent_outcomes = _recent_outcomes(base_qs)
+    current_streak = _compute_streak(recent_outcomes)
+    longest_win = _longest_win_streak(recent_outcomes)
+    longest_loss = _longest_loss_streak(recent_outcomes)
+    by_game_type = {} if game_type else _build_by_game_type(base_qs)
+    by_game_mode = _build_by_game_mode(base_qs)
+    by_finish_reason = _build_finish_reason_breakdown(base_qs)
+    performance_trend = _build_performance_trend(base_qs)
+    game_specific = _compute_game_specific_stats(base_qs, game_type, user_id)
     recent_form = recent_outcomes[:10]
 
     return {
         "user_id": str(user_id),
         "game_type_filter": game_type,
         "mode_filter": mode,
-        "overview": {
-            "total_matches": total,
-            "wins": wins,
-            "losses": losses,
-            "draws": draws,
-            "win_rate": win_rate,
-            "total_xp": overview["total_xp"],
-            "total_score": overview["total_score"],
-            "avg_score": round(overview["avg_score"], 2),
-            "max_score": overview["max_score"],
-            "avg_duration": round(overview["avg_duration"], 2),
-            "min_duration": round(overview["min_duration"], 2),
-            "max_duration": round(overview["max_duration"], 2),
-        },
+        "overview": _build_overview_payload(overview),
         "streaks": {
             "current": current_streak,
             "longest_win": longest_win,
@@ -355,6 +388,63 @@ def _compute_game_specific_stats(
     return result
 
 
+def _limited_match_ids(qs, limit: int = 200) -> list[Any]:
+    return list(qs.values_list("match_id", flat=True)[:limit])
+
+
+def _count_forfeit_results(qs) -> tuple[int, int]:
+    wins = qs.filter(
+        outcome="win",
+        match__finish_reason__in=FORFEIT_FINISH_REASONS,
+    ).count()
+    losses = qs.filter(
+        outcome="loss",
+        match__finish_reason__in=FORFEIT_FINISH_REASONS,
+    ).count()
+    return wins, losses
+
+
+def _score_map_for_matches(qs, match_ids: list[Any]) -> dict[Any, int]:
+    return dict(
+        qs.filter(match_id__in=match_ids).values_list("match_id", "score")
+    )
+
+
+def _opponent_score_map(match_ids: list[Any], user_id: UUID | int) -> dict[Any, int]:
+    return dict(
+        MatchPlayer.objects.filter(
+            match_id__in=match_ids,
+        ).exclude(
+            user_id=user_id,
+        ).values_list("match_id", "score")
+    )
+
+
+def _average_score_differential(
+    match_ids: list[Any],
+    my_scores: dict[Any, int],
+    opp_scores: dict[Any, int],
+) -> float:
+    if not match_ids:
+        return 0.0
+
+    score_diffs = [
+        my_scores.get(match_id, 0) - opp_scores.get(match_id, 0)
+        for match_id in match_ids
+    ]
+    return round(sum(score_diffs) / len(score_diffs), 2) if score_diffs else 0.0
+
+
+def _count_pong_shutout_wins(qs, match_ids: list[Any], opp_scores: dict[Any, int]) -> int:
+    winning_match_ids = set(
+        qs.filter(
+            match_id__in=match_ids,
+            outcome="win",
+        ).values_list("match_id", flat=True)
+    )
+    return sum(1 for match_id in winning_match_ids if opp_scores.get(match_id) == 0)
+
+
 def _pong_specific_stats(
     qs,
     total: int,
@@ -373,49 +463,12 @@ def _pong_specific_stats(
         ),
     )
 
-    # Score differential: average of (my_score - opponent_score)
-    # We compute this by joining to the same match's other player
-    score_diffs = []
-    match_ids = list(qs.values_list("match_id", flat=True)[:200])
-    if match_ids:
-        my_scores = dict(
-            qs.filter(match_id__in=match_ids)
-            .values_list("match_id", "score")
-        )
-        opp_scores = dict(
-            MatchPlayer.objects.filter(
-                match_id__in=match_ids,
-            )
-            .exclude(user_id=user_id)
-            .values_list("match_id", "score")
-        )
-        for mid in match_ids:
-            my_s = my_scores.get(mid, 0)
-            opp_s = opp_scores.get(mid, 0)
-            score_diffs.append(my_s - opp_s)
-
-    avg_score_diff = (
-        round(sum(score_diffs) / len(score_diffs), 2) if score_diffs else 0.0
-    )
-
-    # Forfeit / disconnect stats
-    forfeit_wins = qs.filter(
-        outcome="win",
-        match__finish_reason__in=["forfeit", "disconnect_forfeit"],
-    ).count()
-    forfeit_losses = qs.filter(
-        outcome="loss",
-        match__finish_reason__in=["forfeit", "disconnect_forfeit"],
-    ).count()
-
-    # Shutout wins (opponent scored 0)
-    shutout_wins = 0
-    if match_ids:
-        for mid in match_ids:
-            my_outcome_qs = qs.filter(match_id=mid, outcome="win")
-            opp_score = opp_scores.get(mid, None)
-            if my_outcome_qs.exists() and opp_score == 0:
-                shutout_wins += 1
+    match_ids = _limited_match_ids(qs)
+    my_scores = _score_map_for_matches(qs, match_ids)
+    opp_scores = _opponent_score_map(match_ids, user_id)
+    avg_score_diff = _average_score_differential(match_ids, my_scores, opp_scores)
+    forfeit_wins, forfeit_losses = _count_forfeit_results(qs)
+    shutout_wins = _count_pong_shutout_wins(qs, match_ids, opp_scores)
 
     return {
         "avg_score_per_match": round(agg["avg_score"], 2),
@@ -428,6 +481,49 @@ def _pong_specific_stats(
         "forfeit_losses": forfeit_losses,
         "shutout_wins": shutout_wins,
     }
+
+
+def _metadata_total_moves(meta: Any) -> Optional[int]:
+    if not isinstance(meta, dict):
+        return None
+    if "total_moves" not in meta:
+        return None
+    return meta["total_moves"]
+
+
+def _metadata_for_matches(match_ids: list[Any]):
+    return Match.objects.filter(id__in=match_ids).values_list("metadata", flat=True)
+
+
+def _average_total_moves(match_ids: list[Any]) -> float:
+    if not match_ids:
+        return 0.0
+
+    total_moves = []
+    for meta in _metadata_for_matches(match_ids):
+        moves = _metadata_total_moves(meta)
+        if moves is not None:
+            total_moves.append(moves)
+
+    if not total_moves:
+        return 0.0
+    return round(sum(total_moves) / len(total_moves), 2)
+
+
+def _count_perfect_tictactoe_wins(match_ids: list[Any], user_id: UUID | int) -> int:
+    if not match_ids:
+        return 0
+
+    perfect_wins = 0
+    winner_metadata = Match.objects.filter(
+        id__in=match_ids,
+        winner_id=user_id,
+    ).values_list("metadata", flat=True)
+    for meta in winner_metadata:
+        moves = _metadata_total_moves(meta)
+        if moves is not None and moves <= 5:
+            perfect_wins += 1
+    return perfect_wins
 
 
 def _tictactoe_specific_stats(
@@ -446,46 +542,10 @@ def _tictactoe_specific_stats(
     games_as_x = qs.filter(slot=1).count()
     games_as_o = qs.filter(slot=2).count()
 
-    # Average total moves from metadata
-    total_moves_list = []
-    match_ids = list(qs.values_list("match_id", flat=True)[:200])
-    if match_ids:
-        metadata_rows = (
-            Match.objects.filter(id__in=match_ids)
-            .values_list("metadata", flat=True)
-        )
-        for meta in metadata_rows:
-            if isinstance(meta, dict) and "total_moves" in meta:
-                total_moves_list.append(meta["total_moves"])
-
-    avg_moves = (
-        round(sum(total_moves_list) / len(total_moves_list), 2)
-        if total_moves_list
-        else 0.0
-    )
-
-    # Perfect games: wins in minimum possible moves (5 for X, 6 for O isn't
-    # possible in standard rules — for X it's 5 total moves on the board)
-    perfect_wins = 0
-    if match_ids:
-        for meta in Match.objects.filter(
-            id__in=match_ids,
-            winner_id=user_id,
-        ).values_list("metadata", flat=True):
-            if isinstance(meta, dict):
-                moves = meta.get("total_moves", 99)
-                if moves <= 5:
-                    perfect_wins += 1
-
-    # Forfeit stats
-    forfeit_wins = qs.filter(
-        outcome="win",
-        match__finish_reason__in=["forfeit", "disconnect_forfeit"],
-    ).count()
-    forfeit_losses = qs.filter(
-        outcome="loss",
-        match__finish_reason__in=["forfeit", "disconnect_forfeit"],
-    ).count()
+    match_ids = _limited_match_ids(qs)
+    avg_moves = _average_total_moves(match_ids)
+    perfect_wins = _count_perfect_tictactoe_wins(match_ids, user_id)
+    forfeit_wins, forfeit_losses = _count_forfeit_results(qs)
 
     return {
         "draw_rate": draw_rate,
@@ -734,25 +794,22 @@ def _compute_streak(outcomes: list[str]) -> dict[str, str | int]:
     return {"type": streak_type, "count": count}
 
 
-def _longest_win_streak(outcomes: list[str]) -> int:
-    """Longest consecutive win run."""
+def _longest_outcome_streak(outcomes: list[str], target: str) -> int:
     best = current = 0
-    for o in outcomes:
-        if o == "win":
+    for outcome in outcomes:
+        if outcome == target:
             current += 1
             best = max(best, current)
-        else:
-            current = 0
+            continue
+        current = 0
     return best
+
+
+def _longest_win_streak(outcomes: list[str]) -> int:
+    """Longest consecutive win run."""
+    return _longest_outcome_streak(outcomes, "win")
 
 
 def _longest_loss_streak(outcomes: list[str]) -> int:
     """Longest consecutive loss run."""
-    best = current = 0
-    for o in outcomes:
-        if o == "loss":
-            current += 1
-            best = max(best, current)
-        else:
-            current = 0
-    return best
+    return _longest_outcome_streak(outcomes, "loss")
