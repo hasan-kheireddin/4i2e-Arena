@@ -37,6 +37,72 @@ def _is_online_pvp_session(session: GameSession) -> bool:
     return True
 
 
+def _game_state_dict(session: GameSession) -> dict[str, Any]:
+    state = session.engine.get_state()
+    return state if isinstance(state, dict) else {}
+
+
+def _stats_dict(state: dict[str, Any]) -> dict[str, Any]:
+    stats = state.get("stats", {})
+    return stats if isinstance(stats, dict) else {}
+
+
+def _append_if_unlocked(
+    unlocked: list[dict[str, Any]],
+    result: dict[str, Any] | None,
+) -> None:
+    if result:
+        unlocked.append(result)
+
+
+async def _append_incremented(
+    unlocked: list[dict[str, Any]],
+    user_id: int,
+    achievement_key: str,
+    *,
+    increment: int = 1,
+    game_session_id: str = "",
+) -> None:
+    result = await _increment_by_and_check(
+        user_id,
+        achievement_key,
+        increment,
+        game_session_id=game_session_id,
+    )
+    _append_if_unlocked(unlocked, result)
+
+
+async def _append_progressed(
+    unlocked: list[dict[str, Any]],
+    user_id: int,
+    achievement_key: str,
+    value: int,
+    *,
+    game_session_id: str = "",
+) -> None:
+    result = await _set_progress_and_check(
+        user_id,
+        achievement_key,
+        value,
+        game_session_id=game_session_id,
+    )
+    _append_if_unlocked(unlocked, result)
+
+
+async def _finalize_unlocked_achievements(
+    user_id: int,
+    unlocked: list[dict[str, Any]],
+) -> None:
+    if not unlocked:
+        return
+
+    await _send_unlock_notifications(user_id, unlocked)
+    for achievement_data in unlocked:
+        xp_reward = int(achievement_data.get("xp_reward", 0))
+        if xp_reward > 0:
+            await award_xp_for_achievement(user_id, xp_reward)
+
+
 async def check_achievements_after_game(session: GameSession) -> None:
     """
     Evaluate and unlock achievements for a completed online PvP match.
@@ -48,22 +114,13 @@ async def check_achievements_after_game(session: GameSession) -> None:
 
     for slot, player_slot in session.players.items():
         user_id = player_slot.user_id
-        is_winner = session.winner_id is not None and session.winner_id == user_id
-
         newly_unlocked = await _evaluate_all_checkers(
             user_id=user_id,
             session=session,
             slot=slot,
-            is_winner=is_winner,
+            is_winner=session.winner_id is not None and session.winner_id == user_id,
         )
-        if not newly_unlocked:
-            continue
-
-        await _send_unlock_notifications(user_id, newly_unlocked)
-        for ach_data in newly_unlocked:
-            xp_reward = int(ach_data.get("xp_reward", 0))
-            if xp_reward > 0:
-                await award_xp_for_achievement(user_id, xp_reward)
+        await _finalize_unlocked_achievements(user_id, newly_unlocked)
 
 
 async def check_level_achievements(user_id: int, new_level: int) -> None:
@@ -96,70 +153,69 @@ async def _evaluate_pong_achievements(
     unlocked: list[dict[str, Any]] = []
 
     for key in ("pong_first_rally", "pong_veteran", "pong_grinder"):
-        ach = await _increment_and_check(user_id, key, game_session_id=session.game_id)
-        if ach:
-            unlocked.append(ach)
+        await _append_incremented(
+            unlocked,
+            user_id,
+            key,
+            game_session_id=session.game_id,
+        )
 
     if is_winner:
-        ach = await _increment_and_check(
+        await _append_incremented(
+            unlocked,
             user_id,
             "pong_getting_warm",
             game_session_id=session.game_id,
         )
-        if ach:
-            unlocked.append(ach)
 
-    state = session.engine.get_state()
-    stats = state.get("stats", {}) if isinstance(state, dict) else {}
-    max_rally = int(stats.get("max_rally_hits", 0)) if isinstance(stats, dict) else 0
+    state = _game_state_dict(session)
+    stats = _stats_dict(state)
+    max_rally = int(stats.get("max_rally_hits", 0))
     if max_rally >= 20:
-        ach = await _set_progress_and_check(
+        await _append_progressed(
+            unlocked,
             user_id,
             "pong_rally_master",
             1,
             game_session_id=session.game_id,
         )
-        if ach:
-            unlocked.append(ach)
 
     scored_three_fast = bool(_slot_lookup(
-        stats.get("player_scored_three_under_ten", {}) if isinstance(stats, dict) else {},
+        stats.get("player_scored_three_under_ten", {}),
         slot,
         False,
     ))
     if scored_three_fast:
-        ach = await _set_progress_and_check(
+        await _append_progressed(
+            unlocked,
             user_id,
             "pong_speed_demon",
             1,
             game_session_id=session.game_id,
         )
-        if ach:
-            unlocked.append(ach)
 
     max_consecutive_blocks = int(_slot_lookup(
-        stats.get("player_max_consecutive_blocks", {}) if isinstance(stats, dict) else {},
+        stats.get("player_max_consecutive_blocks", {}),
         slot,
         0,
     ))
     if max_consecutive_blocks >= 10:
-        ach = await _set_progress_and_check(
+        await _append_progressed(
+            unlocked,
             user_id,
             "pong_defensive_wall",
             1,
             game_session_id=session.game_id,
         )
-        if ach:
-            unlocked.append(ach)
 
     if is_winner:
         my_misses = int(_slot_lookup(
-            stats.get("player_misses", {}) if isinstance(stats, dict) else {},
+            stats.get("player_misses", {}),
             slot,
             0,
         ))
         max_deficit = int(_slot_lookup(
-            stats.get("player_max_deficit", {}) if isinstance(stats, dict) else {},
+            stats.get("player_max_deficit", {}),
             slot,
             0,
         ))
@@ -169,45 +225,41 @@ async def _evaluate_pong_achievements(
         target_score = int(getattr(session.engine, "win_score", 7))
 
         if my_misses == 0:
-            ach = await _set_progress_and_check(
+            await _append_progressed(
+                unlocked,
                 user_id,
                 "pong_precision_player",
                 1,
                 game_session_id=session.game_id,
             )
-            if ach:
-                unlocked.append(ach)
 
         if max_deficit >= 3:
-            ach = await _set_progress_and_check(
+            await _append_progressed(
+                unlocked,
                 user_id,
                 "pong_comeback_king",
                 1,
                 game_session_id=session.game_id,
             )
-            if ach:
-                unlocked.append(ach)
 
         if opp_score == 0 and my_score >= target_score:
-            ach = await _set_progress_and_check(
+            await _append_progressed(
+                unlocked,
                 user_id,
                 "pong_dominator",
                 1,
                 game_session_id=session.game_id,
             )
-            if ach:
-                unlocked.append(ach)
 
         streak = await _compute_game_win_streak(user_id, GameType.PONG)
         if streak >= 3:
-            ach = await _set_progress_and_check(
+            await _append_progressed(
+                unlocked,
                 user_id,
                 "pong_unstoppable",
                 1,
                 game_session_id=session.game_id,
             )
-            if ach:
-                unlocked.append(ach)
 
     leaderboard_unlocks = await _evaluate_leaderboard_achievements(
         user_id=user_id,
@@ -220,6 +272,132 @@ async def _evaluate_pong_achievements(
     return unlocked
 
 
+def _ttt_match_facts(state: dict[str, Any], slot: int) -> dict[str, Any]:
+    board = state.get("board", [])
+    stats = _stats_dict(state)
+    opponent_mark = "O" if slot == 1 else "X"
+
+    return {
+        "move_count": int(state.get("move_count", 0)),
+        "board": board if isinstance(board, list) else [],
+        "blocks_this_match": int(_slot_lookup(
+            stats.get("player_block_counts", {}),
+            slot,
+            0,
+        )),
+        "opponent_mark": opponent_mark,
+    }
+
+
+async def _evaluate_ttt_participation_achievements(
+    unlocked: list[dict[str, Any]],
+    user_id: int,
+    game_session_id: str,
+) -> None:
+    for key in ("ttt_first_move", "ttt_veteran", "ttt_grinder"):
+        await _append_incremented(
+            unlocked,
+            user_id,
+            key,
+            game_session_id=game_session_id,
+        )
+
+
+async def _evaluate_ttt_outcome_achievements(
+    unlocked: list[dict[str, Any]],
+    user_id: int,
+    session: GameSession,
+    is_winner: bool,
+    facts: dict[str, Any],
+) -> None:
+    if is_winner:
+        await _append_incremented(
+            unlocked,
+            user_id,
+            "ttt_first_victory",
+            game_session_id=session.game_id,
+        )
+
+    if session.finish_reason == FinishReason.DRAW:
+        await _append_incremented(
+            unlocked,
+            user_id,
+            "ttt_draw_master",
+            game_session_id=session.game_id,
+        )
+
+    if is_winner and facts["move_count"] <= 5:
+        await _append_progressed(
+            unlocked,
+            user_id,
+            "ttt_quick_thinker",
+            1,
+            game_session_id=session.game_id,
+        )
+
+    if facts["blocks_this_match"] > 0:
+        await _append_incremented(
+            unlocked,
+            user_id,
+            "ttt_mind_reader",
+            increment=facts["blocks_this_match"],
+            game_session_id=session.game_id,
+        )
+
+
+async def _evaluate_ttt_perfect_game_achievement(
+    unlocked: list[dict[str, Any]],
+    user_id: int,
+    session: GameSession,
+    is_winner: bool,
+    facts: dict[str, Any],
+) -> None:
+    if not is_winner:
+        return
+
+    board = facts["board"]
+    if not isinstance(board, list):
+        return
+
+    opponent_marks = sum(1 for cell in board if cell == facts["opponent_mark"])
+    if opponent_marks <= 2:
+        await _append_progressed(
+            unlocked,
+            user_id,
+            "ttt_perfect_game",
+            1,
+            game_session_id=session.game_id,
+        )
+
+
+async def _evaluate_ttt_streak_achievements(
+    unlocked: list[dict[str, Any]],
+    user_id: int,
+    session: GameSession,
+    is_winner: bool,
+) -> None:
+    if not is_winner:
+        return
+
+    streak = await _compute_game_win_streak(user_id, GameType.TICTACTOE)
+    if streak >= 3:
+        await _append_progressed(
+            unlocked,
+            user_id,
+            "ttt_strategist",
+            1,
+            game_session_id=session.game_id,
+        )
+    if streak >= 10:
+        await _append_progressed(
+            unlocked,
+            user_id,
+            "ttt_unbeatable",
+            1,
+            game_session_id=session.game_id,
+        )
+
+
 async def _evaluate_ttt_achievements(
     user_id: int,
     session: GameSession,
@@ -227,93 +405,33 @@ async def _evaluate_ttt_achievements(
     is_winner: bool,
 ) -> list[dict[str, Any]]:
     unlocked: list[dict[str, Any]] = []
+    facts = _ttt_match_facts(_game_state_dict(session), slot)
 
-    for key in ("ttt_first_move", "ttt_veteran", "ttt_grinder"):
-        ach = await _increment_and_check(user_id, key, game_session_id=session.game_id)
-        if ach:
-            unlocked.append(ach)
-
-    if is_winner:
-        ach = await _increment_and_check(
-            user_id,
-            "ttt_first_victory",
-            game_session_id=session.game_id,
-        )
-        if ach:
-            unlocked.append(ach)
-
-    if session.finish_reason == FinishReason.DRAW:
-        ach = await _increment_and_check(
-            user_id,
-            "ttt_draw_master",
-            game_session_id=session.game_id,
-        )
-        if ach:
-            unlocked.append(ach)
-
-    state = session.engine.get_state()
-    move_count = int(state.get("move_count", 0)) if isinstance(state, dict) else 0
-    board = state.get("board", []) if isinstance(state, dict) else []
-    stats = state.get("stats", {}) if isinstance(state, dict) else {}
-
-    if is_winner and move_count <= 5:
-        ach = await _set_progress_and_check(
-            user_id,
-            "ttt_quick_thinker",
-            1,
-            game_session_id=session.game_id,
-        )
-        if ach:
-            unlocked.append(ach)
-
-    blocks_this_match = int(_slot_lookup(
-        stats.get("player_block_counts", {}) if isinstance(stats, dict) else {},
-        slot,
-        0,
-    ))
-    if blocks_this_match > 0:
-        ach = await _increment_by_and_check(
-            user_id,
-            "ttt_mind_reader",
-            blocks_this_match,
-            game_session_id=session.game_id,
-        )
-        if ach:
-            unlocked.append(ach)
-
-    if is_winner and isinstance(board, list):
-        opponent_mark = "O" if slot == 1 else "X"
-        opponent_marks = sum(1 for cell in board if cell == opponent_mark)
-        if opponent_marks <= 2:
-            ach = await _set_progress_and_check(
-                user_id,
-                "ttt_perfect_game",
-                1,
-                game_session_id=session.game_id,
-            )
-            if ach:
-                unlocked.append(ach)
-
-    if is_winner:
-        streak = await _compute_game_win_streak(user_id, GameType.TICTACTOE)
-        if streak >= 3:
-            ach = await _set_progress_and_check(
-                user_id,
-                "ttt_strategist",
-                1,
-                game_session_id=session.game_id,
-            )
-            if ach:
-                unlocked.append(ach)
-        if streak >= 10:
-            ach = await _set_progress_and_check(
-                user_id,
-                "ttt_unbeatable",
-                1,
-                game_session_id=session.game_id,
-            )
-            if ach:
-                unlocked.append(ach)
+    await _evaluate_ttt_participation_achievements(
+        unlocked,
+        user_id,
+        session.game_id,
+    )
+    await _evaluate_ttt_outcome_achievements(
+        unlocked,
+        user_id,
+        session,
+        is_winner,
+        facts,
+    )
+    await _evaluate_ttt_perfect_game_achievement(
+        unlocked,
+        user_id,
+        session,
+        is_winner,
+        facts,
+    )
+    await _evaluate_ttt_streak_achievements(
+        unlocked,
+        user_id,
+        session,
+        is_winner,
+    )
 
     leaderboard_unlocks = await _evaluate_leaderboard_achievements(
         user_id=user_id,
@@ -335,28 +453,17 @@ async def _evaluate_leaderboard_achievements(
     game_session_id: str,
 ) -> list[dict[str, Any]]:
     unlocked: list[dict[str, Any]] = []
-    in_top_10 = await _is_user_in_top_n(user_id, game_type, 10)
-    is_rank_1 = await _is_user_in_top_n(user_id, game_type, 1)
+    for limit, achievement_key in ((10, top10_key), (1, rank1_key)):
+        if not await _is_user_in_top_n(user_id, game_type, limit):
+            continue
 
-    if in_top_10:
-        ach = await _set_progress_and_check(
+        await _append_progressed(
+            unlocked,
             user_id,
-            top10_key,
+            achievement_key,
             1,
             game_session_id=game_session_id,
         )
-        if ach:
-            unlocked.append(ach)
-
-    if is_rank_1:
-        ach = await _set_progress_and_check(
-            user_id,
-            rank1_key,
-            1,
-            game_session_id=game_session_id,
-        )
-        if ach:
-            unlocked.append(ach)
 
     return unlocked
 

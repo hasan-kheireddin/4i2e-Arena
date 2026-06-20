@@ -111,6 +111,50 @@ def get_xp_to_next_level(xp: int) -> dict[str, int]:
         "xp_needed": xp_needed,
     }
 
+
+def _is_non_game_session(session: GameSession) -> bool:
+    return session.finish_reason in (
+        FinishReason.CANCELED,
+        FinishReason.SERVER_ERROR,
+    )
+
+
+async def _check_level_achievements_if_needed(
+    user_id: Any,
+    result: dict[str, Any],
+) -> None:
+    if not result["leveled_up"]:
+        return
+
+    from apps.analytics.achievement_service import check_level_achievements
+    await check_level_achievements(user_id, result["new_level"])
+
+
+async def _award_player_game_xp(
+    *,
+    user_id: Any,
+    xp_amount: int,
+    breakdown: dict[str, int],
+) -> bool:
+    if xp_amount <= 0:
+        return False
+
+    result = await _apply_xp(user_id, xp_amount)
+    if not result:
+        return False
+
+    await _send_xp_notification(
+        user_id=user_id,
+        xp_gained=xp_amount,
+        breakdown=breakdown,
+        new_xp=result["new_xp"],
+        new_level=result["new_level"],
+        old_level=result["old_level"],
+        leveled_up=result["leveled_up"],
+    )
+    await _check_level_achievements_if_needed(user_id, result)
+    return True
+
 async def award_xp_after_game(session: GameSession) -> dict[Any, int]:
     """
     Calculate and award XP to all human players in the finished session.
@@ -118,7 +162,7 @@ async def award_xp_after_game(session: GameSession) -> dict[Any, int]:
     Called from game consumers after each match ends.
     Returns a map of ``user_id -> xp_awarded`` for this session.
     """
-    if session.finish_reason in (FinishReason.CANCELED, FinishReason.SERVER_ERROR):
+    if _is_non_game_session(session):
         return {}  # no XP for non-games
 
     awarded_xp: dict[Any, int] = {}
@@ -126,35 +170,19 @@ async def award_xp_after_game(session: GameSession) -> dict[Any, int]:
     for slot, player_slot in session.players.items():
         user_id = player_slot.user_id
         is_winner = (session.winner_id is not None and session.winner_id == user_id)
-
         xp_amount, breakdown = _calculate_game_xp(
             session=session,
             slot=slot,
             is_winner=is_winner,
         )
         awarded_xp[user_id] = xp_amount
-
-        if xp_amount > 0:
-            result = await _apply_xp(user_id, xp_amount)
-            if result:
-                await _send_xp_notification(
-                    user_id=user_id,
-                    xp_gained=xp_amount,
-                    breakdown=breakdown,
-                    new_xp=result["new_xp"],
-                    new_level=result["new_level"],
-                    old_level=result["old_level"],
-                    leveled_up=result["leveled_up"],
-                )
-
-                # Check level-based achievements if leveled up
-                if result["leveled_up"]:
-                    from apps.analytics.achievement_service import (
-                        check_level_achievements,
-                    )
-                    await check_level_achievements(user_id, result["new_level"])
-            else:
-                awarded_xp[user_id] = 0
+        if await _award_player_game_xp(
+            user_id=user_id,
+            xp_amount=xp_amount,
+            breakdown=breakdown,
+        ):
+            continue
+        awarded_xp[user_id] = 0
 
     return awarded_xp
 
@@ -186,6 +214,96 @@ async def award_xp_for_achievement(user_id: int, xp_reward: int) -> None:
             await check_level_achievements(user_id, result["new_level"])
 
 
+def _add_breakdown(
+    breakdown: dict[str, int],
+    key: str,
+    value: int,
+) -> int:
+    breakdown[key] = value
+    return value
+
+
+def _base_game_xp(breakdown: dict[str, int]) -> int:
+    return _add_breakdown(breakdown, "game_played", XP_GAME_PLAYED)
+
+
+def _outcome_xp(
+    *,
+    is_winner: bool,
+    is_forfeit: bool,
+    is_draw: bool,
+    breakdown: dict[str, int],
+) -> int:
+    if is_winner:
+        key = "forfeit_win" if is_forfeit else "win"
+        value = XP_FORFEIT_WIN if is_forfeit else XP_WIN_BONUS
+        return _add_breakdown(breakdown, key, value)
+    if is_draw:
+        return _add_breakdown(breakdown, "draw", XP_DRAW_BONUS)
+    return 0
+
+
+def _pong_score_xp(
+    session: GameSession,
+    slot: int,
+    breakdown: dict[str, int],
+) -> int:
+    score = _get_player_score(session, slot)
+    if score <= 0:
+        return 0
+
+    score_xp = score * XP_PER_POINT
+    return _add_breakdown(breakdown, "score_points", score_xp)
+
+
+def _pong_bonus_xp(
+    session: GameSession,
+    slot: int,
+    is_winner: bool,
+    breakdown: dict[str, int],
+) -> int:
+    if not is_winner or not _is_shutout(session, slot):
+        return 0
+    return _add_breakdown(breakdown, "shutout_bonus", XP_SHUTOUT_BONUS)
+
+
+def _ttt_bonus_xp(
+    session: GameSession,
+    is_winner: bool,
+    breakdown: dict[str, int],
+) -> int:
+    if not is_winner or not _is_quick_win(session):
+        return 0
+    return _add_breakdown(breakdown, "quick_win_bonus", XP_QUICK_WIN_BONUS)
+
+
+def _game_specific_xp(
+    *,
+    session: GameSession,
+    slot: int,
+    is_winner: bool,
+    breakdown: dict[str, int],
+) -> int:
+    if session.game_type == GameType.PONG:
+        return _pong_score_xp(session, slot, breakdown) + _pong_bonus_xp(
+            session,
+            slot,
+            is_winner,
+            breakdown,
+        )
+    if session.game_type == GameType.TICTACTOE:
+        return _ttt_bonus_xp(session, is_winner, breakdown)
+    return 0
+
+
+def _apply_ai_modifier(total: int, breakdown: dict[str, int]) -> int:
+    adjusted_total = int(total * AI_XP_MULTIPLIER)
+    ai_reduction = total - adjusted_total
+    if ai_reduction > 0:
+        breakdown["ai_modifier"] = -ai_reduction
+    return adjusted_total
+
+
 def _calculate_game_xp(
     *,
     session: GameSession,
@@ -207,54 +325,28 @@ def _calculate_game_xp(
     )
     is_draw = session.finish_reason == FinishReason.DRAW
 
-    # 1) Base XP for participating
-    base_xp = XP_GAME_PLAYED
-    breakdown["game_played"] = base_xp
-    total += base_xp
+    total += _base_game_xp(breakdown)
+    total += _outcome_xp(
+        is_winner=is_winner,
+        is_forfeit=is_forfeit,
+        is_draw=is_draw,
+        breakdown=breakdown,
+    )
+    total += _game_specific_xp(
+        session=session,
+        slot=slot,
+        is_winner=is_winner,
+        breakdown=breakdown,
+    )
 
-    # 2) Win / draw bonus
-    if is_winner:
-        if is_forfeit:
-            win_xp = XP_FORFEIT_WIN
-            breakdown["forfeit_win"] = win_xp
-        else:
-            win_xp = XP_WIN_BONUS
-            breakdown["win"] = win_xp
-        total += win_xp
-    elif is_draw:
-        breakdown["draw"] = XP_DRAW_BONUS
-        total += XP_DRAW_BONUS
-
-    # 3) Score-based XP (Pong)
-    if session.game_type == GameType.PONG:
-        score = _get_player_score(session, slot)
-        if score > 0:
-            score_xp = score * XP_PER_POINT
-            breakdown["score_points"] = score_xp
-            total += score_xp
-
-        # Shutout bonus
-        if is_winner and _is_shutout(session, slot):
-            breakdown["shutout_bonus"] = XP_SHUTOUT_BONUS
-            total += XP_SHUTOUT_BONUS
-
-    # 4) Quick win bonus (TTT)
-    if session.game_type == GameType.TICTACTOE and is_winner:
-        if _is_quick_win(session):
-            breakdown["quick_win_bonus"] = XP_QUICK_WIN_BONUS
-            total += XP_QUICK_WIN_BONUS
-
-    # 5) Streak bonus (requires checking current streak)
+    # 4) Streak bonus (requires checking current streak)
     # We'll read the streak from the achievement progress counter
     # Note: streak bonuses are applied in the async path, not here
     # (see _add_streak_bonus below)
 
-    # 6) AI game modifier — reduce XP for AI games
+    # 5) AI game modifier — reduce XP for AI games
     if is_ai_game:
-        ai_reduction = total - int(total * AI_XP_MULTIPLIER)
-        if ai_reduction > 0:
-            breakdown["ai_modifier"] = -ai_reduction
-            total = int(total * AI_XP_MULTIPLIER)
+        total = _apply_ai_modifier(total, breakdown)
 
     return max(total, 0), breakdown
 

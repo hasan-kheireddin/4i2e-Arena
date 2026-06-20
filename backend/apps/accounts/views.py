@@ -64,6 +64,19 @@ def _display_name_taken_response():
     )
 
 
+def _pending_registration_exists_response():
+    return Response(
+        {
+            "detail": (
+                "A pending registration already exists for this "
+                "email or username. Please finish verification or "
+                "use different credentials."
+            )
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 def _pending_display_name_conflicts(display_name: str, pending_pk=None) -> bool:
     queryset = PendingRegistration.objects.select_for_update().filter(
         Q(display_name__iexact=display_name)
@@ -72,6 +85,161 @@ def _pending_display_name_conflicts(display_name: str, pending_pk=None) -> bool:
     if pending_pk is not None:
         queryset = queryset.exclude(pk=pending_pk)
     return queryset.exists()
+
+
+def _find_pending_registration(
+    *,
+    email: str,
+    username: str,
+) -> PendingRegistration | None:
+    pending_by_email = (
+        PendingRegistration.objects.select_for_update()
+        .filter(email__iexact=email)
+        .first()
+    )
+    pending_by_username = (
+        PendingRegistration.objects.select_for_update()
+        .filter(username__iexact=username)
+        .first()
+    )
+
+    if (
+        pending_by_email
+        and pending_by_username
+        and pending_by_email.pk != pending_by_username.pk
+    ):
+        return None
+
+    return pending_by_email or pending_by_username or PendingRegistration()
+
+
+def _prepare_pending_registration(
+    *,
+    username: str,
+    email: str,
+    display_name: str,
+    password: str,
+) -> PendingRegistration | Response:
+    with transaction.atomic():
+        pending = _find_pending_registration(email=email, username=username)
+        if pending is None:
+            return _pending_registration_exists_response()
+
+        effective_display_name = _effective_display_name(username, display_name)
+        if User.objects.filter(display_name__iexact=effective_display_name).exists():
+            return _display_name_taken_response()
+
+        if _pending_display_name_conflicts(effective_display_name, pending.pk):
+            return _display_name_taken_response()
+
+        pending.username = username
+        pending.email = email
+        pending.display_name = display_name
+        pending.set_password(password)
+        pending.issue_code()
+        pending.save()
+        return pending
+
+
+def _invalid_verification_code_response():
+    return Response(
+        {"detail": "Invalid verification code."},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+def _expired_verification_code_response():
+    return Response(
+        {
+            "detail": (
+                "Verification code has expired. Please request a new one."
+            )
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+def _username_unavailable_response():
+    return Response(
+        {
+            "detail": (
+                "That username is no longer available. "
+                "Please register again."
+            )
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+def _email_unavailable_response():
+    return Response(
+        {
+            "detail": (
+                "That email is already associated with an account."
+            )
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+def _verify_display_name_taken_response():
+    return Response(
+        {
+            "display_name": [
+                "That display name is no longer available. "
+                "Please register again."
+            ]
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+def _validate_pending_registration(
+    pending: PendingRegistration | None,
+    code: str,
+) -> Response | None:
+    if not pending or pending.code != code:
+        return _invalid_verification_code_response()
+    if pending.is_expired:
+        return _expired_verification_code_response()
+    if User.objects.filter(username__iexact=pending.username).exists():
+        return _username_unavailable_response()
+    if User.objects.filter(email__iexact=pending.email).exists():
+        return _email_unavailable_response()
+
+    effective_display_name = _effective_display_name(
+        pending.username,
+        pending.display_name,
+    )
+    if User.objects.filter(display_name__iexact=effective_display_name).exists():
+        return _verify_display_name_taken_response()
+    return None
+
+
+def _create_user_from_pending(pending: PendingRegistration):
+    user = User(
+        username=pending.username,
+        email=pending.email,
+        display_name=pending.display_name,
+        is_active=True,
+    )
+    user.password = pending.password_hash
+    user.save()
+    pending.delete()
+    return user
+
+
+def _activate_pending_registration(email: str, code: str) -> User | Response:
+    with transaction.atomic():
+        pending = (
+            PendingRegistration.objects.select_for_update()
+            .filter(email__iexact=email)
+            .first()
+        )
+        validation_error = _validate_pending_registration(pending, code)
+        if validation_error is not None:
+            return validation_error
+        return _create_user_from_pending(pending)
 
 
 class RegisterView(APIView):
@@ -92,53 +260,14 @@ class RegisterView(APIView):
         display_name = serializer.validated_data.get("display_name", "").strip()
         password = serializer.validated_data["password"]
 
-        with transaction.atomic():
-            pending_by_email = (
-                PendingRegistration.objects.select_for_update()
-                .filter(email__iexact=email)
-                .first()
-            )
-            pending_by_username = (
-                PendingRegistration.objects.select_for_update()
-                .filter(username__iexact=username)
-                .first()
-            )
-
-            if (
-                pending_by_email
-                and pending_by_username
-                and pending_by_email.pk != pending_by_username.pk
-            ):
-                return Response(
-                    {
-                        "detail": (
-                            "A pending registration already exists for this "
-                            "email or username. Please finish verification or "
-                            "use different credentials."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            pending = pending_by_email or pending_by_username or PendingRegistration()
-            effective_display_name = _effective_display_name(username, display_name)
-            if User.objects.filter(
-                display_name__iexact=effective_display_name,
-            ).exists():
-                return _display_name_taken_response()
-
-            if _pending_display_name_conflicts(
-                effective_display_name,
-                pending.pk,
-            ):
-                return _display_name_taken_response()
-
-            pending.username = username
-            pending.email = email
-            pending.display_name = display_name
-            pending.set_password(password)
-            pending.issue_code()
-            pending.save()
+        pending = _prepare_pending_registration(
+            username=username,
+            email=email,
+            display_name=display_name,
+            password=password,
+        )
+        if isinstance(pending, Response):
+            return pending
 
         try:
             send_otp_email(pending, pending.code)
@@ -375,76 +504,9 @@ class VerifyEmailView(APIView):
         email = serializer.validated_data["email"].strip().lower()
         code = serializer.validated_data["code"]
 
-        with transaction.atomic():
-            pending = (
-                PendingRegistration.objects.select_for_update()
-                .filter(email__iexact=email)
-                .first()
-            )
-
-            if not pending or pending.code != code:
-                return Response(
-                    {"detail": "Invalid verification code."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if pending.is_expired:
-                return Response(
-                    {
-                        "detail": (
-                            "Verification code has expired. Please request a new one."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if User.objects.filter(username__iexact=pending.username).exists():
-                return Response(
-                    {
-                        "detail": (
-                            "That username is no longer available. "
-                            "Please register again."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if User.objects.filter(email__iexact=pending.email).exists():
-                return Response(
-                    {
-                        "detail": (
-                            "That email is already associated with an account."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            effective_display_name = _effective_display_name(
-                pending.username,
-                pending.display_name,
-            )
-            if User.objects.filter(
-                display_name__iexact=effective_display_name,
-            ).exists():
-                return Response(
-                    {
-                        "display_name": [
-                            "That display name is no longer available. "
-                            "Please register again."
-                        ]
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            user = User(
-                username=pending.username,
-                email=pending.email,
-                display_name=pending.display_name,
-                is_active=True,
-            )
-            user.password = pending.password_hash
-            user.save()
-            pending.delete()
+        user = _activate_pending_registration(email, code)
+        if isinstance(user, Response):
+            return user
 
         safe_track_registration(
             user.pk,
