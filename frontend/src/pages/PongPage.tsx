@@ -26,6 +26,12 @@ interface OnlineSnapshot {
   state: OnlineGameState;
 }
 
+interface PerspectiveFrame {
+  leftY: number;
+  rightY: number;
+  ball: { x: number; y: number; vx: number; vy: number };
+}
+
 const WIN_SCORE = 7;
 const PADDLE_SPEED = 6;
 // AI difficulty - higher = faster/harder
@@ -120,6 +126,15 @@ function getOnlineInputDirection(keys: Record<string, boolean>): -1 | 0 | 1 {
   return 0;
 }
 
+function getOnlineInputMessageDirection(
+  keys: Record<string, boolean>,
+): 'up' | 'down' | 'stop' {
+  const direction = getOnlineInputDirection(keys);
+  if (direction < 0) return 'up';
+  if (direction > 0) return 'down';
+  return 'stop';
+}
+
 function projectOnlinePaddleY(y: number, velocityPerTick: number, dtMs: number): number {
   const dtTicks = (dtMs / 1000) * SERVER_TICK_RATE;
   return clamp(
@@ -188,6 +203,183 @@ function extrapolateOnlineState(
       },
     },
   };
+}
+
+function trimSnapshotBuffer(
+  snapshots: OnlineSnapshot[],
+  targetServerTs: number,
+) {
+  while (snapshots.length > 2 && snapshots[1].serverTsMs < targetServerTs - 200) {
+    snapshots.shift();
+  }
+}
+
+function interpolateOnlineSnapshots(
+  previous: OnlineSnapshot,
+  next: OnlineSnapshot,
+  targetServerTs: number,
+): OnlineGameState {
+  const span = Math.max(1, next.serverTsMs - previous.serverTsMs);
+  const alpha = clamp((targetServerTs - previous.serverTsMs) / span, 0, 1);
+  const p1Prev = previous.state.paddles[1]?.y ?? 300;
+  const p1Next = next.state.paddles[1]?.y ?? p1Prev;
+  const p2Prev = previous.state.paddles[2]?.y ?? 300;
+  const p2Next = next.state.paddles[2]?.y ?? p2Prev;
+
+  return {
+    ball: {
+      x: lerp(previous.state.ball.x, next.state.ball.x, alpha),
+      y: lerp(previous.state.ball.y, next.state.ball.y, alpha),
+      vx: next.state.ball.vx,
+      vy: next.state.ball.vy,
+    },
+    paddles: {
+      1: { y: lerp(p1Prev, p1Next, alpha) },
+      2: { y: lerp(p2Prev, p2Next, alpha) },
+    },
+  };
+}
+
+function resolveBufferedOnlineState(
+  snapshots: OnlineSnapshot[],
+  targetServerTs: number,
+  mySlot: number | null,
+  keys: Record<string, boolean>,
+): OnlineGameState | null {
+  if (snapshots.length === 0) return null;
+
+  trimSnapshotBuffer(snapshots, targetServerTs);
+
+  if (snapshots.length === 1) {
+    return extrapolateOnlineState(
+      snapshots[0],
+      snapshots,
+      targetServerTs,
+      mySlot,
+      keys,
+    );
+  }
+
+  const upperIndex = snapshots.findIndex((snapshot) => snapshot.serverTsMs >= targetServerTs);
+  if (upperIndex === 0) {
+    return snapshots[0].state;
+  }
+  if (upperIndex === -1) {
+    const lastSnapshot = snapshots[snapshots.length - 1];
+    return extrapolateOnlineState(
+      lastSnapshot,
+      snapshots,
+      targetServerTs,
+      mySlot,
+      keys,
+    );
+  }
+
+  return interpolateOnlineSnapshots(
+    snapshots[upperIndex - 1],
+    snapshots[upperIndex],
+    targetServerTs,
+  );
+}
+
+function resolveOnlineFrameState(
+  snapshots: OnlineSnapshot[],
+  latestState: OnlineGameState | null,
+  latency: { rttMs: number; clockOffsetMs: number },
+  mySlot: number | null,
+  keys: Record<string, boolean>,
+): OnlineGameState | null {
+  if (snapshots.length === 0) return latestState;
+
+  const renderDelayMs = clamp(
+    INTERPOLATION_BASE_DELAY_MS + latency.rttMs / 2,
+    INTERPOLATION_BASE_DELAY_MS,
+    220,
+  );
+  const targetServerTs = Date.now() + latency.clockOffsetMs - renderDelayMs;
+  return resolveBufferedOnlineState(snapshots, targetServerTs, mySlot, keys);
+}
+
+function smoothOnlineState(
+  previousRendered: OnlineGameState | null,
+  targetState: OnlineGameState,
+  nowMs: number,
+  lastRenderTs: number | null,
+  mySlot: number | null,
+): { state: OnlineGameState; lastRenderTs: number } {
+  const dtMs = lastRenderTs === null ? 16.7 : clamp(nowMs - lastRenderTs, 1, 100);
+  const blend = clamp(
+    1 - Math.exp(-(dtMs / 1000) * ONLINE_SMOOTHING_GAIN),
+    0.08,
+    1,
+  );
+  const source = previousRendered ?? targetState;
+  const smoothed: OnlineGameState = {
+    ball: {
+      x: lerp(source.ball.x, targetState.ball.x, blend),
+      y: lerp(source.ball.y, targetState.ball.y, blend),
+      vx: targetState.ball.vx,
+      vy: targetState.ball.vy,
+    },
+    paddles: {
+      1: {
+        y: lerp(
+          source.paddles[1]?.y ?? targetState.paddles[1]?.y ?? 300,
+          targetState.paddles[1]?.y ?? 300,
+          blend,
+        ),
+      },
+      2: {
+        y: lerp(
+          source.paddles[2]?.y ?? targetState.paddles[2]?.y ?? 300,
+          targetState.paddles[2]?.y ?? 300,
+          blend,
+        ),
+      },
+    },
+  };
+
+  if (mySlot === 1 || mySlot === 2) {
+    smoothed.paddles[mySlot] = {
+      y: targetState.paddles[mySlot]?.y ?? smoothed.paddles[mySlot]?.y ?? 300,
+    };
+  }
+
+  return {
+    state: smoothed,
+    lastRenderTs: nowMs,
+  };
+}
+
+function getPerspectiveFrame(
+  canvas: HTMLCanvasElement,
+  state: OnlineGameState,
+  mySlot: number | null,
+): PerspectiveFrame {
+  const { ball, paddles } = state;
+  const scaleY = canvas.height / 600;
+  const flipped = mySlot === 2;
+  const leftY = flipped
+    ? (paddles[2]?.y ?? 300) * scaleY
+    : (paddles[1]?.y ?? 300) * scaleY;
+  const rightY = flipped
+    ? (paddles[1]?.y ?? 300) * scaleY
+    : (paddles[2]?.y ?? 300) * scaleY;
+  const displayBall = flipped
+    ? { ...ball, x: canvas.width - ball.x, vx: -ball.vx, y: ball.y * scaleY }
+    : { ...ball, y: ball.y * scaleY };
+
+  return { leftY, rightY, ball: displayBall };
+}
+
+function drawPerspectiveOnlineFrame(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  state: OnlineGameState,
+  mySlot: number | null,
+) {
+  const frame = getPerspectiveFrame(canvas, state, mySlot);
+  drawFrame(ctx, canvas, frame.leftY, frame.rightY, frame.ball);
 }
 
 export default function PongPage() {
@@ -469,10 +661,7 @@ export default function PongPage() {
     if (mode !== 'online' || onlinePhase !== 'playing') return;
     let rafId = 0;
     const pushInputFrame = () => {
-      const keys = keysRef.current;
-      let dir: 'up' | 'down' | 'stop' = 'stop';
-      if (keys['w'] || keys['W'] || keys['ArrowUp']) dir = 'up';
-      else if (keys['s'] || keys['S'] || keys['ArrowDown']) dir = 'down';
+      const dir = getOnlineInputMessageDirection(keysRef.current);
 
       // Only send when direction changes to avoid flooding the server
       if (dir !== prevDirectionRef.current) {
@@ -694,138 +883,28 @@ export default function PongPage() {
       }
 
       const snapshots = snapshotBufferRef.current;
-      let frameState: OnlineGameState | null = latestOnlineStateRef.current;
-
-      if (snapshots.length > 0) {
-        const { rttMs, clockOffsetMs } = latencyRef.current;
-        const renderDelayMs = clamp(
-          INTERPOLATION_BASE_DELAY_MS + rttMs / 2,
-          INTERPOLATION_BASE_DELAY_MS,
-          220,
-        );
-        const targetServerTs = Date.now() + clockOffsetMs - renderDelayMs;
-        const onlineKeys = keysRef.current;
-        // Keep buffer focused around the current interpolation window.
-        while (snapshots.length > 2 && snapshots[1].serverTsMs < targetServerTs - 200) {
-          snapshots.shift();
-        }
-
-        if (snapshots.length === 1) {
-          frameState = extrapolateOnlineState(
-            snapshots[0],
-            snapshots,
-            targetServerTs,
-            mySlot,
-            onlineKeys,
-          );
-        } else {
-          const upperIndex = snapshots.findIndex((s) => s.serverTsMs >= targetServerTs);
-          if (upperIndex <= 0 && upperIndex !== -1) {
-            frameState = snapshots[0].state;
-          } else if (upperIndex === -1) {
-            const last = snapshots[snapshots.length - 1];
-            frameState = extrapolateOnlineState(
-              last,
-              snapshots,
-              targetServerTs,
-              mySlot,
-              onlineKeys,
-            );
-          } else {
-            const prev = snapshots[upperIndex - 1];
-            const next = snapshots[upperIndex];
-            const span = Math.max(1, next.serverTsMs - prev.serverTsMs);
-            const alpha = clamp((targetServerTs - prev.serverTsMs) / span, 0, 1);
-            const p1Prev = prev.state.paddles[1]?.y ?? 300;
-            const p1Next = next.state.paddles[1]?.y ?? p1Prev;
-            const p2Prev = prev.state.paddles[2]?.y ?? 300;
-            const p2Next = next.state.paddles[2]?.y ?? p2Prev;
-
-            frameState = {
-              ball: {
-                x: prev.state.ball.x + (next.state.ball.x - prev.state.ball.x) * alpha,
-                y: prev.state.ball.y + (next.state.ball.y - prev.state.ball.y) * alpha,
-                vx: next.state.ball.vx,
-                vy: next.state.ball.vy,
-              },
-              paddles: {
-                1: { y: p1Prev + (p1Next - p1Prev) * alpha },
-                2: { y: p2Prev + (p2Next - p2Prev) * alpha },
-              },
-            };
-          }
-        }
-      }
+      const frameState = resolveOnlineFrameState(
+        snapshots,
+        latestOnlineStateRef.current,
+        latencyRef.current,
+        mySlot,
+        keysRef.current,
+      );
 
       const previousRendered = renderedOnlineStateRef.current;
       if (frameState) {
-        const dtMs = onlineLastRenderTsRef.current === null
-          ? 16.7
-          : clamp(nowMs - onlineLastRenderTsRef.current, 1, 100);
-        onlineLastRenderTsRef.current = nowMs;
-        const blend = clamp(
-          1 - Math.exp(-(dtMs / 1000) * ONLINE_SMOOTHING_GAIN),
-          0.08,
-          1,
+        const smoothedFrame = smoothOnlineState(
+          previousRendered,
+          frameState,
+          nowMs,
+          onlineLastRenderTsRef.current,
+          mySlot,
         );
-        const source = previousRendered ?? frameState;
-        const smoothed: OnlineGameState = {
-          ball: {
-            x: lerp(source.ball.x, frameState.ball.x, blend),
-            y: lerp(source.ball.y, frameState.ball.y, blend),
-            vx: frameState.ball.vx,
-            vy: frameState.ball.vy,
-          },
-          paddles: {
-            1: {
-              y: lerp(
-                source.paddles[1]?.y ?? frameState.paddles[1]?.y ?? 300,
-                frameState.paddles[1]?.y ?? 300,
-                blend,
-              ),
-            },
-            2: {
-              y: lerp(
-                source.paddles[2]?.y ?? frameState.paddles[2]?.y ?? 300,
-                frameState.paddles[2]?.y ?? 300,
-                blend,
-              ),
-            },
-          },
-        };
-        if (mySlot === 1 || mySlot === 2) {
-          smoothed.paddles[mySlot] = {
-            y: frameState.paddles[mySlot]?.y ?? smoothed.paddles[mySlot]?.y ?? 300,
-          };
-        }
-        renderedOnlineStateRef.current = smoothed;
-        const { ball, paddles } = smoothed;
-        const scaleY = canvas.height / 600;
-        const flipped = mySlot === 2;
-        const leftY = flipped
-          ? (paddles[2]?.y ?? 300) * scaleY
-          : (paddles[1]?.y ?? 300) * scaleY;
-        const rightY = flipped
-          ? (paddles[1]?.y ?? 300) * scaleY
-          : (paddles[2]?.y ?? 300) * scaleY;
-        const displayBall = flipped
-          ? { ...ball, x: canvas.width - ball.x, vx: -ball.vx, y: ball.y * scaleY }
-          : { ...ball, y: ball.y * scaleY };
-        drawFrame(ctx, canvas, leftY, rightY, displayBall);
+        onlineLastRenderTsRef.current = smoothedFrame.lastRenderTs;
+        renderedOnlineStateRef.current = smoothedFrame.state;
+        drawPerspectiveOnlineFrame(ctx, canvas, smoothedFrame.state, mySlot);
       } else if (previousRendered) {
-        const { ball, paddles } = previousRendered;
-        const scaleY = canvas.height / 600;
-        const flipped = mySlot === 2;
-        const leftY = flipped
-          ? (paddles[2]?.y ?? 300) * scaleY
-          : (paddles[1]?.y ?? 300) * scaleY;
-        const rightY = flipped
-          ? (paddles[1]?.y ?? 300) * scaleY
-          : (paddles[2]?.y ?? 300) * scaleY;
-        const displayBall = flipped
-          ? { ...ball, x: canvas.width - ball.x, vx: -ball.vx, y: ball.y * scaleY }
-          : { ...ball, y: ball.y * scaleY };
-        drawFrame(ctx, canvas, leftY, rightY, displayBall);
+        drawPerspectiveOnlineFrame(ctx, canvas, previousRendered, mySlot);
       }
 
       rafId = requestAnimationFrame(renderFrame);

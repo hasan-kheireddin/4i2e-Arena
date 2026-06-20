@@ -72,6 +72,21 @@ function createEmptyBoard(): CellValue[] {
   return Array(9).fill(null);
 }
 
+function canPlayLocalMove(
+  localNamesReady: boolean,
+  board: CellValue[],
+  index: number,
+  winner: GameResult,
+): boolean {
+  if (!localNamesReady) return false;
+  if (board[index]) return false;
+  return winner === null;
+}
+
+function shouldStartLocalTimer(gameStartTime: number | null): boolean {
+  return gameStartTime === null;
+}
+
 function resolveMode(rawMode: string, hasGameId: boolean): Mode {
   if (hasGameId) return 'online';
   return rawMode === 'online' ? 'online' : 'local';
@@ -117,6 +132,17 @@ function incrementLocalScore(
   if (nextWinner === 'draw') {
     setScores((prev) => ({ ...prev, draw: prev.draw + 1 }));
   }
+}
+
+function hasMatchingWinner(
+  board: CellValue[],
+  a: number,
+  b: number,
+  c: number,
+): board is ('X' | 'O' | null)[] {
+  const firstCell = board[a];
+  if (!firstCell) return false;
+  return firstCell === board[b] && firstCell === board[c];
 }
 
 async function persistFinishedLocalMatch({
@@ -181,10 +207,10 @@ async function playLocalMove({
   setScores: Dispatch<SetStateAction<LocalScores>>;
   t: TFunction;
 }) {
-  if (!localNamesReady || board[index] || winner) return;
+  if (!canPlayLocalMove(localNamesReady, board, index, winner)) return;
 
   const startTime = gameStartTime ?? Date.now();
-  if (gameStartTime === null) {
+  if (shouldStartLocalTimer(gameStartTime)) {
     setGameStartTime(startTime);
   }
 
@@ -385,6 +411,55 @@ function getStatusLabel({
   return t('ttt.mode_online');
 }
 
+function canJoinOnlineGame(
+  gamePath: string | null,
+  gameSocketStatus: string,
+  gameId: string | null,
+): boolean {
+  return Boolean(gamePath) && gameSocketStatus === 'open' && Boolean(gameId);
+}
+
+function shouldAutoFindMatch(mode: Mode, onlinePhase: OnlinePhase): boolean {
+  return mode === 'online' && onlinePhase === 'idle';
+}
+
+function getDisplayBoard(
+  mode: Mode,
+  onlineGameState: OnlineGameState | null,
+  board: CellValue[],
+): CellValue[] {
+  if (mode === 'online') {
+    return onlineGameState?.board ?? createEmptyBoard();
+  }
+  return board;
+}
+
+function isOnlineTurnPlayable(
+  currentTurn: 'X' | 'O' | undefined,
+  mySymbol: 'X' | 'O' | null,
+  onlinePhase: OnlinePhase,
+  gamePaused: boolean,
+): boolean {
+  if (onlinePhase !== 'playing') return false;
+  if (gamePaused) return false;
+  return currentTurn === mySymbol;
+}
+
+function isRecoveringSocketStatus(gameSocketStatus: string): boolean {
+  return gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting';
+}
+
+function shouldShowRealtimeRecoveryOverlay(
+  mode: Mode,
+  onlinePhase: OnlinePhase,
+  gamePaused: boolean,
+  gameSocketStatus: string,
+): boolean {
+  if (mode !== 'online') return false;
+  if (onlinePhase !== 'playing') return false;
+  return gamePaused || isRecoveringSocketStatus(gameSocketStatus);
+}
+
 function checkWinner(board: CellValue[]): { winner: GameResult; line: number[] | null } {
   const lines = [
     [0,1,2],[3,4,5],[6,7,8],
@@ -392,7 +467,7 @@ function checkWinner(board: CellValue[]): { winner: GameResult; line: number[] |
     [0,4,8],[2,4,6],
   ];
   for (const [a,b,c] of lines) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+    if (hasMatchingWinner(board, a, b, c)) {
       return { winner: board[a], line: [a,b,c] };
     }
   }
@@ -565,7 +640,7 @@ export default function TicTacToePage() {
 
   // ── Online helpers ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (gamePath && gameSocketStatus === 'open' && gameId) {
+    if (canJoinOnlineGame(gamePath, gameSocketStatus, gameId)) {
       gameSend({ type: 'join', game_id: gameId });
     }
   }, [gamePath, gameSocketStatus, gameId, gameSend]);
@@ -585,23 +660,28 @@ export default function TicTacToePage() {
 
   // Auto-start matchmaking for online mode
   useEffect(() => {
-    if (mode === 'online' && onlinePhase === 'idle') {
+    if (shouldAutoFindMatch(mode, onlinePhase)) {
       handleFindMatch();
     }
   }, [mode, onlinePhase, handleFindMatch]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
-  const displayBoard = mode === 'online' ? (onlineGameState?.board ?? createEmptyBoard()) : board;
+  const displayBoard = getDisplayBoard(mode, onlineGameState, board);
   const displayWinner = mode === 'online' ? onlineWinner : winner;
   const displayLine = mode === 'online' ? checkWinner(displayBoard).line : line;
-  
-  const isMyTurn = mode === 'online' 
-    ? (onlineGameState?.current_turn === mySymbol && onlinePhase === 'playing' && !gamePaused)
-    : false;
-  const showRealtimeRecoveryOverlay =
-    mode === 'online'
-    && onlinePhase === 'playing'
-    && (gamePaused || gameSocketStatus === 'reconnecting' || gameSocketStatus === 'connecting');
+
+  const isMyTurn = isOnlineTurnPlayable(
+    onlineGameState?.current_turn,
+    mySymbol,
+    onlinePhase,
+    gamePaused,
+  );
+  const showRealtimeRecoveryOverlay = shouldShowRealtimeRecoveryOverlay(
+    mode,
+    onlinePhase,
+    gamePaused,
+    gameSocketStatus,
+  );
 
   const modeLabel = mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local');
   const statusLabel = getStatusLabel({
