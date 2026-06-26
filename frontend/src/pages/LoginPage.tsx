@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
-import loginImg from "../images/loginimg.png";
 import loginImgDark from "../images/loginimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";

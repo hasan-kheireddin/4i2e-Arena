@@ -791,11 +791,10 @@
 
     "intro_title": "Introduction",
     "intro": "Fire Arena is a free gaming platform where users compete in Pong and Tic-Tac-Toe using ranked matches, a points system, leaderboards, and user profiles. By using Fire Arena, you agree to these Terms of Service.",
-    "ownership": "Fire Arena is owned and operated in Lebanon by a team of 3 developers, and is built with a React frontend and Django backend.",
+    "ownership": "Fire Arena is owned and operated in Lebanon by a team of 4 developers, and is built with a React frontend and Django backend.",
     
     "eligibility_title": "Eligibility",
     "eligibility_age": "Fire Arena is intended for users ages 6 and older.",
-    "eligibility_minor": "If you are under 18 years old, you must have parental or guardian permission to use this platform. Parents and guardians are responsible for monitoring and supervising their children's use of Fire Arena.",
     
     "accounts_title": "User Accounts",
     "accounts_accurate": "You must provide accurate, truthful information when creating your account.",

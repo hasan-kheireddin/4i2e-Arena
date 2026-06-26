@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
-import verify from "../images/loginimg.png";
 import verifyDark from "../images/loginimgDark.png";
 import { clearPendingTwoFA, getPendingTwoFA, storePendingTwoFA, twoFAVerify } from "../services/auth";
 import type { ApiError } from "../services/api";

@@ -6,7 +6,6 @@ import { requestPasswordReset } from "../services/auth";
 import type { ApiError } from "../services/api";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import forgetPass from "../images/loginimg.png";
 import forgetPassDark from "../images/loginimgDark.png";
 
 export default function ForgotPasswordPage() {

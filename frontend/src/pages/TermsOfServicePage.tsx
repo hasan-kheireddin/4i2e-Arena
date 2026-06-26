@@ -76,7 +76,6 @@ export default function TermsOfServicePage() {
           <h2 className="text-2xl font-bold mb-4">{t("terms_of_service.eligibility_title")}</h2>
           <ul style={{ color: "var(--color-text-secondary)" }} className="list-disc list-inside space-y-2 ml-2">
             <li>{t("terms_of_service.eligibility_age")}</li>
-            <li>{t("terms_of_service.eligibility_minor")}</li>
           </ul>
         </section>
 
