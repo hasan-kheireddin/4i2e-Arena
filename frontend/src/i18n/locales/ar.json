@@ -33,7 +33,11 @@
     "submit": "ابدأ الآن",
     "have_account": "هل لديك حساب بالفعل؟",
     "log_in": "تسجيل الدخول",
-    "hero_image_alt": "رسمة توضيحية لساحة رياضية"
+    "hero_image_alt": "رسمة توضيحية لساحة رياضية",
+    "agree_terms_prefix": "أوافق على",
+  "agree_terms_link": "الشروط والأحكام",
+  "agree_privacy_prefix": "أوافق على",
+  "agree_privacy_link": "سياسة الخصوصية"
   },
   "navbar": {
     "home": "الرئيسية",

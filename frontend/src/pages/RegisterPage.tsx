@@ -407,58 +407,62 @@ function FormContent({
         />
 
         <div className="space-y-3">
-          <label className="flex items-start gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            <input
-              type="checkbox"
-              name="agreeTerms"
-              checked={formData.agreeTerms}
-              onChange={handleChange}
-              className="mt-0.5 h-4 w-4 rounded border"
-              style={{ accentColor: "var(--color-text-link)" }}
-            />
-            <span>
-              {t("register.agree_terms_prefix", "I agree to the")}{" "}
-              <Link
-                to="/terms-of-service"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium hover:underline"
-                style={{ color: "var(--color-text-link)" }}
-              >
-                {t("register.agree_terms_link", "terms and conditions")}
-              </Link>
-            </span>
-          </label>
-          {errors.agreeTerms && (
-            <p className="text-sm text-danger">{errors.agreeTerms}</p>
-          )}
+        <label className="flex items-start gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          <input
+            type="checkbox"
+            name="agreeTerms"
+            checked={formData.agreeTerms}
+            onChange={handleChange}
+            className="mt-0.5 h-4 w-4 rounded border"
+            style={{ accentColor: "var(--color-text-link)" }}
+          />
+          <span>
+            {t("register.agree_terms_prefix")}{" "}
+            <Link
+              to="/terms-of-service"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium hover:underline"
+              style={{ color: "var(--color-text-link)" }}
+            >
+              {t("register.agree_terms_link")}
+            </Link>
+          </span>
+        </label>
+        {errors.agreeTerms && (
+          <p className="text-sm" style={{ color: "var(--color-error)" }}>
+            {errors.agreeTerms}
+          </p>
+        )}
 
-          <label className="flex items-start gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            <input
-              type="checkbox"
-              name="agreePrivacy"
-              checked={formData.agreePrivacy}
-              onChange={handleChange}
-              className="mt-0.5 h-4 w-4 rounded border"
-              style={{ accentColor: "var(--color-text-link)" }}
-            />
-            <span>
-              {t("register.agree_privacy_prefix", "I agree to the")}{" "}
-              <Link
-                to="/privacy-policy"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium hover:underline"
-                style={{ color: "var(--color-text-link)" }}
-              >
-                {t("register.agree_privacy_link", "privacy policy")}
-              </Link>
-            </span>
-          </label>
-          {errors.agreePrivacy && (
-            <p className="text-sm text-danger">{errors.agreePrivacy}</p>
-          )}
-        </div>
+        <label className="flex items-start gap-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          <input
+            type="checkbox"
+            name="agreePrivacy"
+            checked={formData.agreePrivacy}
+            onChange={handleChange}
+            className="mt-0.5 h-4 w-4 rounded border"
+            style={{ accentColor: "var(--color-text-link)" }}
+          />
+          <span>
+            {t("register.agree_privacy_prefix")}{" "}
+            <Link
+              to="/privacy-policy"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium hover:underline"
+              style={{ color: "var(--color-text-link)" }}
+            >
+              {t("register.agree_privacy_link")}
+            </Link>
+          </span>
+        </label>
+        {errors.agreePrivacy && (
+          <p className="text-sm" style={{ color: "var(--color-error)" }}>
+            {errors.agreePrivacy}
+          </p>
+        )}
+      </div>
 
         {/* Submit */}
         <Button

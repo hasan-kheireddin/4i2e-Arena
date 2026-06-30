@@ -33,7 +33,11 @@
     "submit": "Loslegen",
     "have_account": "Bereits ein Konto?",
     "log_in": "Anmelden",
-    "hero_image_alt": "Illustration einer Sportarena"
+    "hero_image_alt": "Illustration einer Sportarena",
+    "agree_terms_prefix": "Ich stimme den",
+  "agree_terms_link": "Allgemeinen Geschäftsbedingungen zu",
+  "agree_privacy_prefix": "Ich stimme der",
+  "agree_privacy_link": "Datenschutzrichtlinie zu"
   },
   "navbar": {
     "home": "Startseite",

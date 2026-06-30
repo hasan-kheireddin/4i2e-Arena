@@ -529,10 +529,6 @@ function GameCard({
           <h3 className="text-lg font-extrabold mb-0.5" style={{ color: "var(--color-text-primary)" }}>{title}</h3>
           <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>{desc}</p>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-              {players} {t("home.players_online")}
-            </span>
           </div>
         </div>
 

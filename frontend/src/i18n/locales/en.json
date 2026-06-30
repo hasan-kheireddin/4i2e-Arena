@@ -33,7 +33,11 @@
     "submit": "Get started",
     "have_account": "Already have an account?",
     "log_in": "Log in",
-    "hero_image_alt": "Sports arena illustration"
+    "hero_image_alt": "Sports arena illustration",
+    "agree_terms_prefix": "I agree to the",
+  "agree_terms_link": "terms and conditions",
+  "agree_privacy_prefix": "I agree to the",
+  "agree_privacy_link": "privacy policy"
   },
   "navbar": {
     "home": "Home",

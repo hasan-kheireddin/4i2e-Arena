@@ -33,7 +33,11 @@
     "submit": "Commencer",
     "have_account": "Vous avez déjà un compte ?",
     "log_in": "Se connecter",
-    "hero_image_alt": "Illustration d'une arène sportive"
+    "hero_image_alt": "Illustration d'une arène sportive",
+    "agree_terms_prefix": "J'accepte les",
+  "agree_terms_link": "conditions générales",
+  "agree_privacy_prefix": "J'accepte la",
+  "agree_privacy_link": "politique de confidentialité"
   },
   "navbar": {
     "home": "Accueil",
