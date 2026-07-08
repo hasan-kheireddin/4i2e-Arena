@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from rest_framework import status
 from rest_framework.response import Response
@@ -45,6 +45,27 @@ def _pending_display_name_conflicts(display_name: str, pending_pk=None) -> bool:
     return queryset.exists()
 
 
+def _registration_integrity_error_response(
+    *,
+    username: str,
+    email: str,
+    effective_display_name: str,
+    pending_pk=None,
+) -> Response:
+    if User.objects.filter(display_name__iexact=effective_display_name).exists():
+        return _display_name_taken_response()
+    if _pending_display_name_conflicts(effective_display_name, pending_pk):
+        return _display_name_taken_response()
+    if (
+        User.objects.filter(username__iexact=username).exists()
+        or User.objects.filter(email__iexact=email).exists()
+        or PendingRegistration.objects.filter(username__iexact=username).exists()
+        or PendingRegistration.objects.filter(email__iexact=email).exists()
+    ):
+        return _pending_registration_exists_response()
+    return _pending_registration_exists_response()
+
+
 def _find_pending_registration(
     *,
     email: str,
@@ -78,25 +99,37 @@ def prepare_pending_registration(
     display_name: str,
     password: str,
 ) -> PendingRegistration | Response:
-    with transaction.atomic():
-        pending = _find_pending_registration(email=email, username=username)
-        if pending is None:
-            return _pending_registration_exists_response()
+    effective_display_name = _effective_display_name(username, display_name)
+    pending_pk = None
+    try:
+        with transaction.atomic():
+            pending = _find_pending_registration(email=email, username=username)
+            if pending is None:
+                return _pending_registration_exists_response()
+            pending_pk = pending.pk
 
-        effective_display_name = _effective_display_name(username, display_name)
-        if User.objects.filter(display_name__iexact=effective_display_name).exists():
-            return _display_name_taken_response()
+            if User.objects.filter(
+                display_name__iexact=effective_display_name,
+            ).exists():
+                return _display_name_taken_response()
 
-        if _pending_display_name_conflicts(effective_display_name, pending.pk):
-            return _display_name_taken_response()
+            if _pending_display_name_conflicts(effective_display_name, pending.pk):
+                return _display_name_taken_response()
 
-        pending.username = username
-        pending.email = email
-        pending.display_name = display_name
-        pending.set_password(password)
-        pending.issue_code()
-        pending.save()
-        return pending
+            pending.username = username
+            pending.email = email
+            pending.display_name = display_name
+            pending.set_password(password)
+            pending.issue_code()
+            pending.save()
+            return pending
+    except IntegrityError:
+        return _registration_integrity_error_response(
+            username=username,
+            email=email,
+            effective_display_name=effective_display_name,
+            pending_pk=pending_pk,
+        )
 
 
 def _invalid_verification_code_response():
@@ -187,14 +220,35 @@ def _create_user_from_pending(pending: PendingRegistration):
     return user
 
 
+def _activation_integrity_error_response(email: str) -> Response:
+    pending = PendingRegistration.objects.filter(email__iexact=email).first()
+    if pending is None:
+        return _invalid_verification_code_response()
+    if User.objects.filter(username__iexact=pending.username).exists():
+        return _username_unavailable_response()
+    if User.objects.filter(email__iexact=pending.email).exists():
+        return _email_unavailable_response()
+
+    effective_display_name = _effective_display_name(
+        pending.username,
+        pending.display_name,
+    )
+    if User.objects.filter(display_name__iexact=effective_display_name).exists():
+        return _verify_display_name_taken_response()
+    return _invalid_verification_code_response()
+
+
 def activate_pending_registration(email: str, code: str) -> User | Response:
-    with transaction.atomic():
-        pending = (
-            PendingRegistration.objects.select_for_update()
-            .filter(email__iexact=email)
-            .first()
-        )
-        validation_error = _validate_pending_registration(pending, code)
-        if validation_error is not None:
-            return validation_error
-        return _create_user_from_pending(pending)
+    try:
+        with transaction.atomic():
+            pending = (
+                PendingRegistration.objects.select_for_update()
+                .filter(email__iexact=email)
+                .first()
+            )
+            validation_error = _validate_pending_registration(pending, code)
+            if validation_error is not None:
+                return validation_error
+            return _create_user_from_pending(pending)
+    except IntegrityError:
+        return _activation_integrity_error_response(email)

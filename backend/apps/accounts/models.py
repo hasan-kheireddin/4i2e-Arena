@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Value
+from django.db.models.functions import Coalesce, Lower, NullIf
 from django.utils import timezone
 import hashlib
 import secrets
@@ -39,6 +41,20 @@ class User(AbstractUser):
         db_table = "users"
         verbose_name = "User"
         verbose_name_plural = "Users"
+        constraints = [
+            models.UniqueConstraint(
+                Lower("username"),
+                name="accounts_user_username_ci_uniq",
+            ),
+            models.UniqueConstraint(
+                Lower("email"),
+                name="accounts_user_email_ci_uniq",
+            ),
+            models.UniqueConstraint(
+                Lower("display_name"),
+                name="accounts_user_display_name_ci_uniq",
+            ),
+        ]
 
     def __str__(self):
         return self.username
@@ -79,6 +95,20 @@ class PendingRegistration(models.Model):
         db_table = "pending_registrations"
         verbose_name = "Pending Registration"
         verbose_name_plural = "Pending Registrations"
+        constraints = [
+            models.UniqueConstraint(
+                Lower("username"),
+                name="accounts_pending_username_ci_uniq",
+            ),
+            models.UniqueConstraint(
+                Lower("email"),
+                name="accounts_pending_email_ci_uniq",
+            ),
+            models.UniqueConstraint(
+                Lower(Coalesce(NullIf("display_name", Value("")), "username")),
+                name="accounts_pending_effective_display_ci_uniq",
+            ),
+        ]
 
     def __str__(self):
         return self.email

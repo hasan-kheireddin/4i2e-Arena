@@ -2,10 +2,11 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -261,7 +262,12 @@ class ProfileUpdateView(generics.UpdateAPIView):
         return self.request.user
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        try:
+            instance = serializer.save()
+        except IntegrityError:
+            raise ValidationError({
+                "display_name": ["This display name is already taken."],
+            })
         changed = list(serializer.validated_data.keys())
         safe_track_profile_updated(
             instance.pk,

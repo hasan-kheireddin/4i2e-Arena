@@ -33,9 +33,7 @@ except Exception:
 done
 echo "Redis is ready!"
 
-echo "Creating migrations..."
-python manage.py makemigrations --noinput
-echo "Applying migrations..."
+echo "Applying committed migrations..."
 python manage.py migrate --noinput
 echo "Migrations applied."
 

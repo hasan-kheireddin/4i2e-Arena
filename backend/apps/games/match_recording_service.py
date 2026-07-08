@@ -4,6 +4,7 @@ from datetime import datetime, timezone as tz
 from typing import Any, Mapping, Optional
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from apps.games.models import (
     FinishReason as DBFinishReason,
     GameMode,
@@ -26,6 +27,40 @@ User = get_user_model()
 FORFEIT_REASONS = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
 
 
+def _should_skip_recording(session: GameSession) -> bool:
+    if session.finish_reason in (FinishReason.CANCELED, FinishReason.SERVER_ERROR):
+        logger.debug(
+            "Skipping match recording for %s (reason=%s)",
+            session.game_id,
+            session.finish_reason,
+        )
+        return True
+    return not session.players
+
+
+async def claim_match_record(session: GameSession) -> Optional[str]:
+    """
+    Create the match row once and return its id for the winning finalizer.
+
+    Concurrent finalizers for the same game session receive ``None``.
+    """
+    if _should_skip_recording(session):
+        return None
+    return await _create_match_record(
+        session,
+        xp_awards={},
+        emit_side_effects=False,
+    )
+
+
+async def complete_claimed_match_record(
+    match_id: str,
+    session: GameSession,
+    xp_awards: Mapping[Any, int] | None = None,
+) -> None:
+    await _complete_claimed_match_record(match_id, session, xp_awards=xp_awards)
+
+
 async def record_match(
     session: GameSession,
     xp_awards: Mapping[Any, int] | None = None,
@@ -39,19 +74,14 @@ async def record_match(
     Returns the Match UUID (as string) on success, or ``None`` if the
     match was not recorded (e.g. canceled, already recorded).
     """
-    # Don't record non-games
-    if session.finish_reason in (FinishReason.CANCELED, FinishReason.SERVER_ERROR):
-        logger.debug(
-            "Skipping match recording for %s (reason=%s)",
-            session.game_id, session.finish_reason,
-        )
+    if _should_skip_recording(session):
         return None
 
-    # Don't record if no human players
-    if not session.players:
-        return None
-
-    match_id = await _create_match_record(session, xp_awards=xp_awards)
+    match_id = await _create_match_record(
+        session,
+        xp_awards=xp_awards,
+        emit_side_effects=True,
+    )
     return match_id
 
 
@@ -125,94 +155,157 @@ def _track_online_pong_match(
         )
 
 
-@sync_to_async
-def _create_match_record(
+def _match_recording_context(
     session: GameSession,
     xp_awards: Mapping[Any, int] | None = None,
-) -> Optional[str]:
-    """
-    Synchronous database operations wrapped with sync_to_async.
-    """
-    # Guard against duplicate recording (idempotent)
-    if Match.objects.filter(game_session_id=session.game_id).exists():
-        logger.warning(
-            "Match already recorded for session %s — skipping",
-            session.game_id,
-        )
-        return None
-
-    # --- Derive match attributes ---
+) -> dict[str, Any]:
     game_type = _map_game_type(session.game_type)
     finish_reason = _map_finish_reason(session.finish_reason)
     game_mode = _determine_game_mode(session)
-
-    # Timestamps
     started_at = datetime.fromtimestamp(session.created_at, tz=tz.utc)
     finished_at = datetime.fromtimestamp(
         session.finished_at or session.created_at, tz=tz.utc,
     )
     duration = (session.finished_at or session.created_at) - session.created_at
-
-    # Scores
     p1_score, p2_score = _extract_scores(session)
-
     winner_user_id = _resolve_winner_user_id(session)
     finish_reason = _normalize_finish_reason(finish_reason, winner_user_id)
     winner_user = _winner_user(winner_user_id)
-
-    # Metadata from engine
-    metadata = _extract_metadata(session)
     player_results = _build_player_results(session, winner_user_id, xp_awards)
 
-    # --- Create Match row ---
-    match = Match.objects.create(
-        game_session_id=session.game_id,
-        game_type=game_type,
-        game_mode=game_mode,
-        finish_reason=finish_reason,
-        winner=winner_user,
-        started_at=started_at,
-        finished_at=finished_at,
-        duration_seconds=round(max(duration, 0), 2),
-        player1_score=p1_score,
-        player2_score=p2_score,
-        ai_difficulty=session.ai_difficulty or "",
-        metadata=metadata,
-    )
+    return {
+        "game_type": game_type,
+        "game_mode": game_mode,
+        "finish_reason": finish_reason,
+        "winner_user": winner_user,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "duration": duration,
+        "p1_score": p1_score,
+        "p2_score": p2_score,
+        "metadata": _extract_metadata(session),
+        "player_results": player_results,
+        "winner_user_id": winner_user_id,
+    }
 
-    # --- Create MatchPlayer rows ---
+
+def _match_defaults(context: dict[str, Any], session: GameSession) -> dict[str, Any]:
+    return {
+        "game_type": context["game_type"],
+        "game_mode": context["game_mode"],
+        "finish_reason": context["finish_reason"],
+        "winner": context["winner_user"],
+        "started_at": context["started_at"],
+        "finished_at": context["finished_at"],
+        "duration_seconds": round(max(context["duration"], 0), 2),
+        "player1_score": context["p1_score"],
+        "player2_score": context["p2_score"],
+        "ai_difficulty": session.ai_difficulty or "",
+        "metadata": context["metadata"],
+    }
+
+
+def _upsert_match_players(match: Match, player_results: list[dict[str, Any]]) -> None:
     for player_result in player_results:
-        MatchPlayer.objects.create(
+        MatchPlayer.objects.update_or_create(
             match=match,
             user_id=player_result["user_id"],
-            slot=player_result["slot"],
-            outcome=player_result["outcome"],
-            score=player_result["score"],
-            xp_earned=player_result["xp_earned"],
+            defaults={
+                "slot": player_result["slot"],
+                "outcome": player_result["outcome"],
+                "score": player_result["score"],
+                "xp_earned": player_result["xp_earned"],
+            },
         )
+
+
+def _emit_match_recorded_side_effects(
+    match_id: str,
+    context: dict[str, Any],
+) -> None:
+    player_results = context["player_results"]
+    invalidate_match_stats([result["user_id"] for result in player_results])
+    _track_online_pong_match(
+        match_id=match_id,
+        game_type=context["game_type"],
+        game_mode=context["game_mode"],
+        duration=context["duration"],
+        player_results=player_results,
+    )
+
+
+@sync_to_async
+def _create_match_record(
+    session: GameSession,
+    xp_awards: Mapping[Any, int] | None = None,
+    *,
+    emit_side_effects: bool = True,
+) -> Optional[str]:
+    """
+    Synchronous database operations wrapped with sync_to_async.
+    """
+    context = _match_recording_context(session, xp_awards)
+
+    try:
+        with transaction.atomic():
+            match, created = Match.objects.get_or_create(
+                game_session_id=session.game_id,
+                defaults=_match_defaults(context, session),
+            )
+            if not created:
+                logger.warning(
+                    "Match already recorded for session %s — skipping",
+                    session.game_id,
+                )
+                return None
+            _upsert_match_players(match, context["player_results"])
+    except IntegrityError:
+        logger.warning(
+            "Concurrent match recording detected for session %s — skipping",
+            session.game_id,
+        )
+        return None
 
     logger.info(
         "Match recorded: match_id=%s session=%s type=%s mode=%s "
         "duration=%.1fs winner=%s",
         match.id,
         session.game_id,
-        game_type,
-        game_mode,
-        duration,
-        winner_user_id,
+        context["game_type"],
+        context["game_mode"],
+        context["duration"],
+        context["winner_user_id"],
     )
 
-    # Invalidate cached stats for all human participants
-    invalidate_match_stats([player_result["user_id"] for player_result in player_results])
-    _track_online_pong_match(
-        match_id=str(match.id),
-        game_type=game_type,
-        game_mode=game_mode,
-        duration=duration,
-        player_results=player_results,
-    )
+    if emit_side_effects:
+        _emit_match_recorded_side_effects(str(match.id), context)
 
     return str(match.id)
+
+
+@sync_to_async
+def _complete_claimed_match_record(
+    match_id: str,
+    session: GameSession,
+    xp_awards: Mapping[Any, int] | None = None,
+) -> None:
+    context = _match_recording_context(session, xp_awards)
+    try:
+        with transaction.atomic():
+            match = Match.objects.select_for_update().get(
+                id=match_id,
+                game_session_id=session.game_id,
+            )
+            _upsert_match_players(match, context["player_results"])
+    except Match.DoesNotExist:
+        logger.warning(
+            "Claimed match %s for session %s no longer exists",
+            match_id,
+            session.game_id,
+        )
+        return
+
+    _emit_match_recorded_side_effects(match_id, context)
 
 
 def _map_game_type(game_type: GameType) -> str:
