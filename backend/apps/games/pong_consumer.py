@@ -5,10 +5,8 @@ import logging
 import time
 from typing import Any
 
-from apps.analytics.achievement_service import check_achievements_after_game
-from apps.analytics.xp_service import award_xp_after_game
 from apps.games.consumers import BaseConsumer, _channel_safe
-from apps.games.match_recording_service import record_match
+from apps.games.finish_service import finalize_finished_session
 from apps.games.pong_engine import GameStatus as PongStatus
 from apps.games.pong_engine import PongEngine
 from apps.games.session import (
@@ -357,9 +355,7 @@ class PongConsumer(BaseConsumer):
         await self._stop_tick_loop(session)
         await self._cancel_disconnect_tasks(session)
         await self._broadcast_game_over(session, reason="forfeit")
-        xp_awards = await award_xp_after_game(session)
-        await record_match(session, xp_awards=xp_awards)
-        await check_achievements_after_game(session)
+        await finalize_finished_session(session)
 
     async def _tick_loop(self, session: GameSession) -> None:
         """Run the game engine at TICK_RATE Hz and broadcast snapshots."""
@@ -392,9 +388,7 @@ class PongConsumer(BaseConsumer):
                     await persist_session(session)
                     await self._cancel_disconnect_tasks(session)
                     await self._broadcast_game_over(session, reason="score")
-                    xp_awards = await award_xp_after_game(session)
-                    await record_match(session, xp_awards=xp_awards)
-                    await check_achievements_after_game(session)
+                    await finalize_finished_session(session)
                     break
 
                 elapsed = time.monotonic() - tick_start
@@ -527,9 +521,7 @@ class PongConsumer(BaseConsumer):
                 )
                 await self._broadcast_game_over(session, reason="disconnect_forfeit")
                 await self._cancel_disconnect_tasks(session)
-                xp_awards = await award_xp_after_game(session)
-                await record_match(session, xp_awards=xp_awards)
-                await check_achievements_after_game(session)
+                await finalize_finished_session(session)
             elif session.status == SessionStatus.WAITING:
                 session.mark_abandoned(reason=FinishReason.CANCELED)
                 await persist_session(session)

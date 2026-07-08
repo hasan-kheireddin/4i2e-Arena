@@ -26,83 +26,19 @@ from apps.games.models import (
     Match,
     MatchPlayer,
 )
+from apps.games.stats_cache import (
+    LEADERBOARD_CACHE_TTL,
+    STATS_CACHE_TTL,
+    h2h_key,
+    invalidate_head_to_head_stats,
+    invalidate_match_stats,
+    invalidate_user_stats,
+    leaderboard_key,
+    user_stats_key,
+)
+from apps.games.stats_game_specific import compute_game_specific_stats
 
 logger = logging.getLogger("games.stats")
-
-
-STATS_CACHE_TTL = 300  # 5 minutes
-LEADERBOARD_CACHE_TTL = 600  # 10 minutes
-FORFEIT_FINISH_REASONS = ["forfeit", "disconnect_forfeit"]
-
-
-def _user_stats_key(
-    user_id: UUID | int,
-    game_type: Optional[str] = None,
-    mode: Optional[str] = None,
-) -> str:
-    gt_suffix = game_type or "all"
-    mode_suffix = mode or "all"
-    return f"stats:user:{user_id}:{gt_suffix}:{mode_suffix}"
-
-
-def _h2h_key(user_id: UUID | int, opponent_id: UUID | int) -> str:
-    return f"stats:h2h:{user_id}:vs:{opponent_id}"
-
-
-def _leaderboard_key(
-    game_type: Optional[str],
-    period: str,
-    limit: int,
-) -> str:
-    gt = game_type or "all"
-    return f"stats:leaderboard:{gt}:{period}:{limit}:wins"
-
-
-def invalidate_user_stats(user_id: UUID | int) -> None:
-    """
-    Bust all cached statistics for a user.
-
-    Call this after recording a new match so the next API request
-    recomputes fresh numbers.
-    """
-    keys = [
-        _user_stats_key(user_id, game_type, mode)
-        for game_type in [None, "pong", "tictactoe"]
-        for mode in [None, "pvp", "pva", "local"]
-    ]
-    cache.delete_many(keys)
-
-    # Also invalidate leaderboards
-    for gt in [None, "pong", "tictactoe"]:
-        for period in ["all", "daily", "weekly", "monthly"]:
-            for limit in range(1, 101):
-                cache.delete(_leaderboard_key(gt, period, limit))
-
-    logger.debug("Invalidated stats cache for user %s", user_id)
-
-
-def invalidate_head_to_head_stats(user_ids: list[UUID | int]) -> None:
-    """Bust cached H2H statistics for every ordered pair in ``user_ids``."""
-    unique_ids = list(dict.fromkeys(user_ids))
-    if len(unique_ids) < 2:
-        return
-
-    keys = [
-        _h2h_key(user_id, opponent_id)
-        for user_id in unique_ids
-        for opponent_id in unique_ids
-        if user_id != opponent_id
-    ]
-    cache.delete_many(keys)
-    logger.debug("Invalidated H2H stats cache for users %s", unique_ids)
-
-
-def invalidate_match_stats(user_ids: list[UUID | int]) -> None:
-    """Bust all stats caches affected by a match involving ``user_ids``."""
-    unique_ids = list(dict.fromkeys(user_ids))
-    for user_id in unique_ids:
-        invalidate_user_stats(user_id)
-    invalidate_head_to_head_stats(unique_ids)
 
 
 def get_user_stats(
@@ -123,7 +59,7 @@ def get_user_stats(
         Optional filter: ``"pong"`` or ``"tictactoe"``.
         If ``None``, stats cover all game types.
     """
-    cache_key = _user_stats_key(user_id, game_type, mode)
+    cache_key = user_stats_key(user_id, game_type, mode)
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -334,7 +270,7 @@ def _compute_user_stats(
     by_game_mode = _build_by_game_mode(base_qs)
     by_finish_reason = _build_finish_reason_breakdown(base_qs)
     performance_trend = _build_performance_trend(base_qs)
-    game_specific = _compute_game_specific_stats(base_qs, game_type, user_id)
+    game_specific = compute_game_specific_stats(base_qs, game_type, user_id)
     recent_form = recent_outcomes[:10]
 
     return {
@@ -356,212 +292,6 @@ def _compute_user_stats(
     }
 
 
-def _compute_game_specific_stats(
-    base_qs,
-    game_type: Optional[str],
-    user_id: UUID | int,
-) -> dict[str, Any]:
-    """
-    Compute metrics that are unique to each game.
-
-    - **Pong**: avg/max scores per match, average match duration,
-      forfeit rate, score differential.
-    - **Tic-Tac-Toe**: average total moves, win-as-X %, win-as-O %,
-      draw rate, perfect games (win in 5 moves).
-    """
-    result: dict[str, Any] = {}
-
-    # Determine which game types to compute
-    types_to_process = [game_type] if game_type else ["pong", "tictactoe"]
-
-    for gt in types_to_process:
-        gt_qs = base_qs.filter(match__game_type=gt)
-        gt_count = gt_qs.count()
-        if gt_count == 0:
-            continue
-
-        if gt == "pong":
-            result["pong"] = _pong_specific_stats(gt_qs, gt_count, user_id)
-        elif gt == "tictactoe":
-            result["tictactoe"] = _tictactoe_specific_stats(gt_qs, gt_count, user_id)
-
-    return result
-
-
-def _limited_match_ids(qs, limit: int = 200) -> list[Any]:
-    return list(qs.values_list("match_id", flat=True)[:limit])
-
-
-def _count_forfeit_results(qs) -> tuple[int, int]:
-    wins = qs.filter(
-        outcome="win",
-        match__finish_reason__in=FORFEIT_FINISH_REASONS,
-    ).count()
-    losses = qs.filter(
-        outcome="loss",
-        match__finish_reason__in=FORFEIT_FINISH_REASONS,
-    ).count()
-    return wins, losses
-
-
-def _score_map_for_matches(qs, match_ids: list[Any]) -> dict[Any, int]:
-    return dict(
-        qs.filter(match_id__in=match_ids).values_list("match_id", "score")
-    )
-
-
-def _opponent_score_map(match_ids: list[Any], user_id: UUID | int) -> dict[Any, int]:
-    return dict(
-        MatchPlayer.objects.filter(
-            match_id__in=match_ids,
-        ).exclude(
-            user_id=user_id,
-        ).values_list("match_id", "score")
-    )
-
-
-def _average_score_differential(
-    match_ids: list[Any],
-    my_scores: dict[Any, int],
-    opp_scores: dict[Any, int],
-) -> float:
-    if not match_ids:
-        return 0.0
-
-    score_diffs = [
-        my_scores.get(match_id, 0) - opp_scores.get(match_id, 0)
-        for match_id in match_ids
-    ]
-    return round(sum(score_diffs) / len(score_diffs), 2) if score_diffs else 0.0
-
-
-def _count_pong_shutout_wins(qs, match_ids: list[Any], opp_scores: dict[Any, int]) -> int:
-    winning_match_ids = set(
-        qs.filter(
-            match_id__in=match_ids,
-            outcome="win",
-        ).values_list("match_id", flat=True)
-    )
-    return sum(1 for match_id in winning_match_ids if opp_scores.get(match_id) == 0)
-
-
-def _pong_specific_stats(
-    qs,
-    total: int,
-    user_id: UUID | int,
-) -> dict[str, Any]:
-    """Pong-specific aggregations."""
-    agg = qs.aggregate(
-        avg_score=Coalesce(Avg("score"), 0.0, output_field=FloatField()),
-        max_score=Coalesce(Max("score"), 0),
-        total_score=Coalesce(Sum("score"), 0),
-        avg_duration=Coalesce(
-            Avg("match__duration_seconds"), 0.0, output_field=FloatField()
-        ),
-        max_duration=Coalesce(
-            Max("match__duration_seconds"), 0.0, output_field=FloatField()
-        ),
-    )
-
-    match_ids = _limited_match_ids(qs)
-    my_scores = _score_map_for_matches(qs, match_ids)
-    opp_scores = _opponent_score_map(match_ids, user_id)
-    avg_score_diff = _average_score_differential(match_ids, my_scores, opp_scores)
-    forfeit_wins, forfeit_losses = _count_forfeit_results(qs)
-    shutout_wins = _count_pong_shutout_wins(qs, match_ids, opp_scores)
-
-    return {
-        "avg_score_per_match": round(agg["avg_score"], 2),
-        "max_score_in_match": agg["max_score"],
-        "total_points_scored": agg["total_score"],
-        "avg_duration_seconds": round(agg["avg_duration"], 2),
-        "max_duration_seconds": round(agg["max_duration"], 2),
-        "avg_score_differential": avg_score_diff,
-        "forfeit_wins": forfeit_wins,
-        "forfeit_losses": forfeit_losses,
-        "shutout_wins": shutout_wins,
-    }
-
-
-def _metadata_total_moves(meta: Any) -> Optional[int]:
-    if not isinstance(meta, dict):
-        return None
-    if "total_moves" not in meta:
-        return None
-    return meta["total_moves"]
-
-
-def _metadata_for_matches(match_ids: list[Any]):
-    return Match.objects.filter(id__in=match_ids).values_list("metadata", flat=True)
-
-
-def _average_total_moves(match_ids: list[Any]) -> float:
-    if not match_ids:
-        return 0.0
-
-    total_moves = []
-    for meta in _metadata_for_matches(match_ids):
-        moves = _metadata_total_moves(meta)
-        if moves is not None:
-            total_moves.append(moves)
-
-    if not total_moves:
-        return 0.0
-    return round(sum(total_moves) / len(total_moves), 2)
-
-
-def _count_perfect_tictactoe_wins(match_ids: list[Any], user_id: UUID | int) -> int:
-    if not match_ids:
-        return 0
-
-    perfect_wins = 0
-    winner_metadata = Match.objects.filter(
-        id__in=match_ids,
-        winner_id=user_id,
-    ).values_list("metadata", flat=True)
-    for meta in winner_metadata:
-        moves = _metadata_total_moves(meta)
-        if moves is not None and moves <= 5:
-            perfect_wins += 1
-    return perfect_wins
-
-
-def _tictactoe_specific_stats(
-    qs,
-    total: int,
-    user_id: UUID | int,
-) -> dict[str, Any]:
-    """Tic-Tac-Toe-specific aggregations."""
-
-    draws_count = qs.filter(outcome="draw").count()
-    draw_rate = round(draws_count / total, 4) if total > 0 else 0.0
-
-    # Wins/losses by slot (slot 1 = X, slot 2 = O)
-    wins_as_x = qs.filter(outcome="win", slot=1).count()
-    wins_as_o = qs.filter(outcome="win", slot=2).count()
-    games_as_x = qs.filter(slot=1).count()
-    games_as_o = qs.filter(slot=2).count()
-
-    match_ids = _limited_match_ids(qs)
-    avg_moves = _average_total_moves(match_ids)
-    perfect_wins = _count_perfect_tictactoe_wins(match_ids, user_id)
-    forfeit_wins, forfeit_losses = _count_forfeit_results(qs)
-
-    return {
-        "draw_rate": draw_rate,
-        "wins_as_x": wins_as_x,
-        "wins_as_o": wins_as_o,
-        "games_as_x": games_as_x,
-        "games_as_o": games_as_o,
-        "win_rate_as_x": round(wins_as_x / games_as_x, 4) if games_as_x else 0.0,
-        "win_rate_as_o": round(wins_as_o / games_as_o, 4) if games_as_o else 0.0,
-        "avg_total_moves": avg_moves,
-        "perfect_wins": perfect_wins,
-        "forfeit_wins": forfeit_wins,
-        "forfeit_losses": forfeit_losses,
-    }
-
-
 def get_head_to_head(
     user_id: UUID | int,
     opponent_id: UUID | int,
@@ -571,7 +301,7 @@ def get_head_to_head(
 
     Cached for ``STATS_CACHE_TTL`` seconds.
     """
-    cache_key = _h2h_key(user_id, opponent_id)
+    cache_key = h2h_key(user_id, opponent_id)
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -703,7 +433,7 @@ def get_leaderboard(
     limit : int
         Maximum entries returned (default 50).
     """
-    cache_key = _leaderboard_key(game_type, period, limit)
+    cache_key = leaderboard_key(game_type, period, limit)
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
