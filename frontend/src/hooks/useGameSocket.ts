@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAccessToken, getRefreshToken, refreshAccessToken } from '../services/api';
+import { getAccessToken, refreshAccessToken } from '../services/api';
 
 export type WsStatus = 'connecting' | 'open' | 'closed' | 'error' | 'reconnecting';
 
@@ -126,17 +126,10 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
     const getSocketUrl = async (forceRefresh = false) => {
       let token = getAccessToken();
       if (tokenNeedsRefresh(token, forceRefresh)) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) {
-          token = getAccessToken();
-        } else {
-          token = getAccessToken();
-          if (tokenNeedsRefresh(token, false)) return null;
-        }
+        await refreshAccessToken();
+        token = getAccessToken();
       }
-      if (!token) return null;
       const url = new URL(path, getSocketBaseUrl());
-      url.searchParams.set('token', token);
       return url.toString();
     };
 
@@ -176,10 +169,6 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
 
       const url = await getSocketUrl(forceRefresh);
       if (!url) {
-        if (!getAccessToken() && !getRefreshToken()) {
-          setStatus('closed');
-          return;
-        }
         scheduleReconnect(true);
         return;
       }

@@ -20,6 +20,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
 
     is_oauth_user = serializers.ReadOnlyField()
+    is_oauth_only = serializers.ReadOnlyField()
     friend_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -35,6 +36,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "level",
             "is_2fa_enabled",
             "is_oauth_user",
+            "is_oauth_only",
             "last_activity",
             "date_joined",
             "friend_count",
@@ -129,7 +131,7 @@ class LoginSerializer(serializers.Serializer):
             except User.DoesNotExist:
                 user_obj = None
 
-        if user_obj is not None and user_obj.is_oauth_user:
+        if user_obj is not None and user_obj.is_oauth_only:
             raise serializers.ValidationError(
                 {
                     "detail": (

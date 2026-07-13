@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -37,22 +37,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved !== null ? saved === "true" : true;
-  });
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains('dark'));
-    });
-    
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
-    
-    return () => observer.disconnect();
-  }, []);
   const validate = () => {
     const newErrors = {
       username: "",
@@ -191,7 +175,7 @@ export default function RegisterPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
-            src={isDark ? registerImgDark : registerImg}
+            src={registerImgDark}
             alt={t("register.hero_image_alt", "Sports arena illustration")}
             className="w-full h-full object-cover"
           />

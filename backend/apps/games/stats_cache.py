@@ -10,6 +10,7 @@ logger = logging.getLogger("games.stats")
 
 STATS_CACHE_TTL = 300
 LEADERBOARD_CACHE_TTL = 600
+LEADERBOARD_VERSION_KEY = "stats:leaderboard:version"
 
 
 def user_stats_key(
@@ -31,11 +32,29 @@ def leaderboard_key(
     period: str,
     limit: int,
 ) -> str:
+    version = leaderboard_version()
     gt = game_type or "all"
-    return f"stats:leaderboard:{gt}:{period}:{limit}:wins"
+    return f"stats:leaderboard:v{version}:{gt}:{period}:{limit}:wins"
 
 
-def invalidate_user_stats(user_id: UUID | int) -> None:
+def leaderboard_version() -> int:
+    version = cache.get(LEADERBOARD_VERSION_KEY)
+    if version is None:
+        cache.add(LEADERBOARD_VERSION_KEY, 1, timeout=None)
+        version = cache.get(LEADERBOARD_VERSION_KEY, 1)
+    return int(version)
+
+
+def bump_leaderboard_version() -> int:
+    try:
+        cache.add(LEADERBOARD_VERSION_KEY, 1, timeout=None)
+        return int(cache.incr(LEADERBOARD_VERSION_KEY))
+    except ValueError:
+        cache.set(LEADERBOARD_VERSION_KEY, 2, timeout=None)
+        return 2
+
+
+def invalidate_user_stats(user_id: UUID | int, *, include_leaderboard: bool = True) -> None:
     keys = [
         user_stats_key(user_id, game_type, mode)
         for game_type in [None, "pong", "tictactoe"]
@@ -43,10 +62,8 @@ def invalidate_user_stats(user_id: UUID | int) -> None:
     ]
     cache.delete_many(keys)
 
-    for gt in [None, "pong", "tictactoe"]:
-        for period in ["all", "daily", "weekly", "monthly"]:
-            for limit in range(1, 101):
-                cache.delete(leaderboard_key(gt, period, limit))
+    if include_leaderboard:
+        bump_leaderboard_version()
 
     logger.debug("Invalidated stats cache for user %s", user_id)
 
@@ -69,5 +86,6 @@ def invalidate_head_to_head_stats(user_ids: list[UUID | int]) -> None:
 def invalidate_match_stats(user_ids: list[UUID | int]) -> None:
     unique_ids = list(dict.fromkeys(user_ids))
     for user_id in unique_ids:
-        invalidate_user_stats(user_id)
+        invalidate_user_stats(user_id, include_leaderboard=False)
     invalidate_head_to_head_stats(unique_ids)
+    bump_leaderboard_version()

@@ -47,6 +47,7 @@ const ONLINE_PADDLE_HALF_HEIGHT = 40;
 const INTERPOLATION_BASE_DELAY_MS = 45;
 const INTERPOLATION_MAX_EXTRAPOLATION_MS = 120;
 const ONLINE_SMOOTHING_GAIN = 26;
+let lastOnlineRenderDebugSecond = -1;
 
 export function drawFrame({
   ctx,
@@ -149,11 +150,30 @@ export function resolveOnlineFrameState({
   if (snapshots.length === 0) return latestState;
 
   const renderDelayMs = clamp(
-    INTERPOLATION_BASE_DELAY_MS + latency.rttMs / 2,
-    INTERPOLATION_BASE_DELAY_MS,
-    220,
+    INTERPOLATION_BASE_DELAY_MS + latency.rttMs * 0.25,
+    50,
+    140,
   );
   const targetServerTs = Date.now() + latency.clockOffsetMs - renderDelayMs;
+  const latestSnapshot = snapshots[snapshots.length - 1] ?? null;
+  const snapshotAgeMs = latestSnapshot
+    ? (Date.now() + latency.clockOffsetMs) - latestSnapshot.serverTsMs
+    : null;
+  const extrapolationMs = latestSnapshot
+    ? Math.max(0, targetServerTs - latestSnapshot.serverTsMs)
+    : 0;
+  const currentSecond = Math.floor(Date.now() / 1000);
+  if (currentSecond !== lastOnlineRenderDebugSecond) {
+    lastOnlineRenderDebugSecond = currentSecond;
+    console.debug('[PONG_RENDER]', {
+      rttMs: latency.rttMs,
+      clockOffsetMs: latency.clockOffsetMs,
+      renderDelayMs,
+      snapshotAgeMs,
+      extrapolationMs,
+      snapshotBufferSize: snapshots.length,
+    });
+  }
   return resolveBufferedOnlineState(snapshots, targetServerTs, mySlot, keys);
 }
 
@@ -173,11 +193,12 @@ export function smoothOnlineState({
     0.08,
     1,
   );
+  const ballBlend = clamp(blend * 1.8, 0.35, 1);
   const source = previousRendered ?? targetState;
   const smoothed: OnlineGameState = {
     ball: {
-      x: lerp(source.ball.x, targetState.ball.x, blend),
-      y: lerp(source.ball.y, targetState.ball.y, blend),
+      x: lerp(source.ball.x, targetState.ball.x, ballBlend),
+      y: lerp(source.ball.y, targetState.ball.y, ballBlend),
       vx: targetState.ball.vx,
       vy: targetState.ball.vy,
     },

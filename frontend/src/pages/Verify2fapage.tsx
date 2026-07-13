@@ -13,6 +13,8 @@ export default function Verify2FAPage() {
   const { t } = useTranslation();
 
   const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -35,24 +37,6 @@ export default function Verify2FAPage() {
       inputRefs.current[index + 1]?.focus();
     }
   };
-
-  const [isDark, setIsDark] = useState(() => {
-      const saved = localStorage.getItem("darkMode");
-      return saved !== null ? saved === "true" : true;
-    });
-  
-    useEffect(() => {
-      const observer = new MutationObserver(() => {
-        setIsDark(document.documentElement.classList.contains('dark'));
-      });
-      
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      });
-      
-      return () => observer.disconnect();
-    }, []);
 
   useEffect(() => {
     if (queryTempToken) {
@@ -96,10 +80,10 @@ export default function Verify2FAPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const codeString = code.join("");
+    const codeString = recoveryMode ? recoveryCode.trim().toUpperCase() : code.join("");
 
-    if (codeString.length !== 6) {
-      setError(t("errors.code_length"));
+    if ((!recoveryMode && codeString.length !== 6) || (recoveryMode && ![8, 12].includes(codeString.length))) {
+      setError(recoveryMode ? "Enter your recovery code" : t("errors.code_length"));
       return;
     }
     if (!tempToken) {
@@ -118,6 +102,7 @@ export default function Verify2FAPage() {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? t("errors.invalid_code"));
       setCode(["", "", "", "", "", ""]);
+      setRecoveryCode("");
       inputRefs.current[0]?.focus();
       } finally {
       setLoading(false);
@@ -134,7 +119,7 @@ export default function Verify2FAPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
-            src={isDark ? verifyDark : verify}
+            src={verifyDark}
             alt={t("2fa.hero_image_alt")}
             className="w-full h-full object-cover"
           />
@@ -148,12 +133,19 @@ export default function Verify2FAPage() {
           <div className="max-w-md mx-auto w-full py-12">
             <FormContent
               code={code}
+              recoveryMode={recoveryMode}
+              recoveryCode={recoveryCode}
               error={error}
               loading={loading}
               inputRefs={inputRefs}
               handleChange={handleChange}
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
+              setRecoveryCode={setRecoveryCode}
+              toggleRecoveryMode={() => {
+                setRecoveryMode((current) => !current);
+                setError("");
+              }}
               handleSubmit={handleSubmit}
               navigate={navigate}
               t={t}
@@ -175,12 +167,19 @@ export default function Verify2FAPage() {
           <div className="max-w-md w-full">
             <FormContent
               code={code}
+              recoveryMode={recoveryMode}
+              recoveryCode={recoveryCode}
               error={error}
               loading={loading}
               inputRefs={inputRefs}
               handleChange={handleChange}
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
+              setRecoveryCode={setRecoveryCode}
+              toggleRecoveryMode={() => {
+                setRecoveryMode((current) => !current);
+                setError("");
+              }}
               handleSubmit={handleSubmit}
               navigate={navigate}
               t={t}
@@ -197,12 +196,16 @@ export default function Verify2FAPage() {
 ───────────────────────────────────────────────── */
 interface FormContentProps {
   code: string[];
+  recoveryMode: boolean;
+  recoveryCode: string;
   error: string;
   loading: boolean;
   inputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
   handleChange: (index: number, value: string) => void;
   handleKeyDown: (index: number, e: KeyboardEvent<HTMLInputElement>) => void;
   handlePaste: (e: ClipboardEvent<HTMLInputElement>) => void;
+  setRecoveryCode: (code: string) => void;
+  toggleRecoveryMode: () => void;
   handleSubmit: (e: React.FormEvent) => void;
   navigate: (path: string) => void;
   t: TFunction;
@@ -210,12 +213,16 @@ interface FormContentProps {
 
 function FormContent({
   code,
+  recoveryMode,
+  recoveryCode,
   error,
   loading,
   inputRefs,
   handleChange,
   handleKeyDown,
   handlePaste,
+  setRecoveryCode,
+  toggleRecoveryMode,
   handleSubmit,
   navigate,
   t,
@@ -236,7 +243,9 @@ function FormContent({
           {t("2fa.verify_title", "Two-Factor Authentication")}
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {t("2fa.verify_subtitle", "Enter the 6-digit code from your authenticator app")}
+          {recoveryMode
+            ? t("2fa.recovery_login_help", "Enter one of your 8-character recovery codes")
+            : t("2fa.verify_subtitle", "Enter the 6-digit code from your authenticator app")}
         </p>
       </div>
 
@@ -244,6 +253,23 @@ function FormContent({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 6-digit code input */}
         <div>
+          {recoveryMode ? (
+            <input
+              type="text"
+              autoComplete="one-time-code"
+              maxLength={12}
+              value={recoveryCode}
+              onChange={(event) => {
+                setRecoveryCode(event.target.value.replace(/[^a-fA-F0-9]/g, "").toUpperCase());
+              }}
+              className="w-full rounded-lg px-4 py-3 text-center text-xl font-mono tracking-widest"
+              style={{
+                border: `2px solid ${error ? "var(--color-border-error)" : "var(--color-border)"}`,
+                backgroundColor: "var(--color-bg-input)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+          ) : (
           <div className="flex gap-3 justify-center">
             {code.map((digit, index) => (
               <input
@@ -270,6 +296,7 @@ function FormContent({
               />
             ))}
           </div>
+          )}
           {error && (
             <p className="text-sm mt-3 text-center" style={{ color: "var(--color-error)" }}>
               {error}
@@ -298,6 +325,16 @@ function FormContent({
           }}
         >
           {loading ? t("loading.verifying") : t("2fa.verify_submit", "Verify")}
+        </button>
+        <button
+          type="button"
+          onClick={toggleRecoveryMode}
+          className="w-full text-sm hover:underline"
+          style={{ color: "var(--color-text-link)" }}
+        >
+          {recoveryMode
+            ? t("2fa.use_totp", "Use authenticator app instead")
+            : t("2fa.use_recovery", "Use a recovery code")}
         </button>
       </form>
 

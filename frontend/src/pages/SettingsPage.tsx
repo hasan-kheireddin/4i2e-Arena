@@ -10,7 +10,14 @@ import { Modal } from '../components/ui/Modal';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
 import { useAuth } from '../context/AuthContext';
-import { changePassword, twoFADisable, twoFAStatus, updateProfile } from '../services/auth';
+import {
+  changePassword,
+  oauthInitiate,
+  regenerateTwoFARecoveryCodes,
+  twoFADisable,
+  twoFAStatus,
+  updateProfile,
+} from '../services/auth';
 import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from '../i18n/language';
 import type { ApiError } from '../services/api';
 
@@ -32,10 +39,11 @@ export default function SettingsPage() {
   const username = user?.username ?? '';
   const email = user?.email ?? '';
   const isOAuthUser = user?.is_oauth_user ?? false;
+  const isOAuthOnly = user?.is_oauth_only ?? false;
 
   // Editable profile fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
-  const [bio, setBio] = useState('');
+  const [bio] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -57,15 +65,21 @@ export default function SettingsPage() {
     is_2fa_enabled: boolean;
     confirmed: boolean;
     created_at: string | null;
+    remaining_recovery_codes: number;
   }>({
     is_2fa_enabled: false,
     confirmed: false,
     created_at: null,
+    remaining_recovery_codes: 0,
   });
   const [showDisable2FA, setShowDisable2FA] = useState(false);
   const [disableCode, setDisableCode] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
   const [disableSuccess, setDisableSuccess] = useState<string | null>(null);
+  const [showRecoveryCodes, setShowRecoveryCodes] = useState(false);
+  const [recoveryAuthCode, setRecoveryAuthCode] = useState('');
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([]);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -129,7 +143,7 @@ export default function SettingsPage() {
   };
 
   const handleDisable2FA = async () => {
-    if (disableCode.length !== 6) {
+    if (![6, 8, 12].includes(disableCode.length)) {
       setTwoFAError(t('settings.security.enter_disable_code'));
       return;
     }
@@ -144,6 +158,7 @@ export default function SettingsPage() {
         is_2fa_enabled: false,
         confirmed: false,
         created_at: null,
+        remaining_recovery_codes: 0,
       });
       setShowDisable2FA(false);
       setDisableCode('');
@@ -156,6 +171,38 @@ export default function SettingsPage() {
       setTwoFAError(apiErr.detail ?? t('settings.security.disable_failed'));
     } finally {
       setDisableLoading(false);
+    }
+  };
+
+  const handleRegenerateRecoveryCodes = async () => {
+    if (![6, 8, 12].includes(recoveryAuthCode.length)) {
+      setTwoFAError(t('settings.security.enter_disable_code'));
+      return;
+    }
+    setRecoveryLoading(true);
+    setTwoFAError(null);
+    try {
+      const result = await regenerateTwoFARecoveryCodes(recoveryAuthCode);
+      setNewRecoveryCodes(result.recovery_codes);
+      setRecoveryAuthCode('');
+      await refreshTwoFAState();
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setTwoFAError(apiErr.detail ?? t('settings.security.load_status_failed'));
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleLink42OAuth = async () => {
+    setSaveError(null);
+    try {
+      const { authorize_url } = await oauthInitiate('42', true);
+      sessionStorage.setItem('oauth_provider', '42');
+      window.location.href = authorize_url;
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setSaveError(apiErr.detail ?? 'Unable to start 42 account linking.');
     }
   };
 
@@ -289,7 +336,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-6 flex items-center gap-4">
                   <div>
-                    <Avatar name={user?.display_name || user?.username} size="lg" />
+                    <Avatar name={user?.display_name || user?.username || ''} size="lg" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-primary">{user?.display_name || user?.username}</p>
@@ -328,7 +375,7 @@ export default function SettingsPage() {
                 <h2 className="mb-4 text-base font-semibold text-primary">
                   {t('settings.security.change_password')}
                 </h2>
-                {isOAuthUser ? (
+                {isOAuthOnly ? (
                   <div className="rounded-xl border border-info/30 bg-info/10 p-4 text-sm text-secondary">
                     <div className="mb-2">
                       <Badge variant="info">{t('settings.security.oauth_badge')}</Badge>
@@ -365,6 +412,15 @@ export default function SettingsPage() {
                     <Button className="mt-4" onClick={handleChangePassword} loading={passwordLoading}>
                       {t('settings.security.update_password')}
                     </Button>
+                    {!isOAuthUser && (
+                      <Button
+                        className="mt-4 ms-3"
+                        variant="secondary"
+                        onClick={() => { void handleLink42OAuth(); }}
+                      >
+                        Link 42 OAuth
+                      </Button>
+                    )}
                   </>
                 )}
               </SurfaceCard>
@@ -419,6 +475,24 @@ export default function SettingsPage() {
                   <p className="mt-3 text-xs text-muted">
                     {t('settings.security.setup_redirect_hint')}
                   </p>
+                )}
+                {twoFAEnabled && !twoFALoading && (
+                  <div className="mt-4 flex items-center justify-between gap-4">
+                    <p className="text-xs text-muted">
+                      {twoFAInfo.remaining_recovery_codes} recovery codes remaining
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowRecoveryCodes(true);
+                        setNewRecoveryCodes([]);
+                        setTwoFAError(null);
+                      }}
+                    >
+                      Regenerate recovery codes
+                    </Button>
+                  </div>
                 )}
               </SurfaceCard>
 
@@ -492,12 +566,12 @@ export default function SettingsPage() {
             label={t('settings.security.authenticator_code')}
             value={disableCode}
             onChange={(e) => {
-              setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+              setDisableCode(e.target.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase().slice(0, 12));
               setTwoFAError(null);
               setDisableSuccess(null);
             }}
             placeholder="000000"
-            maxLength={6}
+            maxLength={12}
           />
           <div className="flex gap-3">
             <Button onClick={handleDisable2FA} loading={disableLoading} variant="danger">
@@ -516,6 +590,45 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+      <Modal
+        open={twoFAEnabled && showRecoveryCodes}
+        onClose={() => {
+          if (recoveryLoading) return;
+          setShowRecoveryCodes(false);
+          setRecoveryAuthCode('');
+          setNewRecoveryCodes([]);
+        }}
+        title="Recovery codes"
+      >
+        {newRecoveryCodes.length > 0 ? (
+          <div className="space-y-4">
+            <p className="text-sm text-secondary">
+              Save these single-use codes now. Existing recovery codes no longer work.
+            </p>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-input p-4">
+              {newRecoveryCodes.map((item) => <code key={item}>{item}</code>)}
+            </div>
+            <Button onClick={() => setShowRecoveryCodes(false)}>I saved these codes</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-secondary">
+              Enter a current authenticator or recovery code. Regenerating invalidates every old recovery code.
+            </p>
+            <Input
+              label="Authentication code"
+              value={recoveryAuthCode}
+              maxLength={12}
+              onChange={(event) => setRecoveryAuthCode(
+                event.target.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase().slice(0, 12),
+              )}
+            />
+            <Button loading={recoveryLoading} onClick={() => { void handleRegenerateRecoveryCodes(); }}>
+              Regenerate codes
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   );

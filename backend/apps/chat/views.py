@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, mixins, status, permissions
 from rest_framework.decorators import action
@@ -49,6 +51,10 @@ class ChannelViewSet(mixins.CreateModelMixin,
         return ChannelSerializer
 
     def get_queryset(self):
+        if self.action == "join":
+            return Channel.objects.filter(
+                channel_type__in=(Channel.CHANNEL_PUBLIC, Channel.CHANNEL_PROTECTED),
+            )
         return Channel.objects.filter(
             models.Q(channel_type=Channel.CHANNEL_PUBLIC) |
             models.Q(memberships__user=self.request.user)
@@ -67,7 +73,29 @@ class ChannelViewSet(mixins.CreateModelMixin,
         target_user_id = request.data.get("target_user_id")
         if not target_user_id:
             return Response({"detail": "target_user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
-        channel = get_or_create_dm_channel_sync(request.user.id, target_user_id)
+        if str(target_user_id) == str(request.user.id):
+            return Response({"detail": "You cannot create a DM with yourself."}, status=status.HTTP_400_BAD_REQUEST)
+        target = get_user_model().objects.filter(pk=target_user_id).first()
+        if target is None:
+            return Response({"detail": "Target user does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        if Block.objects.filter(
+            models.Q(blocker=request.user, blocked=target)
+            | models.Q(blocker=target, blocked=request.user)
+        ).exists():
+            return Response({"detail": "Cannot message this user."}, status=status.HTTP_403_FORBIDDEN)
+        channel = get_or_create_dm_channel_sync(request.user.id, target.id)
+        return Response(ChannelSerializer(channel, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    def join(self, request, pk=None):
+        channel = self.get_object()
+        if channel.channel_type in (Channel.CHANNEL_DM, Channel.CHANNEL_PRIVATE):
+            return Response({"detail": "This channel requires an invitation."}, status=status.HTTP_403_FORBIDDEN)
+        if channel.channel_type == Channel.CHANNEL_PROTECTED:
+            password = request.data.get("password", "")
+            if not password or not check_password(password, channel.password_hash):
+                return Response({"detail": "Invalid channel password."}, status=status.HTTP_403_FORBIDDEN)
+        ChannelMembership.objects.get_or_create(channel=channel, user=request.user)
         return Response(ChannelSerializer(channel, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -120,6 +148,10 @@ class MembershipViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         channel_id = self.kwargs.get("channel_pk")
+        if not ChannelMembership.objects.filter(
+            channel_id=channel_id, user=self.request.user,
+        ).exists():
+            return ChannelMembership.objects.none()
         return ChannelMembership.objects.filter(channel_id=channel_id)
 
     def get_object(self):
@@ -289,6 +321,10 @@ class MessageViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         channel_id = self.kwargs.get("channel_pk")
+        if not ChannelMembership.objects.filter(
+            channel_id=channel_id, user=self.request.user,
+        ).exists():
+            return Message.objects.none()
         return Message.objects.filter(channel_id=channel_id).select_related("sender").order_by("-created_at")[:100]
 
 

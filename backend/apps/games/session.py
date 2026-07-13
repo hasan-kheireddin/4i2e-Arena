@@ -91,6 +91,7 @@ async def create_session_async(
     ai: Any = None,
     ai_slot: int | None = None,
     ai_difficulty: str | None = None,
+    authorized_player_ids: set[str] | list[str] | tuple[str, ...] | None = None,
 ) -> GameSession:
     session = create_session(
         game_type=game_type,
@@ -99,6 +100,7 @@ async def create_session_async(
         ai=ai,
         ai_slot=ai_slot,
         ai_difficulty=ai_difficulty,
+        authorized_player_ids=authorized_player_ids,
     )
     await persist_session(session)
     return session
@@ -162,6 +164,7 @@ def create_session(
     ai: Any = None,
     ai_slot: int | None = None,
     ai_difficulty: str | None = None,
+    authorized_player_ids: set[str] | list[str] | tuple[str, ...] | None = None,
 ) -> GameSession:
     """Create and register a new game session."""
 
@@ -182,6 +185,7 @@ def create_session(
         ai=ai,
         ai_slot=ai_slot,
         ai_difficulty=ai_difficulty,
+        authorized_player_ids={str(value) for value in (authorized_player_ids or ())},
     )
     _sessions[gid] = session
     logger.info("Session created: game_id=%s type=%s", gid, game_type.value)

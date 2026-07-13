@@ -515,6 +515,7 @@ function GameCard({
   return (
     <Link to={to} className="block group">
       <div
+        aria-label={`${players} players`}
         className="relative h-44 flex flex-col justify-end p-5 rounded-xl overflow-hidden transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl"
         style={{ background: `linear-gradient(135deg, ${c1}25 0%, ${c2}15 100%)`, border: `1px solid ${c1}35` }}
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = c1; e.currentTarget.style.boxShadow = `0 8px 30px ${c1}25`; }}

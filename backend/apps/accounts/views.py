@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
 from django.db import IntegrityError, transaction
@@ -22,6 +23,7 @@ from apps.analytics.tracking_service import (
     track_registration,
 )
 
+from .auth_cookies import clear_auth_cookies, set_auth_cookies
 from .email_service import send_otp_email, send_password_reset_email
 from .models import EmailVerificationToken, PendingRegistration, TOTPDevice
 from .registration_service import (
@@ -40,6 +42,7 @@ from .serializers import (
     VerifyEmailSerializer,
     get_tokens_for_user,
 )
+from .throttles import AuthScopedRateThrottle
 from .twofa_views import _issue_temp_token
 
 logger = logging.getLogger(__name__)
@@ -48,10 +51,6 @@ safe_track_registration = non_blocking(track_registration)
 safe_track_login = non_blocking(track_login)
 safe_track_logout = non_blocking(track_logout)
 safe_track_profile_updated = non_blocking(track_profile_updated)
-
-
-def _request_origin(request) -> str:
-    return f"{request.scheme}://{request.get_host()}".rstrip("/")
 
 
 class RegisterView(APIView):
@@ -63,6 +62,8 @@ class RegisterView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_register"
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -109,6 +110,8 @@ class LoginView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_login"
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -153,13 +156,14 @@ class LoginView(APIView):
             user_agent=get_user_agent(request),
             method="password",
         )
-        return Response(
+        response = Response(
             {
                 "user": profile,
                 "tokens": tokens,
             },
             status=status.HTTP_200_OK,
         )
+        return set_auth_cookies(response, tokens)
 
 
 class LogoutView(APIView):
@@ -171,7 +175,9 @@ class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        refresh_token = request.data.get("refresh")
+        refresh_token = request.data.get("refresh") or request.COOKIES.get(
+            getattr(settings, "JWT_REFRESH_COOKIE_NAME", "refresh_token"),
+        )
         if not refresh_token:
             return Response(
                 {"detail": "Refresh token is required."},
@@ -196,10 +202,11 @@ class LogoutView(APIView):
         )
         django_logout(request)
 
-        return Response(
+        response = Response(
             {"detail": "Successfully logged out."},
             status=status.HTTP_200_OK,
         )
+        return clear_auth_cookies(response)
 
 
 class CustomTokenRefreshView(TokenRefreshView):
@@ -210,9 +217,26 @@ class CustomTokenRefreshView(TokenRefreshView):
     settings.SIMPLE_JWT.ROTATE_REFRESH_TOKENS / BLACKLIST_AFTER_ROTATION).
     """
 
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request, *args, **kwargs):
+        refresh_cookie = request.COOKIES.get(
+            getattr(settings, "JWT_REFRESH_COOKIE_NAME", "refresh_token"),
+        )
+        data = request.data.copy()
+        if refresh_cookie and "refresh" not in data:
+            data["refresh"] = refresh_cookie
         try:
-            return super().post(request, *args, **kwargs)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+            if isinstance(response.data, dict) and "access" in response.data:
+                tokens = {
+                    "access": response.data["access"],
+                    "refresh": response.data.get("refresh", refresh_cookie or ""),
+                }
+                set_auth_cookies(response, tokens)
+            return response
         except TokenError as e:
             # Token is blacklisted, expired, or invalid.
             return Response(
@@ -286,7 +310,7 @@ class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        if request.user.is_oauth_user:
+        if request.user.is_oauth_only:
             return Response(
                 {"detail": "Password changes are disabled for 42 OAuth accounts."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -314,6 +338,8 @@ class VerifyEmailView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_otp"
 
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
@@ -333,16 +359,19 @@ class VerifyEmailView(APIView):
 
         tokens = get_tokens_for_user(user)
         profile = UserProfileSerializer(user).data
-        return Response(
+        response = Response(
             {"user": profile, "tokens": tokens},
             status=status.HTTP_200_OK,
         )
+        return set_auth_cookies(response, tokens)
 
 
 class ResendOTPView(APIView):
     """Resend OTP to the given email (if account is inactive/unverified)."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_otp"
 
     def post(self, request):
         email = request.data.get("email", "").strip().lower()
@@ -383,6 +412,8 @@ class PasswordResetRequestView(APIView):
     """Send a password-reset email with a unique token link."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_password_reset"
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -391,7 +422,7 @@ class PasswordResetRequestView(APIView):
 
         try:
             user = User.objects.get(email__iexact=email, is_active=True)
-            if user.is_oauth_user:
+            if user.is_oauth_only:
                 return Response(
                     {"detail": "If that email exists, a reset link has been sent."},
                     status=status.HTTP_200_OK,
@@ -400,7 +431,7 @@ class PasswordResetRequestView(APIView):
             send_password_reset_email(
                 user,
                 token.code,
-                frontend_url=_request_origin(request),
+                frontend_url=settings.FRONTEND_URL,
             )
         except User.DoesNotExist:
             pass  # Don't reveal whether the email exists
@@ -417,6 +448,8 @@ class PasswordResetConfirmView(APIView):
     """Validate the reset token and set the new password."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_password_reset"
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -446,7 +479,7 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if token.user.is_oauth_user:
+        if token.user.is_oauth_only:
             token.used = True
             token.save(update_fields=["used"])
             return Response(

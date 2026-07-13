@@ -269,6 +269,5 @@ class BaseConsumer(AsyncWebsocketConsumer):
         """Raise a clear error if no channel layer is configured."""
         if self.channel_layer is None:
             raise RuntimeError(
-                "No channel layer configured. Set CHANNEL_LAYERS in "
-                "settings or use the InMemoryChannelLayer for testing."
+                "No channel layer configured. Set CHANNEL_LAYERS in settings."
             )

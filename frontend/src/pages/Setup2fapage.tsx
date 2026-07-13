@@ -11,7 +11,7 @@ export default function Setup2FAPage() {
   const { t } = useTranslation();
   const { setUser } = useAuth();
 
-  const [step, setStep] = useState<"qr" | "verify">("qr");
+  const [step, setStep] = useState<"qr" | "verify" | "recovery">("qr");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [copyError, setCopyError] = useState("");
@@ -22,6 +22,7 @@ export default function Setup2FAPage() {
   // Data from backend
   const [qrCodeData, setQrCodeData] = useState("");
   const [secretKey, setSecretKey] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   // Fetch 2FA setup data from backend on mount
   useEffect(() => {
@@ -83,14 +84,15 @@ export default function Setup2FAPage() {
     setError("");
 
     try {
-      await twoFAConfirm(code);
+      const result = await twoFAConfirm(code);
+      setRecoveryCodes(result.recovery_codes);
       try {
         const profile = await getProfile();
         setUser(profile);
       } catch {
         // If the profile refresh fails, the setup itself still succeeded.
       }
-      navigate("/settings");
+      setStep("recovery");
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? t("2fa.verify_failed"));
@@ -197,7 +199,7 @@ export default function Setup2FAPage() {
               {t("2fa.continue", "Continue")}
             </button>
           </>
-        ) : (
+        ) : step === "verify" ? (
           <>
             {/* Verify Step */}
             <div className="mb-8 text-center">
@@ -282,6 +284,40 @@ export default function Setup2FAPage() {
               </button>
             </form>
           </>
+        ) : (
+          <div className="space-y-6 text-center">
+            <div>
+              <h1 className="text-3xl font-bold mb-3" style={{ color: "var(--color-text-primary)" }}>
+                {t("2fa.recovery_title", "Save your recovery codes")}
+              </h1>
+              <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+                {t("2fa.recovery_help", "Each code works once. Store them somewhere safe; they will not be shown again.")}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 rounded-lg p-5" style={{ backgroundColor: "var(--color-bg-card)" }}>
+              {recoveryCodes.map((recoveryCode) => (
+                <code key={recoveryCode} className="font-mono text-lg" style={{ color: "var(--color-text-primary)" }}>
+                  {recoveryCode}
+                </code>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => { void copyToClipboard(recoveryCodes.join("\n")); }}
+              className="w-full py-3 rounded-lg font-medium"
+              style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-link)" }}
+            >
+              {t("2fa.copy_recovery", "Copy recovery codes")}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              className="w-full py-3.5 rounded-lg font-medium"
+              style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
+            >
+              {t("2fa.saved_recovery", "I saved these codes")}
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -326,6 +326,7 @@ def serialize_session(session: GameSession) -> dict[str, Any]:
         "pause_reason": session.pause_reason,
         "both_connected_sent": session.both_connected_sent,
         "ready_slots": sorted(int(slot) for slot in session.ready_slots),
+        "authorized_player_ids": sorted(session.authorized_player_ids),
         "players": {
             str(slot): {
                 "user_id": str(player.user_id),
@@ -470,6 +471,12 @@ def deserialize_session(payload: dict[str, Any]) -> GameSession:
 
     session.both_connected_sent = bool(payload.get("both_connected_sent", False))
     session.ready_slots = _deserialize_ready_slots(payload.get("ready_slots"))
+    authorized = payload.get("authorized_player_ids")
+    session.authorized_player_ids = (
+        {str(value) for value in authorized if isinstance(value, (str, int))}
+        if isinstance(authorized, list)
+        else set()
+    )
     session.players = _deserialize_players(payload.get("players"))
 
     return session

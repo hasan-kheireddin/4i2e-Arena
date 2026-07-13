@@ -11,6 +11,7 @@ export interface User {
   level: number;
   is_2fa_enabled: boolean;
   is_oauth_user: boolean;
+  is_oauth_only: boolean;
   last_activity: string | null;
   date_joined: string;
   friend_count: number;
@@ -181,7 +182,7 @@ export async function logout(): Promise<void> {
   try {
     await apiFetch(`${AUTH}/logout/`, {
       method: "POST",
-      body: { refresh },
+      body: refresh ? { refresh } : {},
     });
   } catch {
     // Even if the server call fails, clear local tokens
@@ -226,18 +227,25 @@ export async function changePassword(data: {
 
 /** POST /api/accounts/token/refresh/ */
 export async function refreshToken(refresh: string): Promise<Tokens> {
-  return apiFetch<Tokens>(`${AUTH}/token/refresh/`, {
+  const tokens = await apiFetch<Tokens>(`${AUTH}/token/refresh/`, {
     method: "POST",
     body: { refresh },
     auth: false,
   });
+  setTokens(tokens.access, tokens.refresh);
+  return tokens;
 }
 
 /** GET /api/accounts/oauth/<provider>/initiate/ */
 export async function oauthInitiate(
   provider: string,
+  link = false,
 ): Promise<{ authorize_url: string }> {
-  return apiFetch(`${AUTH}/oauth/${provider}/initiate/`, { auth: false, withCredentials: true });
+  const query = link ? "?link=true" : "";
+  return apiFetch(`${AUTH}/oauth/${provider}/initiate/${query}`, {
+    auth: link,
+    withCredentials: true,
+  });
 }
 
 /** POST /api/accounts/oauth/<provider>/callback/ */
@@ -267,7 +275,10 @@ export async function twoFASetup(): Promise<TwoFASetupResponse> {
 }
 
 /** POST /api/accounts/2fa/verify/ — (authenticated, setup confirmation) */
-export async function twoFAConfirm(code: string): Promise<{ detail: string }> {
+export async function twoFAConfirm(code: string): Promise<{
+  detail: string;
+  recovery_codes: string[];
+}> {
   return apiFetch(`${AUTH}/2fa/verify/`, {
     method: "POST",
     body: { code },
@@ -302,6 +313,16 @@ export async function twoFAStatus(): Promise<{
   is_2fa_enabled: boolean;
   confirmed: boolean;
   created_at: string | null;
+  remaining_recovery_codes: number;
 }> {
   return apiFetch(`${AUTH}/2fa/status/`);
+}
+
+export async function regenerateTwoFARecoveryCodes(code: string): Promise<{
+  recovery_codes: string[];
+}> {
+  return apiFetch(`${AUTH}/2fa/recovery-codes/regenerate/`, {
+    method: "POST",
+    body: { code },
+  });
 }

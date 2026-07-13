@@ -1,4 +1,4 @@
-from django.utils import timezone
+from django.contrib.auth.hashers import make_password
 
 from rest_framework import serializers
 from .models import Channel, ChannelMembership, Message, Block, Friendship
@@ -117,6 +117,12 @@ class ChannelCreateSerializer(serializers.ModelSerializer):
         if data.get("channel_type") == Channel.CHANNEL_PROTECTED and not data.get("password"):
             raise serializers.ValidationError("Password required for protected channels")
         return data
+
+    def create(self, validated_data):
+        password = validated_data.pop("password", "")
+        if password:
+            validated_data["password_hash"] = make_password(password)
+        return super().create(validated_data)
 
 
 class ChannelMembershipSerializer(serializers.ModelSerializer):

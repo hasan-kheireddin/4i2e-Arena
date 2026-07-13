@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -26,24 +26,6 @@ export default function ForgotPasswordPage() {
     }
     return true;
   };
-  const [isDark, setIsDark] = useState(() => {
-      const saved = localStorage.getItem("darkMode");
-      return saved !== null ? saved === "true" : true;
-    });
-  
-    useEffect(() => {
-      const observer = new MutationObserver(() => {
-        setIsDark(document.documentElement.classList.contains('dark'));
-      });
-      
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      });
-      
-      return () => observer.disconnect();
-    }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -72,7 +54,7 @@ export default function ForgotPasswordPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
           <img
-            src={isDark ? forgetPassDark : forgetPass}
+            src={forgetPassDark}
             alt={t("forgot.hero_image_alt")}
             className="w-full h-full object-cover"
           />

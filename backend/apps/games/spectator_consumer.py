@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from apps.games.consumers import BaseConsumer, _channel_safe
-from apps.games.session import SpectatorSlot, get_session
+from apps.games.session import SpectatorSlot, get_session_async
 
 logger = logging.getLogger("games.spectator")
 
@@ -41,7 +41,7 @@ class SpectatorConsumer(BaseConsumer):
             await self.send_error("no_game_id", "Missing game_id")
             return
 
-        session = get_session(game_id)
+        session = await get_session_async(game_id)
         if session is None:
             await self.send_error("not_found", "Game session not found")
             return
@@ -56,7 +56,7 @@ class SpectatorConsumer(BaseConsumer):
             channel_name=self.channel_name,
             side=self._side,
         )
-        session.spectators[str(self.user.pk)] = spec
+        session.spectators[self.channel_name] = spec
 
         await self.join_group(session.group_name)
 
@@ -88,7 +88,7 @@ class SpectatorConsumer(BaseConsumer):
         session = self._session
         if session is None:
             return
-        session.spectators.pop(str(self.user.pk), None)
+        session.spectators.pop(self.channel_name, None)
         if self._game_id:
             await self.leave_group(session.group_name)
         await self._broadcast_spectator_count(session)

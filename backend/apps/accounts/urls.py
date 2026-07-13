@@ -67,5 +67,10 @@ urlpatterns = [
     path("2fa/login-verify/", twofa_views.TwoFactorVerifyView.as_view(), name="2fa-login-verify"),
     path("2fa/confirm/", twofa_views.TwoFactorConfirmView.as_view(), name="2fa-confirm"),
     path("2fa/disable/", twofa_views.TwoFactorDisableView.as_view(), name="2fa-disable"),
+    path(
+        "2fa/recovery-codes/regenerate/",
+        twofa_views.TwoFactorRecoveryRegenerateView.as_view(),
+        name="2fa-recovery-regenerate",
+    ),
     path("2fa/status/", twofa_views.TwoFactorStatusView.as_view(), name="2fa-status"),
 ]

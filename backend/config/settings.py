@@ -49,7 +49,7 @@ SECRET_KEY = config(
     default="change-me-in-production-very-secret-key",
 )
 
-DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 DEFAULT_PUBLIC_APP_ORIGIN = "https://localhost:8443"
 PUBLIC_APP_ORIGIN = _normalise_origin(
     config("PUBLIC_APP_ORIGIN", default=DEFAULT_PUBLIC_APP_ORIGIN)
@@ -183,7 +183,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.authentication.CookieOrHeaderJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -196,6 +196,13 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FormParser",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": config("THROTTLE_AUTH_LOGIN", default="10/min"),
+        "auth_register": config("THROTTLE_AUTH_REGISTER", default="5/min"),
+        "auth_password_reset": config("THROTTLE_AUTH_PASSWORD_RESET", default="5/min"),
+        "auth_otp": config("THROTTLE_AUTH_OTP", default="5/min"),
+        "auth_2fa": config("THROTTLE_AUTH_2FA", default="10/min"),
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -210,6 +217,11 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+JWT_ACCESS_COOKIE_NAME = config("JWT_ACCESS_COOKIE_NAME", default="access_token")
+JWT_REFRESH_COOKIE_NAME = config("JWT_REFRESH_COOKIE_NAME", default="refresh_token")
+JWT_COOKIE_SECURE = config("JWT_COOKIE_SECURE", default=True, cast=bool)
+JWT_COOKIE_SAMESITE = config("JWT_COOKIE_SAMESITE", default="Lax")
 
 # ---------------------------------------------------------------------------
 # CORS
@@ -244,27 +256,34 @@ CSRF_TRUSTED_ORIGINS: list[str] = _dedupe(
 # Channels / Redis
 # ---------------------------------------------------------------------------
 REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/0")
+USE_IN_MEMORY_SERVICES = config("USE_IN_MEMORY_SERVICES", default=False, cast=bool)
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [REDIS_URL],
+CHANNEL_LAYERS = (
+    {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    if USE_IN_MEMORY_SERVICES
+    else {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [REDIS_URL]},
         },
-    },
-}
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Cache (Redis)
 # ---------------------------------------------------------------------------
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
-        "TIMEOUT": 300,
-        "KEY_PREFIX": "ftt",
+CACHES = (
+    {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    if USE_IN_MEMORY_SERVICES
+    else {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+            "KEY_PREFIX": "ftt",
+        }
     }
-}
+)
 
 # ---------------------------------------------------------------------------
 # Sessions (Redis-backed for reliability across OAuth redirects)

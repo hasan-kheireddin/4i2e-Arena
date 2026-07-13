@@ -101,6 +101,10 @@ class GameSession:
     tick_owner: int | None = None
     disconnect_tasks: dict[int, Any] = field(default_factory=dict, repr=False)
     spectators: dict[str, SpectatorSlot] = field(default_factory=dict)
+    # For remote PvP sessions, only identities selected by matchmaking or a
+    # validated invitation may occupy player slots.  An empty set is reserved
+    # for explicitly-created local/AI sessions.
+    authorized_player_ids: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         if not self.group_name:
@@ -120,6 +124,9 @@ class GameSession:
             if player.user_id == user_id:
                 return slot
         return None
+
+    def is_player_authorized(self, user_id: int | str | uuid.UUID) -> bool:
+        return self.ai is not None or str(user_id) in self.authorized_player_ids
 
     def get_opponent_slot(self, slot: int) -> int:
         return 2 if slot == 1 else 1

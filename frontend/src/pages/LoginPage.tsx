@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
@@ -22,24 +22,6 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved !== null ? saved === "true" : true;
-  });
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains('dark'));
-    });
-    
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
-    
-    return () => observer.disconnect();
-  }, []);
-
   const validate = () => {
     const newErrors = { username: "", password: "" };
     let valid = true;
@@ -147,7 +129,7 @@ export default function LoginPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
-            src={isDark ? loginImgDark : loginImg}
+            src={loginImgDark}
             alt={t("login.hero_image_alt", "Sports arena illustration")}
             className="w-full h-full object-cover"
           />

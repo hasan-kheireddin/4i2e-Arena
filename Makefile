@@ -42,7 +42,7 @@ status:
 migrate: ## Run Django database migrations
 	docker compose exec backend python manage.py migrate
 
-makemigrations: ## Create new Django migration files
+makemigrations: ## Generate Django migrations after model changes
 	docker compose exec backend python manage.py makemigrations
 
 shell: ## Open Django interactive shell
@@ -50,12 +50,6 @@ shell: ## Open Django interactive shell
 
 collectstatic: ## Collect Django static files
 	docker compose exec backend python manage.py collectstatic --noinput
-
-test: ## Run backend test suite
-	docker compose exec backend python manage.py test
-
-test-verbose: ## Run backend tests with verbose output
-	docker compose exec backend python manage.py test -v 2
 
 lint: ## Run linting on backend code
 	docker compose exec backend flake8 .
@@ -72,7 +66,7 @@ ssl-generate: ## Generate self-signed SSL certificates for local development
 	@bash nginx/ssl/generate-ssl.sh
 	@echo "SSL certificates generated in nginx/ssl/"
 
-clean: ## Stop services and remove volumes (⚠️  deletes database data!)
+clean: ## Stop services and remove volumes
 	docker compose down -v --remove-orphans
 	@echo "All containers, networks, and volumes removed."
 
@@ -86,5 +80,5 @@ prune: ## Remove all unused Docker resources
 
 .PHONY: help setup up down build rebuild logs \
         migrate makemigrations shell \
-        test lint clean fclean ssl-generate \
+        lint clean fclean ssl-generate \
         db-shell redis-cli

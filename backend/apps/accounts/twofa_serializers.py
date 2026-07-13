@@ -36,14 +36,18 @@ class TwoFactorVerifySerializer(serializers.Serializer):
     )
     code = serializers.CharField(
         min_length=6,
-        max_length=6,
-        help_text="6-digit TOTP code from authenticator app.",
+        max_length=16,
+        help_text="6-digit TOTP code or a recovery code.",
     )
 
     def validate_code(self, value):
-        if not value.isdigit():
-            raise serializers.ValidationError("Code must contain only digits.")
-        return value
+        normalized = value.strip().upper()
+        if not (
+            (len(normalized) == 6 and normalized.isdigit())
+            or (len(normalized) in (8, 12) and all(c in "0123456789ABCDEF" for c in normalized))
+        ):
+            raise serializers.ValidationError("Enter a 6-digit TOTP or recovery code.")
+        return normalized
 
 
 class TwoFactorDisableSerializer(serializers.Serializer):
@@ -54,11 +58,19 @@ class TwoFactorDisableSerializer(serializers.Serializer):
 
     code = serializers.CharField(
         min_length=6,
-        max_length=6,
-        help_text="6-digit TOTP code to confirm disabling.",
+        max_length=16,
+        help_text="6-digit TOTP or recovery code to confirm disabling.",
     )
 
     def validate_code(self, value):
-        if not value.isdigit():
-            raise serializers.ValidationError("Code must contain only digits.")
-        return value
+        normalized = value.strip().upper()
+        if not (
+            (len(normalized) == 6 and normalized.isdigit())
+            or (len(normalized) in (8, 12) and all(c in "0123456789ABCDEF" for c in normalized))
+        ):
+            raise serializers.ValidationError("Enter a 6-digit TOTP or recovery code.")
+        return normalized
+
+
+class TwoFactorRecoveryRegenerateSerializer(TwoFactorDisableSerializer):
+    """A current TOTP/recovery code authorizes replacement backup codes."""

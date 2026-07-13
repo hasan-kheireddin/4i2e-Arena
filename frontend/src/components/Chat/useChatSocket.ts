@@ -202,7 +202,10 @@ export function useChatSocket(): UseChatSocketReturn {
     }
   }, []);
 
-  const { send, status } = useGameSocket("/ws/chat/", { onMessage });
+  const { send, status } = useGameSocket("/ws/chat/", {
+    onMessage,
+    enableLatencyProbe: true,
+  });
 
   const sendMessage = useCallback(
     (channelId: string, content: string) => {

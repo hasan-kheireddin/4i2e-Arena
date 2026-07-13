@@ -246,7 +246,7 @@ class MatchmakingConsumer(BaseConsumer):
 
         # Pre-create the game session before notifying clients so concurrent
         # joins cannot race each other on initial session creation.
-        await self._ensure_game_session(game_id, game_type)
+        await self._ensure_game_session(game_id, game_type, p1, p2)
 
         # Notify player 1
         p1_group = f"matchmaking_user_{p1['user_id']}"
@@ -272,24 +272,36 @@ class MatchmakingConsumer(BaseConsumer):
             },
         })
 
-    async def _ensure_game_session(self, game_id: str, game_type: str) -> None:
+    async def _ensure_game_session(
+        self,
+        game_id: str,
+        game_type: str,
+        player1: dict[str, Any],
+        player2: dict[str, Any],
+    ) -> None:
         """Best-effort pre-creation of a matched game session."""
         existing = await get_session_async(game_id)
         if existing is not None:
             return
 
         try:
+            authorized_player_ids = {
+                str(player1["user_id"]),
+                str(player2["user_id"]),
+            }
             if game_type == GameType.PONG.value:
                 await create_session_async(
                     game_type=GameType.PONG,
                     engine=PongEngine(),
                     game_id=game_id,
+                    authorized_player_ids=authorized_player_ids,
                 )
             elif game_type == GameType.TICTACTOE.value:
                 await create_session_async(
                     game_type=GameType.TICTACTOE,
                     engine=TicTacToeEngine(),
                     game_id=game_id,
+                    authorized_player_ids=authorized_player_ids,
                 )
             else:
                 logger.error(

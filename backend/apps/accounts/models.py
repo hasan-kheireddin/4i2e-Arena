@@ -74,6 +74,11 @@ class User(AbstractUser):
         """True when the account is linked to at least one OAuth provider."""
         return self.oauth_accounts.exists()
 
+    @property
+    def is_oauth_only(self) -> bool:
+        """True when OAuth is linked and no password credential exists."""
+        return self.is_oauth_user and not self.has_usable_password()
+
 
 class PendingRegistration(models.Model):
     """
@@ -179,7 +184,7 @@ class TOTPDevice(models.Model):
     """
 
     RECOVERY_CODE_COUNT = 8
-    RECOVERY_CODE_LENGTH = 8  # chars per code
+    RECOVERY_CODE_LENGTH = 12  # 48 bits of entropy per single-use code
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
@@ -194,6 +199,11 @@ class TOTPDevice(models.Model):
     confirmed = models.BooleanField(
         default=False,
         help_text="True once the user has verified the setup with a valid TOTP code.",
+    )
+    last_timestep = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="Last accepted TOTP counter; prevents code replay.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

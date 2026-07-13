@@ -1,18 +1,26 @@
-// Token helpers
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
+
+// Token helpers. JWTs are kept in memory only; the backend also sets Secure
+// HttpOnly cookies used across reloads and WebSocket handshakes.
 export function getAccessToken(): string | null {
-  return localStorage.getItem("access_token");
+  return accessToken;
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem("refresh_token");
+  return refreshToken;
 }
 
 export function setTokens(access: string, refresh: string): void {
-  localStorage.setItem("access_token", access);
-  localStorage.setItem("refresh_token", refresh);
+  accessToken = access;
+  refreshToken = refresh;
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
 }
 
 export function clearTokens(): void {
+  accessToken = null;
+  refreshToken = null;
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
 }
@@ -65,13 +73,13 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function doRefresh(): Promise<boolean> {
   const refresh = getRefreshToken();
-  if (!refresh) return false;
 
   try {
     const res = await fetch("/api/accounts/token/refresh/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh }),
+      credentials: "same-origin",
+      body: refresh ? JSON.stringify({ refresh }) : JSON.stringify({}),
     });
 
     if (!res.ok) {
@@ -85,7 +93,7 @@ async function doRefresh(): Promise<boolean> {
     }
 
     const data = await res.json();
-    setTokens(data.access, data.refresh ?? refresh);
+    setTokens(data.access, data.refresh ?? refresh ?? "");
     return true;
   } catch {
     // Network error — token may still be valid; don't wipe it
@@ -108,7 +116,7 @@ interface FetchOptions {
   body?: unknown;
   /** If true, attach the JWT Authorization header. Default true. */
   auth?: boolean;
-  /** If true, include cookies (needed for session-based state in OAuth flow). */
+  /** If true, include cookies across origins. Same-origin cookies are always sent. */
   withCredentials?: boolean;
 }
 

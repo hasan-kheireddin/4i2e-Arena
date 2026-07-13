@@ -4,6 +4,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -17,7 +18,9 @@ User = get_user_model()
 class JWTAuthMiddleware(BaseMiddleware):
     """
     ASGI middleware that authenticates WebSocket connections via a JWT
-    access token supplied in the query string.
+    access token supplied in the Secure HttpOnly cookie. Query-string tokens
+    are accepted only as a backward-compatible fallback and are scrubbed before
+    downstream handling.
 
     Sets ``scope["user"]`` to the authenticated user on success, or
     ``AnonymousUser`` on failure (missing / invalid / expired token).
@@ -36,9 +39,28 @@ class JWTAuthMiddleware(BaseMiddleware):
         await super().__call__(scope, receive, send)
 
     @staticmethod
+    def _extract_cookie_token(scope: dict[str, Any]) -> str | None:
+        headers = dict(scope.get("headers", []))
+        raw_cookie = headers.get(b"cookie")
+        if not raw_cookie:
+            return None
+
+        cookie_name = getattr(settings, "JWT_ACCESS_COOKIE_NAME", "access_token")
+        try:
+            cookie_header = raw_cookie.decode("latin1")
+        except UnicodeDecodeError:
+            return None
+
+        for chunk in cookie_header.split(";"):
+            name, _, value = chunk.strip().partition("=")
+            if name == cookie_name and value:
+                return value
+        return None
+
+    @staticmethod
     def _extract_token(scope: dict[str, Any]) -> str | None:
         """
-        Pull the ``token`` parameter from the query string.
+        Pull the legacy ``token`` parameter from the query string.
 
         ``scope["query_string"]`` is a raw ``bytes`` object, e.g.
         ``b"token=eyJ…&other=value"``.
@@ -74,7 +96,7 @@ class JWTAuthMiddleware(BaseMiddleware):
         ``AnonymousUser`` if the token is missing / invalid / expired
         or the user account is inactive.
         """
-        raw_token = cls._extract_token(scope)
+        raw_token = cls._extract_cookie_token(scope) or cls._extract_token(scope)
         if raw_token is None:
             logger.debug("WebSocket connection without JWT token")
             return AnonymousUser()

@@ -47,3 +47,20 @@ def safe_cache_delete(key: str) -> bool:
     except Exception as exc:
         logger.warning("cache.delete failed for key=%s: %s", key, exc, exc_info=True)
         return False
+
+
+def safe_cache_incr_with_ttl(
+    key: str,
+    *,
+    delta: int = 1,
+    timeout: int | None = None,
+) -> int:
+    try:
+        if cache.add(key, 0, timeout=timeout):
+            return cache.incr(key, delta)
+        return cache.incr(key, delta)
+    except Exception as exc:
+        logger.warning("cache.incr failed for key=%s: %s", key, exc, exc_info=True)
+        current = int(safe_cache_get(key, 0) or 0) + delta
+        safe_cache_set(key, current, timeout=timeout)
+        return current

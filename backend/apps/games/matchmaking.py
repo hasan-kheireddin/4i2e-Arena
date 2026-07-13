@@ -398,8 +398,7 @@ class MatchmakingService:
 def get_redis_client() -> aioredis.Redis:
     """Create an async Redis client from the CHANNEL_LAYERS config.
 
-    Falls back to ``redis://localhost:6379/0`` if the setting is not
-    available (e.g. in tests).
+    Falls back to ``redis://localhost:6379/0`` if the setting is unavailable.
     """
     import os
     url = os.environ.get("REDIS_URL", "redis://redis:6379/0")

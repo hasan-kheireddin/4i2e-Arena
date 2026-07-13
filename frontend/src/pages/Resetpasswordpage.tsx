@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -27,24 +27,6 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-      const saved = localStorage.getItem("darkMode");
-      return saved !== null ? saved === "true" : true;
-    });
-  
-    useEffect(() => {
-      const observer = new MutationObserver(() => {
-        setIsDark(document.documentElement.classList.contains('dark'));
-      });
-      
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      });
-      
-      return () => observer.disconnect();
-    }, []);
-
   const validate = () => {
     const newErrors = { password: "", confirmPassword: "" };
     let valid = true;
@@ -132,7 +114,7 @@ export default function ResetPasswordPage() {
           {/* Image side - full height */}
           <div className="w-[45%] flex-shrink-0 h-full ">
               <img
-                src={isDark ? resetDark : resetImg}
+                src={resetDark}
                 alt={t("reset.hero_image_alt")}
                 className="w-full h-full object-cover"
               />
@@ -152,7 +134,7 @@ export default function ResetPasswordPage() {
 
           <div className="h-64 w-full flex-shrink-0">
             <img
-              src={isDark ? resetDark : resetImg}
+              src={resetDark}
               alt={t("reset.hero_image_alt")}
               className="w-full h-full object-cover"
             />
@@ -194,7 +176,7 @@ export default function ResetPasswordPage() {
         {/* Image side - full height */}
         <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
           <img
-            src={isDark ? resetDark : resetImg}
+            src={resetDark}
             alt={t("reset.hero_image_alt")}
             className="w-full h-full object-cover"
           />

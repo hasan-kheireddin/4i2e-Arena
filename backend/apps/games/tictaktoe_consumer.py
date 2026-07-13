@@ -13,13 +13,12 @@ from apps.games.session import (
     GameType,
     PlayerSlot,
     SessionStatus,
-    create_session_async,
     get_session_async,
     persist_session,
     remove_session_async,
 )
 from apps.games.tictactoe_engine import GameStatus as TTTStatus
-from apps.games.tictactoe_engine import MoveResult, TicTacToeEngine
+from apps.games.tictactoe_engine import MoveResult
 
 logger = logging.getLogger("games.tictactoe")
 
@@ -45,6 +44,10 @@ class TicTacToeConsumer(BaseConsumer):
         session = self._session
         slot = self._slot
         if session is None or slot is None:
+            return
+
+        player = session.players.get(slot)
+        if player is None or player.channel_name != self.channel_name:
             return
 
         if session.status in (SessionStatus.FINISHED, SessionStatus.ABANDONED):
@@ -105,20 +108,9 @@ class TicTacToeConsumer(BaseConsumer):
 
         session = await get_session_async(game_id)
         if session is None:
-            try:
-                session = await create_session_async(
-                    game_type=GameType.TICTACTOE,
-                    engine=TicTacToeEngine(),
-                    game_id=game_id,
-                )
-            except ValueError:
-                # Another concurrent join created this session first.
-                session = await get_session_async(game_id)
-
-        if session is None:
             await self.send_error(
-                "session_unavailable",
-                "Game session is temporarily unavailable. Please retry.",
+                "session_not_found",
+                "Game session was not created by matchmaking or an invitation.",
             )
             return
 
@@ -134,6 +126,9 @@ class TicTacToeConsumer(BaseConsumer):
             return
 
         user_id: int = self.user.pk
+        if not session.is_player_authorized(user_id):
+            await self.send_error("forbidden", "You are not a player in this match")
+            return
         existing_slot = session.get_player_slot(user_id)
         reconnected = False
 
@@ -143,11 +138,9 @@ class TicTacToeConsumer(BaseConsumer):
                 await self.send_error("invalid_session", "Player slot is missing")
                 return
             if player.connected:
-                await self.send_error(
-                    "already_joined",
-                    "This player is already connected to the session",
-                )
-                return
+                old_channel = player.channel_name
+                if old_channel and old_channel != self.channel_name:
+                    await self.channel_layer.send(old_channel, {"type": "force.disconnect"})
             slot = existing_slot
             reconnected = True
             await self._cancel_disconnect_task(session, slot)
@@ -206,6 +199,8 @@ class TicTacToeConsumer(BaseConsumer):
             })
             if session.paused and session.all_players_connected:
                 await self._resume_game(session)
+
+        await self._restore_disconnect_tasks(session)
 
     async def _handle_ready(self) -> None:
         session = self._session
@@ -372,6 +367,18 @@ class TicTacToeConsumer(BaseConsumer):
             self._resolve_disconnect_after_grace(session.game_id, slot),
         )
 
+    async def _restore_disconnect_tasks(self, session: GameSession) -> None:
+        """Re-arm grace timers lost during process/session snapshot recovery."""
+        now = time.time()
+        for slot, player in session.players.items():
+            if player.connected or slot in session.disconnect_tasks:
+                continue
+            elapsed = now - (player.disconnected_at or now)
+            delay = max(0.0, RECONNECT_GRACE_SECONDS - elapsed)
+            session.disconnect_tasks[slot] = asyncio.create_task(
+                self._resolve_disconnect_after_grace(session.game_id, slot, delay)
+            )
+
     async def _cancel_disconnect_task(
         self,
         session: GameSession,
@@ -390,9 +397,11 @@ class TicTacToeConsumer(BaseConsumer):
         for slot in list(session.disconnect_tasks):
             await self._cancel_disconnect_task(session, slot)
 
-    async def _resolve_disconnect_after_grace(self, game_id: str, slot: int) -> None:
+    async def _resolve_disconnect_after_grace(
+        self, game_id: str, slot: int, delay: float = RECONNECT_GRACE_SECONDS,
+    ) -> None:
         try:
-            await asyncio.sleep(RECONNECT_GRACE_SECONDS)
+            await asyncio.sleep(delay)
             session = await get_session_async(game_id)
             if session is None:
                 return
@@ -454,6 +463,9 @@ class TicTacToeConsumer(BaseConsumer):
             "server_ts_ms": event.get("server_ts_ms"),
             **event.get("state", {}),
         })
+
+    async def force_disconnect(self, event: dict[str, Any]) -> None:
+        await self.close(code=4001)
 
     async def game_start(self, event: dict[str, Any]) -> None:
         await self.send_json({

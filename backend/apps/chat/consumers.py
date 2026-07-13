@@ -1,10 +1,12 @@
+import asyncio
+import collections
 import json
 import logging
+import os
 from typing import Any
 
+import redis.asyncio as aioredis
 from channels.db import database_sync_to_async
-from django.core.cache import cache
-from django.utils import timezone
 
 from apps.games.consumers import BaseConsumer
 from apps.games.session import GameType, create_session_async, generate_game_id
@@ -16,29 +18,80 @@ logger = logging.getLogger("chat.consumer")
 
 PRESENCE_GROUP = "presence"
 ONLINE_USERS_KEY = "chat_online_users"
+PRESENCE_TTL_SECONDS = 600
+INVITE_TTL_SECONDS = 300
+MAX_CHAT_MESSAGE_LENGTH = 2000
+MAX_HISTORY_LIMIT = 100
+CHAT_ACTION_RATE_LIMIT = 30
+CHAT_ACTION_RATE_WINDOW = 10.0
+_redis: aioredis.Redis | None = None
 
 
-def _add_online_user(user_id: str) -> None:
-    users: set[str] = cache.get(ONLINE_USERS_KEY, set())
-    users.add(str(user_id))
-    cache.set(ONLINE_USERS_KEY, users, timeout=None)
+def _redis_client() -> aioredis.Redis:
+    global _redis
+    if _redis is None:
+        _redis = aioredis.from_url(
+            os.environ.get("REDIS_URL", "redis://redis:6379/0"),
+            decode_responses=True,
+        )
+    return _redis
 
 
-def _remove_online_user(user_id: str) -> None:
-    users: set[str] = cache.get(ONLINE_USERS_KEY, set())
-    users.discard(str(user_id))
-    cache.set(ONLINE_USERS_KEY, users, timeout=None)
+def _presence_key(user_id: str) -> str:
+    return f"chat:presence:{user_id}"
 
 
-def _get_online_users() -> set[str]:
-    return cache.get(ONLINE_USERS_KEY, set())
+def _invite_key(game_id: str) -> str:
+    return f"chat:game_invite:{game_id}"
+
+
+async def _add_online_user(user_id: str, connection_id: str) -> bool:
+    """Register one connection and return True on offline -> online."""
+    redis = _redis_client()
+    key = _presence_key(user_id)
+    was_online = bool(await redis.exists(key))
+    pipe = redis.pipeline(transaction=True)
+    pipe.sadd(key, connection_id)
+    pipe.expire(key, PRESENCE_TTL_SECONDS)
+    pipe.sadd(ONLINE_USERS_KEY, user_id)
+    await pipe.execute()
+    return not was_online
+
+
+async def _remove_online_user(user_id: str, connection_id: str) -> bool:
+    """Remove one connection and return True when the user became offline."""
+    redis = _redis_client()
+    key = _presence_key(user_id)
+    await redis.srem(key, connection_id)
+    if await redis.scard(key):
+        await redis.expire(key, PRESENCE_TTL_SECONDS)
+        return False
+    pipe = redis.pipeline(transaction=True)
+    pipe.delete(key)
+    pipe.srem(ONLINE_USERS_KEY, user_id)
+    await pipe.execute()
+    return True
+
+
+async def _get_online_users() -> set[str]:
+    redis = _redis_client()
+    candidates = {str(value) for value in await redis.smembers(ONLINE_USERS_KEY)}
+    if not candidates:
+        return set()
+    exists = await asyncio.gather(
+        *(redis.exists(_presence_key(user_id)) for user_id in candidates)
+    )
+    online = {uid for uid, present in zip(candidates, exists) if present}
+    stale = candidates - online
+    if stale:
+        await redis.srem(ONLINE_USERS_KEY, *stale)
+    return online
 
 
 @database_sync_to_async
 def get_user_channels(user_id):
     return list(
         Channel.objects.filter(memberships__user_id=user_id)
-        .prefetch_related("messages")
         .order_by("-updated_at")
     )
 
@@ -129,6 +182,7 @@ class ChatConsumer(BaseConsumer):
 
     async def on_connect(self) -> None:
         self._channel_groups: set[str] = set()
+        self._action_timestamps: collections.deque[float] = collections.deque()
         channels = await get_user_channels(self.user.pk)
         for ch in channels:
             group = f"chat_{ch.id}"
@@ -142,8 +196,8 @@ class ChatConsumer(BaseConsumer):
         self._channel_groups.add(personal_group)
 
         # Track online
-        _add_online_user(str(self.user.pk))
-        online_users = _get_online_users()
+        became_online = await _add_online_user(str(self.user.pk), self.channel_name)
+        online_users = await _get_online_users()
 
         await self.send_json({
             "type": "connected",
@@ -152,24 +206,39 @@ class ChatConsumer(BaseConsumer):
         })
 
         # Notify others
-        await self.channel_layer.group_send(PRESENCE_GROUP, {
-            "type": "chat.user_online",
-            "user_id": str(self.user.pk),
-            "username": self.user.username,
-        })
+        if became_online:
+            await self.channel_layer.group_send(PRESENCE_GROUP, {
+                "type": "chat.user_online",
+                "user_id": str(self.user.pk),
+                "username": self.user.username,
+            })
 
     async def on_disconnect(self, code: int) -> None:
-        _remove_online_user(str(self.user.pk))
+        became_offline = await _remove_online_user(
+            str(self.user.pk), self.channel_name,
+        )
         for group in self._channel_groups:
             await self.leave_group(group)
-        await self.channel_layer.group_send(PRESENCE_GROUP, {
-            "type": "chat.user_offline",
-            "user_id": str(self.user.pk),
-            "username": self.user.username,
-        })
+        if became_offline:
+            await self.channel_layer.group_send(PRESENCE_GROUP, {
+                "type": "chat.user_offline",
+                "user_id": str(self.user.pk),
+                "username": self.user.username,
+            })
 
     async def on_message(self, content: dict[str, Any]) -> None:
         msg_type = content.get("type")
+
+        if msg_type in {
+            "send_message",
+            "send_emote",
+            "join_channel",
+            "typing",
+            "game_invite",
+            "game_invite_response",
+        } and self._is_action_rate_limited():
+            await self.send_error("rate_limited", "Too many real-time actions")
+            return
 
         if msg_type == "send_message":
             await self._handle_send_message(content)
@@ -184,13 +253,17 @@ class ChatConsumer(BaseConsumer):
         elif msg_type == "typing":
             await self._handle_typing(content)
         elif msg_type == "request_presence":
-            online_users = _get_online_users()
+            online_users = await _get_online_users()
             await self.send_json({
                 "type": "presence_list",
                 "online_user_ids": list(online_users),
             })
         elif msg_type == "ping":
-            await self.send_json({"type": "pong"})
+            await _add_online_user(str(self.user.pk), self.channel_name)
+            await self.send_json({
+                "type": "pong",
+                "client_ts_ms": content.get("client_ts_ms"),
+            })
         elif msg_type == "game_invite":
             await self._handle_game_invite(content)
         elif msg_type == "game_invite_response":
@@ -198,15 +271,39 @@ class ChatConsumer(BaseConsumer):
         else:
             await self.send_error("unsupported", f"Unknown message type: {msg_type}")
 
+    def _is_action_rate_limited(self) -> bool:
+        now = asyncio.get_running_loop().time()
+        cutoff = now - CHAT_ACTION_RATE_WINDOW
+        while self._action_timestamps and self._action_timestamps[0] <= cutoff:
+            self._action_timestamps.popleft()
+        if len(self._action_timestamps) >= CHAT_ACTION_RATE_LIMIT:
+            return True
+        self._action_timestamps.append(now)
+        return False
+
     async def _handle_game_invite(self, content: dict[str, Any]) -> None:
-        target_user_id = content.get("target_user_id")
+        target_user_id = str(content.get("target_user_id") or "")
         game_type = content.get("game_type", "pong")
         if not target_user_id:
+            await self.send_error("invalid_target", "A target user is required")
+            return
+        if game_type not in {"pong", "pong3d", "tictactoe"}:
+            await self.send_error("invalid_game_type", "Unsupported game type")
+            return
+        if target_user_id == str(self.user.pk):
+            await self.send_error("invalid_target", "You cannot invite yourself")
+            return
+        if (
+            await is_blocked(self.user.pk, target_user_id)
+            or await is_blocked(target_user_id, self.user.pk)
+        ):
+            await self.send_error("blocked", "Cannot invite this user")
             return
         from django.contrib.auth import get_user_model
         try:
             target_user = await database_sync_to_async(get_user_model().objects.get)(pk=target_user_id)
         except get_user_model().DoesNotExist:
+            await self.send_error("invalid_target", "User does not exist")
             return
         dm = await get_or_create_dm_channel(self.user.pk, target_user_id)
         group = f"chat_{dm.id}"
@@ -214,6 +311,18 @@ class ChatConsumer(BaseConsumer):
             await self.join_group(group)
             self._channel_groups.add(group)
         invite_game_id = generate_game_id()
+        invite = {
+            "game_id": invite_game_id,
+            "game_type": game_type,
+            "channel_id": str(dm.id),
+            "from_user_id": str(self.user.pk),
+            "target_user_id": str(target_user.id),
+        }
+        await _redis_client().set(
+            _invite_key(invite_game_id),
+            json.dumps(invite),
+            ex=INVITE_TTL_SECONDS,
+        )
         msg = await create_message(
             dm.id, self.user.pk, Message.MESSAGE_SYSTEM,
             content=f"{self.user.username} invited you to play {game_type}",
@@ -230,11 +339,11 @@ class ChatConsumer(BaseConsumer):
             "created_at": msg.created_at.isoformat(),
         }
         await self.channel_layer.group_send(group, event)
-        await self.channel_layer.group_send(group, {
+        await self.channel_layer.group_send(f"user_{target_user.id}", {
             "type": "chat.game_invite",
             "from_user_id": str(self.user.pk),
             "from_username": self.user.username,
-            "target_user_id": target_user_id,
+            "target_user_id": str(target_user.id),
             "game_type": game_type,
             "channel_id": str(dm.id),
             "game_id": invite_game_id,
@@ -247,15 +356,42 @@ class ChatConsumer(BaseConsumer):
         })
 
     async def _handle_game_invite_response(self, content: dict[str, Any]) -> None:
-        accept = content.get("accept", False)
-        raw_game_type = content.get("game_type", "pong")
-        channel_id = content.get("channel_id")
-        game_id = content.get("game_id", "")
+        accept = content.get("accept") is True
+        raw_game_type = str(content.get("game_type", ""))
+        channel_id = str(content.get("channel_id") or "")
+        game_id = str(content.get("game_id") or "")
 
         if not channel_id or not game_id:
+            await self.send_error("invalid_invite", "Invite details are missing")
             return
 
+        raw_invite = await _redis_client().get(_invite_key(game_id))
+        if not raw_invite:
+            await self.send_error("invite_expired", "This invitation expired or was already used")
+            return
+        try:
+            invite = json.loads(raw_invite)
+        except (TypeError, json.JSONDecodeError):
+            await self.send_error("invalid_invite", "Invitation data is invalid")
+            return
+        if (
+            invite.get("target_user_id") != str(self.user.pk)
+            or invite.get("channel_id") != channel_id
+            or invite.get("game_type") != raw_game_type
+        ):
+            await self.send_error("forbidden", "You are not the recipient of this invitation")
+            return
+        if not await is_member(channel_id, self.user.pk):
+            await self.send_error("forbidden", "You are not a member of the invitation channel")
+            return
+
+        # Consume before creating the session so a response is single-use.
+        await _redis_client().delete(_invite_key(game_id))
+
         group = f"chat_{channel_id}"
+        if group not in self._channel_groups:
+            await self.join_group(group)
+            self._channel_groups.add(group)
         game_type = "pong" if raw_game_type == "pong3d" else raw_game_type
 
         if accept:
@@ -265,12 +401,18 @@ class ChatConsumer(BaseConsumer):
                         game_type=GameType.PONG,
                         engine=PongEngine(),
                         game_id=game_id,
+                        authorized_player_ids={
+                            invite["from_user_id"], invite["target_user_id"],
+                        },
                     )
                 elif game_type == "tictactoe":
                     await create_session_async(
                         game_type=GameType.TICTACTOE,
                         engine=TicTacToeEngine(),
                         game_id=game_id,
+                        authorized_player_ids={
+                            invite["from_user_id"], invite["target_user_id"],
+                        },
                     )
                 else:
                     return
@@ -285,17 +427,13 @@ class ChatConsumer(BaseConsumer):
                 return
 
             from django.contrib.auth import get_user_model
-            other_user_id = await get_dm_other_user(channel_id, self.user.pk)
-            sender_id = str(self.user.pk)
-            sender_username = self.user.username
-            opponent_id = sender_id
-            opponent_username = sender_username
+            other_user_id = invite["from_user_id"]
+            opponent_username = "Opponent"
             if other_user_id:
                 try:
                     other = await database_sync_to_async(
                         get_user_model().objects.get
                     )(pk=other_user_id)
-                    opponent_id = str(other.pk)
                     opponent_username = other.username
                 except get_user_model().DoesNotExist:
                     pass
@@ -304,8 +442,10 @@ class ChatConsumer(BaseConsumer):
                 "type": "chat.game_invite_accepted",
                 "game_id": game_id,
                 "game_type": raw_game_type,
-                "opponent_id": opponent_id,
-                "opponent_username": opponent_username,
+                "from_user_id": invite["from_user_id"],
+                "from_username": opponent_username,
+                "target_user_id": invite["target_user_id"],
+                "target_username": self.user.username,
                 "accepted_by": str(self.user.pk),
                 "accepted_by_username": self.user.username,
             })
@@ -320,8 +460,18 @@ class ChatConsumer(BaseConsumer):
 
     async def _handle_send_message(self, content: dict[str, Any]) -> None:
         channel_id = content.get("channel_id")
-        text = content.get("content", "").strip()
+        raw_text = content.get("content", "")
+        if not isinstance(raw_text, str):
+            await self.send_error("invalid_message", "Message content must be text")
+            return
+        text = raw_text.strip()
         if not channel_id or not text:
+            return
+        if len(text) > MAX_CHAT_MESSAGE_LENGTH:
+            await self.send_error(
+                "message_too_long",
+                f"Messages are limited to {MAX_CHAT_MESSAGE_LENGTH} characters",
+            )
             return
         if not await is_member(channel_id, self.user.pk):
             await self.send_error("forbidden", "Not a member of this channel")
@@ -352,11 +502,15 @@ class ChatConsumer(BaseConsumer):
         await self.channel_layer.group_send(f"chat_{channel_id}", event)
 
     async def _handle_send_emote(self, content: dict[str, Any]) -> None:
-        emote_id = content.get("emote_id", "").strip()
-        channel_id = content.get("channel_id", "").strip()
-        target_user_id = content.get("target_user_id", "").strip()
+        emote_raw = content.get("emote_id", "")
+        channel_raw = content.get("channel_id", "")
+        target_raw = content.get("target_user_id", "")
+        emote_id = emote_raw.strip() if isinstance(emote_raw, str) else ""
+        channel_id = channel_raw.strip() if isinstance(channel_raw, str) else ""
+        target_user_id = target_raw.strip() if isinstance(target_raw, str) else ""
 
-        if not emote_id:
+        if not emote_id or len(emote_id) > 50:
+            await self.send_error("invalid_emote", "Invalid emote identifier")
             return
 
         if channel_id:
@@ -388,8 +542,17 @@ class ChatConsumer(BaseConsumer):
             if await is_blocked(self.user.pk, target_user_id) or await is_blocked(target_user_id, self.user.pk):
                 await self.send_error("blocked", "Cannot send message to this user")
                 return
+            from django.contrib.auth import get_user_model
+            if not await database_sync_to_async(
+                get_user_model().objects.filter(pk=target_user_id).exists
+            )():
+                await self.send_error("invalid_target", "User does not exist")
+                return
             dm = await get_or_create_dm_channel(self.user.pk, target_user_id)
             group = f"chat_{dm.id}"
+            if group not in self._channel_groups:
+                await self.join_group(group)
+                self._channel_groups.add(group)
             msg = await create_message(
                 dm.id, self.user.pk, Message.MESSAGE_EMOTE, emote_id=emote_id
             )
@@ -405,12 +568,20 @@ class ChatConsumer(BaseConsumer):
                 "created_at": msg.created_at.isoformat(),
             }
             await self.channel_layer.group_send(group, event)
+            await self.channel_layer.group_send(f"user_{target_user_id}", event)
 
     async def _handle_join_channel(self, content: dict[str, Any]) -> None:
         channel_id = content.get("channel_id")
         if not channel_id:
             return
-        await add_member(channel_id, self.user.pk)
+        if not await is_member(channel_id, self.user.pk):
+            if await get_channel_type(channel_id) != Channel.CHANNEL_PUBLIC:
+                await self.send_error(
+                    "forbidden",
+                    "Join the channel through its authenticated API flow first",
+                )
+                return
+            await add_member(channel_id, self.user.pk)
         group = f"chat_{channel_id}"
         if group not in self._channel_groups:
             await self.join_group(group)
@@ -438,6 +609,12 @@ class ChatConsumer(BaseConsumer):
         limit = content.get("limit", 50)
         if not channel_id:
             return
+        if not await is_member(channel_id, self.user.pk):
+            await self.send_error("forbidden", "Not a member of this channel")
+            return
+        if not isinstance(limit, int) or isinstance(limit, bool):
+            limit = 50
+        limit = max(1, min(limit, MAX_HISTORY_LIMIT))
         messages = await get_messages(channel_id, limit)
         await self.send_json({
             "type": "history",
@@ -461,6 +638,9 @@ class ChatConsumer(BaseConsumer):
     async def _handle_typing(self, content: dict[str, Any]) -> None:
         channel_id = content.get("channel_id")
         if not channel_id:
+            return
+        if not await is_member(channel_id, self.user.pk):
+            await self.send_error("forbidden", "Not a member of this channel")
             return
         event = {
             "type": "chat.typing",
@@ -488,12 +668,17 @@ class ChatConsumer(BaseConsumer):
             })
 
     async def chat_game_invite_accepted(self, event: dict[str, Any]) -> None:
+        is_inviter = str(self.user.pk) == event.get("from_user_id")
         await self.send_json({
             "type": "game_invite_accepted",
             "game_id": event.get("game_id"),
             "game_type": event.get("game_type"),
-            "opponent_id": event.get("opponent_id"),
-            "opponent_username": event.get("opponent_username"),
+            "opponent_id": (
+                event.get("target_user_id") if is_inviter else event.get("from_user_id")
+            ),
+            "opponent_username": (
+                event.get("target_username") if is_inviter else event.get("from_username")
+            ),
             "accepted_by": event.get("accepted_by"),
             "accepted_by_username": event.get("accepted_by_username"),
         })

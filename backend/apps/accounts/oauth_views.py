@@ -3,7 +3,8 @@ import logging
 import secrets
 from urllib.parse import urlencode
 import requests
-from django.contrib.auth import get_user_model, login as django_login
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,10 +19,16 @@ from apps.analytics.tracking_service import (
     get_user_agent,
     track_oauth_login,
 )
+from .auth_cookies import set_auth_cookies
+from .throttles import AuthScopedRateThrottle
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 safe_track_oauth_login = non_blocking(track_oauth_login)
+
+
+class OAuthLinkConflict(Exception):
+    """The provider email belongs to an account not explicitly linked."""
 
 
 def _request_origin(request) -> str:
@@ -30,6 +37,7 @@ def _request_origin(request) -> str:
 
 def _redirect_uri(request, cfg) -> str:
     return (cfg.redirect_uri or f"{_request_origin(request)}/oauth/callback").rstrip("/")
+
 
 class OAuthInitiateView(APIView):
     """
@@ -41,6 +49,8 @@ class OAuthInitiateView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_login"
 
     def get(self, request, provider):
         try:
@@ -62,6 +72,15 @@ class OAuthInitiateView(APIView):
         # Generate a random state token for CSRF protection
         state = secrets.token_urlsafe(32)
         request.session[f"oauth_state_{provider}"] = state
+        if request.query_params.get("link") == "true":
+            if not request.user or not request.user.is_authenticated:
+                return Response(
+                    {"detail": "Sign in before linking an OAuth account."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            request.session[f"oauth_link_user_{provider}"] = str(request.user.pk)
+        else:
+            request.session.pop(f"oauth_link_user_{provider}", None)
         request.session.modified = True
 
         # Build the authorization URL
@@ -91,6 +110,8 @@ class OAuthCallbackView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "auth_login"
 
     def post(self, request, provider):
         # ---- Validate provider ------------------------------------------------
@@ -131,6 +152,16 @@ class OAuthCallbackView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        link_user = None
+        link_user_id = request.session.pop(f"oauth_link_user_{provider}", None)
+        if link_user_id:
+            link_user = User.objects.filter(pk=link_user_id, is_active=True).first()
+            if link_user is None:
+                return Response(
+                    {"detail": "The account-linking session expired."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
         # ---- Exchange code for access token -----------------------------------
         token_data = self._exchange_code(cfg, code, redirect_uri)
         if token_data is None:
@@ -140,6 +171,11 @@ class OAuthCallbackView(APIView):
             )
 
         access_token = token_data.get("access_token", "")
+        if not isinstance(access_token, str) or not access_token:
+            return Response(
+                {"detail": "OAuth provider returned no access token."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         # ---- Fetch provider user profile --------------------------------------
         profile = self._fetch_profile(cfg, access_token)
@@ -151,11 +187,43 @@ class OAuthCallbackView(APIView):
 
         # ---- Map provider data to normalised dict -----------------------------
         mapped = cfg.profile_mapper(profile)
-        provider_user_id = mapped["provider_user_id"]
+        provider_user_id = str(mapped.get("provider_user_id", "")).strip()
+        email = str(mapped.get("email", "")).strip().lower()
+        if not provider_user_id or not email:
+            return Response(
+                {"detail": "OAuth profile is missing a stable ID or email address."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        mapped["provider_user_id"] = provider_user_id
+        mapped["email"] = email
 
         # ---- Find or create User + OAuthAccount -------------------------------
-        user = self._get_or_create_user(provider, provider_user_id, mapped, access_token)
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        try:
+            user = self._get_or_create_user(
+                provider,
+                provider_user_id,
+                mapped,
+                access_token,
+                link_user=link_user,
+            )
+        except OAuthLinkConflict:
+            return Response(
+                {
+                    "detail": (
+                        "This OAuth identity is already linked to another account."
+                        if link_user is not None
+                        else "An account with this email already exists. Sign in to "
+                        "that account before linking 42 OAuth."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        except IntegrityError:
+            logger.exception("Concurrent OAuth account creation failed")
+            return Response(
+                {"detail": "OAuth account creation conflicted. Please retry."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         # ---- Enforce 2FA before issuing final JWTs ----------------------------
         if user.is_2fa_enabled:
@@ -198,10 +266,11 @@ class OAuthCallbackView(APIView):
             user_agent=get_user_agent(request),
         )
 
-        return Response(
+        response = Response(
             {"user": user_data, "tokens": tokens},
             status=status.HTTP_200_OK,
         )
+        return set_auth_cookies(response, tokens)
 
     # -----------------------------------------------------------------------
     # Private helpers
@@ -253,67 +322,68 @@ class OAuthCallbackView(APIView):
         provider_user_id: str,
         mapped: dict,
         access_token: str,
+        link_user: User | None = None,
     ) -> User:
         """
         Locate or create the local User linked to this OAuth identity.
 
         Priority:
         1. Existing OAuthAccount link → return the linked user.
-        2. Existing User with matching email → create OAuthAccount link.
-        3. No match → create brand-new User + OAuthAccount.
+        2. Existing unlinked email → reject implicit linking.
+        3. No local identity → create a User + OAuthAccount atomically.
         """
-        # 1. Already linked?
-        try:
-            oauth = OAuthAccount.objects.select_related("user").get(
+        with transaction.atomic():
+            # 1. Already linked?
+            oauth = OAuthAccount.objects.select_for_update().select_related("user").filter(
                 provider=provider,
                 provider_user_id=provider_user_id,
-            )
-            # Update stored access token (may have been rotated)
-            if access_token and oauth.access_token != access_token:
-                oauth.access_token = access_token
-                oauth.save(update_fields=["access_token"])
-            OAuthCallbackView._sync_oauth_user(oauth.user, mapped)
-            return oauth.user
-        except OAuthAccount.DoesNotExist:
-            pass
+            ).first()
+            if oauth is not None:
+                if link_user is not None and oauth.user_id != link_user.pk:
+                    raise OAuthLinkConflict
+                # Provider tokens are only needed for the immediate profile fetch.
+                # Do not persist OAuth access tokens at rest.
+                if oauth.access_token:
+                    oauth.access_token = ""
+                    oauth.save(update_fields=["access_token"])
+                OAuthCallbackView._sync_oauth_user(oauth.user, mapped)
+                return oauth.user
 
-        email = mapped.get("email", "").strip().lower()
-
-        # 2. Same email exists? Link the OAuth account to that user.
-        if email:
-            try:
-                existing_user = User.objects.get(email=email)
+            if link_user is not None:
                 OAuthAccount.objects.create(
-                    user=existing_user,
+                    user=link_user,
                     provider=provider,
                     provider_user_id=provider_user_id,
-                    access_token=access_token,
+                    access_token="",
                 )
-                existing_user.set_unusable_password()
-                existing_user.save(update_fields=["password"])
-                OAuthCallbackView._sync_oauth_user(existing_user, mapped)
-                return existing_user
-            except User.DoesNotExist:
-                pass
+                return link_user
 
-        # 3. Brand-new user
-        username = _unique_username(mapped.get("username", "user"))
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            display_name=mapped.get("display_name", username),
-            avatar_url=mapped.get("avatar_url", ""),
-        )
-        user.set_unusable_password()
-        user.save(update_fields=["password"])
-        OAuthAccount.objects.create(
-            user=user,
-            provider=provider,
-            provider_user_id=provider_user_id,
-            access_token=access_token,
-        )
-        OAuthCallbackView._sync_oauth_user(user, mapped)
-        return user
+            email = mapped.get("email", "").strip().lower()
+
+            # Never silently attach a remote identity to a password account.
+            if User.objects.select_for_update().filter(email__iexact=email).exists():
+                raise OAuthLinkConflict
+
+            username = _unique_username(mapped.get("username", "user"))
+            display_name = _unique_display_name(
+                mapped.get("display_name", "") or username,
+                fallback=username,
+            )
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                display_name=display_name,
+                avatar_url=mapped.get("avatar_url", ""),
+            )
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+            OAuthAccount.objects.create(
+                user=user,
+                provider=provider,
+                provider_user_id=provider_user_id,
+                access_token="",
+            )
+            return user
 
     @staticmethod
     def _sync_oauth_user(user: User, mapped: dict) -> None:
@@ -334,12 +404,9 @@ class OAuthCallbackView(APIView):
             user.email = provider_email
             update_fields.append("email")
 
-        if user.has_usable_password():
-            user.set_unusable_password()
-            update_fields.append("password")
-
         if update_fields:
             user.save(update_fields=update_fields)
+
 
 def _unique_username(base: str) -> str:
     """
@@ -362,3 +429,14 @@ def _unique_username(base: str) -> str:
 
     # Absolute fallback — hash-based
     return f"user_{hashlib.sha256(secrets.token_bytes(16)).hexdigest()[:10]}"
+
+
+def _unique_display_name(base: str, *, fallback: str) -> str:
+    clean = str(base).strip()[:40] or fallback
+    if not User.objects.filter(display_name__iexact=clean).exists():
+        return clean
+    for _ in range(10):
+        candidate = f"{clean[:40]}_{secrets.token_hex(3)}"
+        if not User.objects.filter(display_name__iexact=candidate).exists():
+            return candidate
+    return f"{fallback[:35]}_{secrets.token_hex(5)}"

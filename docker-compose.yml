@@ -23,7 +23,7 @@ services:
     image: redis:7-alpine
     container_name: ft_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     ports:
@@ -49,10 +49,10 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER:-ft_user}:${POSTGRES_PASSWORD:-ft_password}@db:5432/${POSTGRES_DB:-ft_transcendence}
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production-very-secret-key}
-      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-False}
       - PUBLIC_APP_ORIGIN=${PUBLIC_APP_ORIGIN:-https://localhost:${HTTPS_PORT:-8443}}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
-      - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS:-True}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend,host.docker.internal}
+      - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS:-False}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS-}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS-}
       - OAUTH_42_CLIENT_ID=${OAUTH_42_CLIENT_ID:-}
