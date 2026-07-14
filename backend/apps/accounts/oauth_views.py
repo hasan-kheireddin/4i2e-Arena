@@ -427,7 +427,7 @@ def _unique_username(base: str) -> str:
         if not User.objects.filter(username=candidate).exists():
             return candidate
 
-    # Absolute fallback — hash-based
+    # Absolute fallback hash-based
     return f"user_{hashlib.sha256(secrets.token_bytes(16)).hexdigest()[:10]}"
 
 

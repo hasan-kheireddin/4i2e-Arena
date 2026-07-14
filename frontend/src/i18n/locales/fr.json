@@ -180,8 +180,7 @@
       "display_name_empty": "Le nom d'affichage ne peut pas être vide",
       "save_failed": "Échec de l'enregistrement des modifications",
       "save": "Enregistrer les modifications",
-      "saving": "Enregistrement...",
-      "completeness_label": "Profil complété à {{value}}%"
+      "saving": "Enregistrement..."
     },
     "security": {
       "change_password": "Changer le mot de passe",
@@ -266,7 +265,6 @@
   },
   "home": {
     "welcome_back": "Bon retour,",
-    "hub_badge": "Hub FireArena",
     "level": "Niveau",
     "xp_to_next": "XP pour le niveau",
     "quick_play": "Jeu rapide",
@@ -322,7 +320,7 @@
     "choose_game": "Choisir un jeu",
     "pick_game": "Choisissez le jeu auquel vous souhaitez jouer",
     "pong_desc": "Bataille d'arcade classique. PvP en ligne, adversaires IA ou 2 joueurs locaux.",
-    "ttt_desc": "Jeu de stratégie. 2 joueurs locaux, à tour de rôle sur le même écran.",
+    "ttt_desc": "Jeu de stratégie. Jouez en ligne en PvP ou à 2 joueurs localement.",
     "pong_tag_online": "En ligne",
     "pong_tag_ai": "vs IA",
     "pong_tag_local": "Local 2J",
@@ -405,7 +403,7 @@
     "cta_title": "Prêt à dominer ?",
     "cta_sub": "Rejoignez des milliers de joueurs compétitifs. Créez votre compte gratuitement et commencez à grimper dans le classement.",
     "cta_create": "Créer un compte gratuit",
-    "footer_rights": "© {{year}} Fire Arena. Fait avec ♥",
+    "footer_rights": "© {{year}} Fire Arena.",
     "footer_register": "S'inscrire"
   },
   "profile": {
@@ -586,7 +584,6 @@
     "searching": "Recherche d'un adversaire…",
     "reconnecting_players": "Reconnexion des joueurs...",
     "reconnecting_resume": "L'état du plateau est conservé et le match reprendra automatiquement.",
-    "queue_position": "Position dans la file : {{pos}}",
     "cancel": "Annuler",
     "draw_result": "Match nul !",
     "player1_wins": "Joueur 1 gagne ! 🎉",
@@ -595,18 +592,6 @@
     "you_lose": "Vous perdez",
     "play_again": "Rejouer",
     "back_to_games": "Retour aux jeux",
-    "move_history": "Historique des coups",
-    "no_moves": "Aucun coup joué",
-    "move_entry": "{{mark}} -> {{position}}",
-    "position_top_left": "haut-gauche",
-    "position_top_center": "haut-centre",
-    "position_top_right": "haut-droite",
-    "position_mid_left": "milieu-gauche",
-    "position_center": "centre",
-    "position_mid_right": "milieu-droite",
-    "position_bot_left": "bas-gauche",
-    "position_bot_center": "bas-centre",
-    "position_bot_right": "bas-droite",
     "reset_game": "Réinitialiser",
     "game_status": "État du jeu",
     "your_turn_status": "C'est votre tour !",

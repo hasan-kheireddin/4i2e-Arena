@@ -263,10 +263,16 @@ function OnlinePhaseOverlay({ props }: { props: PongGameViewProps }) {
         style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
         <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('pong.title')}</h2>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.subtitle')}</p>
-        <button onClick={props.onFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
-          {t('pong.find_match')}
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button onClick={props.onBackToGames} className="px-6 py-3 rounded-lg font-medium"
+            style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
+            {t('pong.back_to_games')}
+          </button>
+          <button onClick={props.onFindMatch} className="px-8 py-3 rounded-lg font-semibold text-white"
+            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
+            {t('pong.find_match')}
+          </button>
+        </div>
       </div>
     );
   }

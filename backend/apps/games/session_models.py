@@ -101,6 +101,10 @@ class GameSession:
     tick_owner: int | None = None
     disconnect_tasks: dict[int, Any] = field(default_factory=dict, repr=False)
     spectators: dict[str, SpectatorSlot] = field(default_factory=dict)
+    # Highest client input sequence accepted for each Pong player. Keeping this
+    # on the shared session (rather than a socket consumer) also rejects late
+    # messages from a connection that has just been replaced.
+    last_processed_input_sequences: dict[int, int] = field(default_factory=dict)
     # For remote PvP sessions, only identities selected by matchmaking or a
     # validated invitation may occupy player slots.  An empty set is reserved
     # for explicitly-created local/AI sessions.

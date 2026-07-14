@@ -34,7 +34,7 @@ export function LanguageSwitcher({ className = "" }: LanguageSwitcherProps) {
       >
         {LANGUAGE_OPTIONS.map((language) => (
           <option key={language.code} value={language.code} dir={language.direction}>
-            {language.flag} {language.label}
+            {language.label}
           </option>
         ))}
       </select>

@@ -2,9 +2,7 @@
 
 setup: ssl-generate build up ## First-time project setup: generates SSL, builds images, starts all services
 	@echo ""
-	@echo "Setup complete! Migrations are running inside the backend container."
-	@echo "Run 'make logs-backend' to follow progress."
-	@echo ""
+	@echo "Setup complete!"
 
 up:
 	docker compose up -d

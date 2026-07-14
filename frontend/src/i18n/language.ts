@@ -3,13 +3,12 @@ export type SupportedLanguage = "en" | "fr" | "de" | "ar";
 export const LANGUAGE_OPTIONS: ReadonlyArray<{
   code: SupportedLanguage;
   label: string;
-  flag: string;
   direction: "ltr" | "rtl";
 }> = [
-  { code: "en", label: "English", flag: "🇬🇧", direction: "ltr" },
-  { code: "fr", label: "Français", flag: "🇫🇷", direction: "ltr" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪", direction: "ltr" },
-  { code: "ar", label: "العربية", flag: "🇸🇦", direction: "rtl" },
+  { code: "en", label: "English", direction: "ltr" },
+  { code: "fr", label: "Français", direction: "ltr" },
+  { code: "de", label: "Deutsch", direction: "ltr" },
+  { code: "ar", label: "العربية", direction: "rtl" },
 ];
 
 const RTL_LANGUAGES = new Set<SupportedLanguage>(["ar"]);

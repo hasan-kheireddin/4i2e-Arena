@@ -22,8 +22,8 @@ export interface PongSocketContext {
     ball: { x: number; y: number; vx: number; vy: number },
     player1: SnapshotPlayer,
     player2: SnapshotPlayer,
-    serverTsMs: number | null,
   ) => void;
+  setLastProcessedInputSequence: (sequence: number) => void;
   setOpponentName: Dispatch<SetStateAction<string>>;
   setOnlinePhase: Dispatch<SetStateAction<OnlinePhase>>;
   setGamePaused: Dispatch<SetStateAction<boolean>>;
@@ -132,6 +132,9 @@ export function handlePongGameMessage(
 function handleGameJoined(data: SocketMessage, context: PongSocketContext) {
   const slot = data.slot as number;
   context.setMySlot(slot);
+  context.setLastProcessedInputSequence(
+    readInputSequence(data.last_processed_input_sequence),
+  );
   updateOpponentFromGameInfo(data, context);
 }
 
@@ -141,13 +144,21 @@ function pushStateMessage(data: SocketMessage, context: PongSocketContext) {
   const player2 = data.player2 as SnapshotPlayer | undefined;
   if (!ball || !player1 || !player2) return;
 
-  const serverTsMs = Number(data.server_ts_ms);
+  // Input acknowledgement is deliberately independent from snapshot
+  // buffering. It controls only local-paddle reconciliation.
+  context.setLastProcessedInputSequence(
+    readInputSequence(data.last_processed_input_sequence),
+  );
   context.pushSnapshot(
     ball,
     player1,
     player2,
-    Number.isFinite(serverTsMs) ? serverTsMs : null,
   );
+}
+
+function readInputSequence(value: unknown): number {
+  const sequence = Number(value);
+  return Number.isSafeInteger(sequence) && sequence >= 0 ? sequence : 0;
 }
 
 function handleGameOver(data: SocketMessage, context: PongSocketContext) {

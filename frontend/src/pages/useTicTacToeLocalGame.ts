@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { TFunction } from 'i18next';
 import { createLocalMatch } from '../services/games';
 import {
-  POSITION_NAMES,
   canPlayLocalMove,
   checkWinner,
   createEmptyBoard,
@@ -17,7 +15,6 @@ import {
 
 interface LocalGameOptions {
   mode: Mode;
-  t: TFunction;
 }
 
 function incrementLocalScore(
@@ -70,11 +67,10 @@ async function persistFinishedLocalMatch({
   } catch {}
 }
 
-export function useTicTacToeLocalGame({ mode, t }: LocalGameOptions) {
+export function useTicTacToeLocalGame({ mode }: LocalGameOptions) {
   const [board, setBoard] = useState<CellValue[]>(createEmptyBoard);
   const [isXTurn, setIsXTurn] = useState(true);
   const [scores, setScores] = useState<LocalScores>({ X: 0, O: 0, draw: 0 });
-  const [moves, setMoves] = useState<string[]>([]);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
   const [localPlayerNames, setLocalPlayerNames] = useState<LocalPlayerNames>({
     p1: '',
@@ -102,13 +98,6 @@ export function useTicTacToeLocalGame({ mode, t }: LocalGameOptions) {
 
     setBoard(nextBoard);
     setIsXTurn((prev) => !prev);
-    setMoves((prev) => [
-      ...prev,
-      t('ttt.move_entry', {
-        mark,
-        position: t(`ttt.position_${POSITION_NAMES[index]}`),
-      }),
-    ]);
 
     const result = checkWinner(nextBoard);
     incrementLocalScore(result.winner, setScores);
@@ -123,7 +112,6 @@ export function useTicTacToeLocalGame({ mode, t }: LocalGameOptions) {
   const resetGame = () => {
     setBoard(createEmptyBoard());
     setIsXTurn(true);
-    setMoves([]);
     setGameStartTime(null);
 
     if (mode === 'local') {
@@ -139,7 +127,6 @@ export function useTicTacToeLocalGame({ mode, t }: LocalGameOptions) {
     setBoard(createEmptyBoard());
     setIsXTurn(true);
     setScores({ X: 0, O: 0, draw: 0 });
-    setMoves([]);
     setGameStartTime(null);
   };
 
@@ -147,7 +134,6 @@ export function useTicTacToeLocalGame({ mode, t }: LocalGameOptions) {
     board,
     isXTurn,
     scores,
-    moves,
     localPlayerNames,
     localNamesReady,
     winner,

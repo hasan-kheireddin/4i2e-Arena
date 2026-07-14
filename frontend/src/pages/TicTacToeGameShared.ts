@@ -25,12 +25,6 @@ export interface GameInfoPlayer {
   user_id?: string;
 }
 
-export const POSITION_NAMES = [
-  'top_left', 'top_center', 'top_right',
-  'mid_left', 'center', 'mid_right',
-  'bot_left', 'bot_center', 'bot_right',
-] as const;
-
 export function createEmptyBoard(): CellValue[] {
   return Array(9).fill(null);
 }

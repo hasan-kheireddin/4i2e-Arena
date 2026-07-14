@@ -20,7 +20,6 @@ export interface TicTacToeGameViewProps {
   displayWinner: GameResult;
   displayLine: number[] | null;
   scores: LocalScores;
-  moves: string[];
   localPlayerNames: LocalPlayerNames;
   localNamesReady: boolean;
   isXTurn: boolean;
@@ -28,12 +27,10 @@ export interface TicTacToeGameViewProps {
   opponentName: string;
   onlinePhase: OnlinePhase;
   onlineWinner: GameResult;
-  queuePosition: number | null;
   iReady: boolean;
   opponentReady: boolean;
   gamePaused: boolean;
   gameSocketStatus: string;
-  gameLatencyMs: number | null;
   isMyTurn: boolean;
   showRealtimeRecoveryOverlay: boolean;
   opponentLeftMsg: string | null;
@@ -146,29 +143,6 @@ function PageHeader({ mode }: { mode: Mode }) {
   );
 }
 
-function ScoreBanner({ props }: { props: TicTacToeGameViewProps }) {
-  const { t } = useTranslation();
-  const labels = getLocalLabels(props.localPlayerNames, t);
-
-  if (props.mode !== 'local') return null;
-
-  return (
-    <div className="flex items-center justify-center gap-6">
-      {[
-        { label: `${labels.p1} (X)`, value: props.scores.X, color: '#3B82F6' },
-        { label: t('ttt.draws'), value: props.scores.draw, color: '#f59e0b' },
-        { label: `${labels.p2} (O)`, value: props.scores.O, color: '#EF4444' },
-      ].map(({ label, value, color }) => (
-        <div key={label} className="text-center px-5 py-3 rounded-xl"
-          style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-          <div className="text-2xl font-extrabold" style={{ color }}>{value}</div>
-          <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function TicTacToeHud({ props }: { props: TicTacToeGameViewProps }) {
   const { t } = useTranslation();
   const labels = getLocalLabels(props.localPlayerNames, t);
@@ -206,11 +180,6 @@ function TicTacToeHud({ props }: { props: TicTacToeGameViewProps }) {
         <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
           {props.mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local')}
         </span>
-        {props.mode === 'online' && (
-          <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            {t('ttt.latency')} {props.gameLatencyMs === null ? '--' : `${Math.round(props.gameLatencyMs)}ms`}
-          </span>
-        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -350,11 +319,6 @@ function OnlinePhaseOverlay({ props }: { props: TicTacToeGameViewProps }) {
       <p className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
         {t('ttt.searching')}
       </p>
-      {props.queuePosition !== null && (
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {t('ttt.queue_position', { pos: props.queuePosition })}
-        </p>
-      )}
       <button
         onClick={props.onCancelOnline}
         className="text-sm px-5 py-2 rounded-lg"
@@ -565,50 +529,6 @@ function PlayerCards({ props }: { props: TicTacToeGameViewProps }) {
   );
 }
 
-function MoveHistoryPanel({ props }: { props: TicTacToeGameViewProps }) {
-  const { t } = useTranslation();
-  if (props.mode !== 'local') return null;
-
-  return (
-    <>
-      <div className="p-4 rounded-lg max-h-52 overflow-y-auto"
-        style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text-primary)' }}>
-          {t('ttt.move_history')}
-        </h3>
-        {props.moves.length === 0 ? (
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{t('ttt.no_moves')}</p>
-        ) : (
-          <div className="space-y-1.5">
-            {props.moves.map((move, index) => (
-              <div key={index} className="text-xs px-2 py-1.5 rounded-lg"
-                style={{
-                  backgroundColor: index === props.moves.length - 1 ? 'rgba(249,115,22,0.12)' : 'transparent',
-                  color: index === props.moves.length - 1 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>#{index + 1}</span> {move}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <button
-        onClick={props.onResetGame}
-        className="w-full py-2 rounded-lg text-sm font-medium transition-all duration-150"
-        style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
-        onMouseEnter={(event) => {
-          event.currentTarget.style.borderColor = 'var(--color-primary)';
-        }}
-        onMouseLeave={(event) => {
-          event.currentTarget.style.borderColor = 'var(--color-border)';
-        }}>
-        {t('ttt.reset_game')}
-      </button>
-    </>
-  );
-}
-
 function OnlineStatusPanel({ props }: { props: TicTacToeGameViewProps }) {
   const { t } = useTranslation();
   if (props.mode !== 'online' || props.onlinePhase !== 'playing') return null;
@@ -630,7 +550,6 @@ function SidePanel({ props }: { props: TicTacToeGameViewProps }) {
   return (
     <div className="space-y-4">
       <PlayerCards props={props} />
-      <MoveHistoryPanel props={props} />
       <OnlineStatusPanel props={props} />
     </div>
   );
@@ -644,7 +563,6 @@ export default function TicTacToeGameView(props: TicTacToeGameViewProps) {
         style={{ backgroundColor: 'var(--color-bg)' }}>
         <div className="max-w-4xl w-full space-y-5">
           <PageHeader mode={props.mode} />
-          <ScoreBanner props={props} />
           <TicTacToeHud props={props} />
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
             <Arena props={props} />

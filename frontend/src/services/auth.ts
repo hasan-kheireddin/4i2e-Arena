@@ -191,12 +191,12 @@ export async function logout(): Promise<void> {
   clearTokens();
 }
 
-/** GET /api/accounts/me/ — fetch current user profile */
+/** GET /api/accounts/me/  fetch current user profile */
 export async function getProfile(): Promise<User> {
   return apiFetch<User>(`${AUTH}/me/`);
 }
 
-/** GET /api/accounts/users/<uuid>/ — fetch any user's public profile */
+/** GET /api/accounts/users/<uuid>/  fetch any user's public profile */
 export async function getUserProfile(userId: string): Promise<User> {
   return apiFetch<User>(`${AUTH}/users/${userId}/`);
 }
@@ -269,12 +269,12 @@ export async function oauthCallback(
   return res;
 }
 
-/** POST /api/accounts/2fa/setup/ — (authenticated) */
+/** POST /api/accounts/2fa/setup/  (authenticated) */
 export async function twoFASetup(): Promise<TwoFASetupResponse> {
   return apiFetch(`${AUTH}/2fa/setup/`, { method: "POST" });
 }
 
-/** POST /api/accounts/2fa/verify/ — (authenticated, setup confirmation) */
+/** POST /api/accounts/2fa/verify/  (authenticated, setup confirmation) */
 export async function twoFAConfirm(code: string): Promise<{
   detail: string;
   recovery_codes: string[];
@@ -285,7 +285,7 @@ export async function twoFAConfirm(code: string): Promise<{
   });
 }
 
-/** POST /api/accounts/2fa/login-verify/ — (public, temp_token) */
+/** POST /api/accounts/2fa/login-verify/  (public, temp_token) */
 export async function twoFAVerify(data: {
   temp_token: string;
   code: string;
@@ -300,7 +300,7 @@ export async function twoFAVerify(data: {
   return res;
 }
 
-/** POST /api/accounts/2fa/disable/ — (authenticated) */
+/** POST /api/accounts/2fa/disable/  (authenticated) */
 export async function twoFADisable(code: string): Promise<{ detail: string }> {
   return apiFetch(`${AUTH}/2fa/disable/`, {
     method: "POST",
@@ -308,7 +308,7 @@ export async function twoFADisable(code: string): Promise<{ detail: string }> {
   });
 }
 
-/** GET /api/accounts/2fa/status/ — (authenticated) */
+/** GET /api/accounts/2fa/status/  (authenticated) */
 export async function twoFAStatus(): Promise<{
   is_2fa_enabled: boolean;
   confirmed: boolean;

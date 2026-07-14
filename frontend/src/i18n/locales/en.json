@@ -180,8 +180,7 @@
       "display_name_empty": "Display name cannot be empty",
       "save_failed": "Failed to save changes",
       "save": "Save Changes",
-      "saving": "Saving...",
-      "completeness_label": "Profile completeness {{value}}%"
+      "saving": "Saving..."
     },
     "security": {
       "change_password": "Change Password",
@@ -266,7 +265,6 @@
   },
   "home": {
     "welcome_back": "Welcome back,",
-    "hub_badge": "FireArena Hub",
     "level": "Level",
     "xp_to_next": "XP to Level",
     "quick_play": "Quick Play",
@@ -322,7 +320,7 @@
     "choose_game": "Choose a Game",
     "pick_game": "Pick which game you want to play",
     "pong_desc": "Classic arcade battle. Online PvP, AI opponents, or local 2-player.",
-    "ttt_desc": "Strategy mind game. Local 2-player, take turns on the same screen.",
+    "ttt_desc": "Strategy mind game. Play online PvP or local 2-player.",
     "pong_tag_online": "Online",
     "pong_tag_ai": "vs AI",
     "pong_tag_local": "Local 2P",
@@ -405,7 +403,7 @@
     "cta_title": "Ready to Ignite the Arena?",
     "cta_sub": "Join the fire, create your free account, and start your climb in Fire Arena today.",
     "cta_create": "Create Free Account",
-    "footer_rights": "© {{year}} Fire Arena. Built with ♥ and fire",
+    "footer_rights": "© {{year}} Fire Arena.",
     "footer_register": "Register"
   },
   "profile": {
@@ -586,7 +584,6 @@
     "searching": "Searching for opponent…",
     "reconnecting_players": "Reconnecting players...",
     "reconnecting_resume": "Your board state is preserved and the match will resume automatically.",
-    "queue_position": "Queue position: {{pos}}",
     "cancel": "Cancel",
     "draw_result": "It's a Draw!",
     "player1_wins": "Player 1 Wins! 🎉",
@@ -595,18 +592,6 @@
     "you_lose": "You Lose",
     "play_again": "Play Again",
     "back_to_games": "Back to Games",
-    "move_history": "Move History",
-    "no_moves": "No moves yet",
-    "move_entry": "{{mark}} -> {{position}}",
-    "position_top_left": "top-left",
-    "position_top_center": "top-center",
-    "position_top_right": "top-right",
-    "position_mid_left": "middle-left",
-    "position_center": "center",
-    "position_mid_right": "middle-right",
-    "position_bot_left": "bottom-left",
-    "position_bot_center": "bottom-center",
-    "position_bot_right": "bottom-right",
     "reset_game": "Reset Game",
     "game_status": "Game Status",
     "your_turn_status": "It's your turn!",

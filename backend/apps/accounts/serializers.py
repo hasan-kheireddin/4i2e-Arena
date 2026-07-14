@@ -104,7 +104,7 @@ class LoginSerializer(serializers.Serializer):
     Authenticates a user via username/email + password.
     Returns the user instance on success.
 
-    Accepts either `username` or `email` — if the input contains '@',
+    Accepts either `username` or `email` if the input contains '@',
     it is treated as an email and the corresponding username is looked up.
     """
 

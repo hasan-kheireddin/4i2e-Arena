@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 
 class TwoFactorSetupSerializer(serializers.Serializer):
-    """Empty — the setup endpoint only needs the authenticated user."""
+    """Empty, the setup endpoint only needs the authenticated user."""
     pass
 
 
@@ -52,7 +52,7 @@ class TwoFactorVerifySerializer(serializers.Serializer):
 
 class TwoFactorDisableSerializer(serializers.Serializer):
     """
-    Requires a valid TOTP code to disable 2FA — prevents accidental
+    Requires a valid TOTP code to disable 2FA, prevents accidental
     or malicious disabling.
     """
 

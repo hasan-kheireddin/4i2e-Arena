@@ -139,7 +139,6 @@ export default function HomePage() {
             <div className="mb-2 flex items-center gap-2">
               <BrandLogo compact />
               <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "#fb923c" }}>
-                {t("home.hub_badge")}
               </p>
             </div>
             <h1 className="text-2xl md:text-4xl font-extrabold mb-2" style={{ color: "var(--color-text-primary)" }}>

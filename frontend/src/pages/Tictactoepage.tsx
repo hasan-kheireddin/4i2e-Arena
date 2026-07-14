@@ -21,7 +21,7 @@ export default function TicTacToePage() {
     searchParams.has('game_id'),
   );
 
-  const localGame = useTicTacToeLocalGame({ mode, t });
+  const localGame = useTicTacToeLocalGame({ mode });
   const onlineGame = useTicTacToeOnlineGame({
     mode,
     initialGameId,
@@ -68,7 +68,6 @@ export default function TicTacToePage() {
       displayWinner={displayWinner}
       displayLine={displayLine}
       scores={localGame.scores}
-      moves={localGame.moves}
       localPlayerNames={localGame.localPlayerNames}
       localNamesReady={localGame.localNamesReady}
       isXTurn={localGame.isXTurn}
@@ -76,12 +75,10 @@ export default function TicTacToePage() {
       opponentName={onlineGame.opponentName}
       onlinePhase={onlineGame.onlinePhase}
       onlineWinner={onlineGame.onlineWinner}
-      queuePosition={onlineGame.queuePosition}
       iReady={onlineGame.iReady}
       opponentReady={onlineGame.opponentReady}
       gamePaused={onlineGame.gamePaused}
       gameSocketStatus={onlineGame.gameSocketStatus}
-      gameLatencyMs={onlineGame.gameLatency.rttMs}
       isMyTurn={isMyTurn}
       showRealtimeRecoveryOverlay={showRealtimeRecoveryOverlay}
       opponentLeftMsg={onlineGame.opponentLeftMsg}

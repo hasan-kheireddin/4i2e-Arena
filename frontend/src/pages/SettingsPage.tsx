@@ -7,7 +7,6 @@ import { Button } from '../components/ui/Button';
 import { Card as SurfaceCard } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -43,7 +42,6 @@ export default function SettingsPage() {
 
   // Editable profile fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
-  const [bio] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -268,10 +266,6 @@ export default function SettingsPage() {
   const twoFAEnabledAt = twoFAInfo.created_at
     ? new Date(twoFAInfo.created_at).toLocaleString()
     : null;
-  const profileFields = [username, email, displayName, bio, language];
-  const profileCompletion = Math.round(
-    (profileFields.filter((value) => value.trim().length > 0).length / profileFields.length) * 100
-  );
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="mb-6 font-display text-2xl font-bold text-primary">
@@ -329,9 +323,6 @@ export default function SettingsPage() {
                     <p className="text-sm text-secondary">
                       {t('settings.profile.identity_sync')}
                     </p>
-                  </div>
-                  <div className="w-full max-w-[180px]">
-                    <ProgressBar value={profileCompletion} label={t('settings.profile.completeness_label', { value: profileCompletion })} showLabel />
                   </div>
                 </div>
                 <div className="mb-6 flex items-center gap-4">
@@ -536,7 +527,6 @@ export default function SettingsPage() {
                         textAlign: 'start',
                       }}
                     >
-                      <span className="text-xl">{lang.flag}</span>
                       <span className="text-sm font-medium">{lang.label}</span>
                     </button>
                   ))}

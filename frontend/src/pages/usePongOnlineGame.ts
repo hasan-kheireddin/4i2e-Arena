@@ -61,12 +61,16 @@ export function usePongOnlineGame({
   );
 
   const latestOnlineStateRef = useRef<OnlineGameState | null>(null);
+  const onlineScoreRef = useRef({ p1: 0, p2: 0 });
   const snapshotBufferRef = useRef<OnlineSnapshot[]>([]);
   const mySlotRef = useRef<number | null>(null);
   const latencyRef = useRef({ rttMs: 0, clockOffsetMs: 0 });
   const renderedOnlineStateRef = useRef<OnlineGameState | null>(null);
   const onlineLastRenderTsRef = useRef<number | null>(null);
   const previousDirectionRef = useRef<'up' | 'down' | 'stop'>('stop');
+  const inputChangedAtRef = useRef(0);
+  const latestLocalInputSequenceRef = useRef(0);
+  const lastProcessedInputSequenceRef = useRef(0);
   const gameSendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
   const {
     emotes: floatingEmotes,
@@ -83,20 +87,51 @@ export function usePongOnlineGame({
 
   useEffect(() => {
     if (mode !== 'online' || onlinePhase !== 'playing') return;
+    const keys = keysRef.current ?? {};
 
-    let animationId = 0;
-    const pushInputFrame = () => {
-      const direction = getOnlineInputMessageDirection(keysRef.current ?? {});
+    const updateDirection = () => {
+      const direction = getOnlineInputMessageDirection(keys);
       if (direction !== previousDirectionRef.current) {
         previousDirectionRef.current = direction;
-        gameSendRef.current({ type: 'input', direction });
+        inputChangedAtRef.current = performance.now();
+        const sequence = ++latestLocalInputSequenceRef.current;
+        gameSendRef.current({ type: 'input', direction, sequence });
       }
-      animationId = requestAnimationFrame(pushInputFrame);
     };
-    animationId = requestAnimationFrame(pushInputFrame);
+
+    const setKey = (event: KeyboardEvent, pressed: boolean) => {
+      const key = normalizePongKey(event.key);
+      if (key === null) return;
+      event.preventDefault();
+      keys[key] = pressed;
+      if (key === 'w') keys.W = false;
+      if (key === 's') keys.S = false;
+      updateDirection();
+    };
+    const onKeyDown = (event: KeyboardEvent) => setKey(event, true);
+    const onKeyUp = (event: KeyboardEvent) => setKey(event, false);
+    const onBlur = () => {
+      clearPongKeys(keys);
+      updateDirection();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+
+    // The local-game keyboard listener is shared with this hook. Read its
+    // current state once in case a key was already held when play began.
+    updateDirection();
     return () => {
-      cancelAnimationFrame(animationId);
-      stopOnlineInput(previousDirectionRef, gameSendRef);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      clearPongKeys(keys);
+      stopOnlineInput(
+        previousDirectionRef,
+        gameSendRef,
+        latestLocalInputSequenceRef,
+      );
     };
   }, [mode, onlinePhase, keysRef]);
 
@@ -104,7 +139,6 @@ export function usePongOnlineGame({
     ball: { x: number; y: number; vx: number; vy: number },
     player1: { score: number; paddle: { y: number } },
     player2: { score: number; paddle: { y: number } },
-    serverTsMs: number | null,
   ) => {
     const authoritative: OnlineGameState = {
       ball,
@@ -113,12 +147,21 @@ export function usePongOnlineGame({
         2: { y: player2.paddle.y },
       },
     };
-    snapshotBufferRef.current.push({
-      serverTsMs: Number.isFinite(serverTsMs) ? Number(serverTsMs) : Date.now(),
+    console.log("received", performance.now(), authoritative.ball);
+    const snapshot: OnlineSnapshot = {
+      receivedAt: performance.now(),
       state: authoritative,
-    });
-    trimSnapshots(snapshotBufferRef.current);
+    };
+    const scoreChanged = onlineScoreRef.current.p1 !== player1.score
+      || onlineScoreRef.current.p2 !== player2.score;
+    if (scoreChanged) {
+      snapshotBufferRef.current = [snapshot];
+    } else {
+      snapshotBufferRef.current.push(snapshot);
+      trimSnapshots(snapshotBufferRef.current);
+    }
     latestOnlineStateRef.current = authoritative;
+    onlineScoreRef.current = { p1: player1.score, p2: player2.score };
     setOnlineScore((previous) => (
       previous.p1 === player1.score && previous.p2 === player2.score
         ? previous
@@ -166,6 +209,16 @@ export function usePongOnlineGame({
         setMySlot: (slot) => {
           setMySlot(slot);
           mySlotRef.current = slot;
+        },
+        setLastProcessedInputSequence: (sequence) => {
+          lastProcessedInputSequenceRef.current = Math.max(
+            lastProcessedInputSequenceRef.current,
+            sequence,
+          );
+          latestLocalInputSequenceRef.current = Math.max(
+            latestLocalInputSequenceRef.current,
+            sequence,
+          );
         },
         resetRenderState: resetOnlineRenderState,
         pushSnapshot: pushOnlineSnapshot,
@@ -220,6 +273,9 @@ export function usePongOnlineGame({
           latency: latencyRef.current,
           previousRendered: renderedOnlineStateRef.current,
           lastRenderTs: onlineLastRenderTsRef.current,
+          inputChangedAt: inputChangedAtRef.current,
+          latestLocalInputSequence: latestLocalInputSequenceRef.current,
+          lastProcessedInputSequence: lastProcessedInputSequenceRef.current,
           setRenderedState: (state, renderTs) => {
             renderedOnlineStateRef.current = state;
             onlineLastRenderTsRef.current = renderTs;
@@ -237,6 +293,7 @@ export function usePongOnlineGame({
     resetOnlineRenderState();
     setOnlinePhase('matchmaking');
     setOnlineScore({ p1: 0, p2: 0 });
+    onlineScoreRef.current = { p1: 0, p2: 0 };
     setOpponentLeft(false);
     setOnlineReason(null);
     setOnlineWinnerSlot(null);
@@ -249,6 +306,8 @@ export function usePongOnlineGame({
     setOpponentReady(false);
     setGamePaused(false);
     previousDirectionRef.current = 'stop';
+    latestLocalInputSequenceRef.current = 0;
+    lastProcessedInputSequenceRef.current = 0;
     setMmPath('/ws/matchmaking/');
   };
 
@@ -297,10 +356,28 @@ export function usePongOnlineGame({
 function stopOnlineInput(
   previousDirectionRef: { current: 'up' | 'down' | 'stop' },
   gameSendRef: { current: (data: Record<string, unknown>) => void },
+  latestLocalInputSequenceRef: { current: number },
 ) {
   if (previousDirectionRef.current === 'stop') return;
-  gameSendRef.current({ type: 'input', direction: 'stop' });
+  const sequence = ++latestLocalInputSequenceRef.current;
+  gameSendRef.current({ type: 'input', direction: 'stop', sequence });
   previousDirectionRef.current = 'stop';
+}
+
+function normalizePongKey(key: string): 'w' | 's' | 'ArrowUp' | 'ArrowDown' | null {
+  if (key === 'w' || key === 'W') return 'w';
+  if (key === 's' || key === 'S') return 's';
+  if (key === 'ArrowUp' || key === 'ArrowDown') return key;
+  return null;
+}
+
+function clearPongKeys(keys: Record<string, boolean>) {
+  keys.w = false;
+  keys.W = false;
+  keys.s = false;
+  keys.S = false;
+  keys.ArrowUp = false;
+  keys.ArrowDown = false;
 }
 
 function trimSnapshots(snapshots: OnlineSnapshot[]) {
@@ -320,6 +397,9 @@ function renderOnlineFrame({
   latency,
   previousRendered,
   lastRenderTs,
+  inputChangedAt,
+  latestLocalInputSequence,
+  lastProcessedInputSequence,
   setRenderedState,
 }: {
   nowMs: number;
@@ -332,14 +412,15 @@ function renderOnlineFrame({
   latency: { rttMs: number; clockOffsetMs: number };
   previousRendered: OnlineGameState | null;
   lastRenderTs: number | null;
+  inputChangedAt: number;
+  latestLocalInputSequence: number;
+  lastProcessedInputSequence: number;
   setRenderedState: (state: OnlineGameState, renderTs: number) => void;
 }) {
+  console.log("buffer", snapshots.length);
   const frameState = resolveOnlineFrameState({
     snapshots,
     latestState,
-    latency,
-    mySlot,
-    keys,
   });
   if (!frameState) {
     if (previousRendered) {
@@ -351,10 +432,18 @@ function renderOnlineFrame({
   const smoothedFrame = smoothOnlineState({
     previousRendered,
     targetState: frameState,
+    latestState,
     nowMs,
     lastRenderTs,
     mySlot,
+    keys,
+    reconcileLocalPaddle: (
+      nowMs - inputChangedAt > Math.max(50, latency.rttMs + 1000 / 30)
+    ),
+    latestLocalInputSequence,
+    lastProcessedInputSequence,
   });
+  console.log("rendered", performance.now(), smoothedFrame.state.ball);
   setRenderedState(smoothedFrame.state, smoothedFrame.lastRenderTs);
   drawPerspectiveOnlineFrame(context, canvas, smoothedFrame.state, mySlot);
 }

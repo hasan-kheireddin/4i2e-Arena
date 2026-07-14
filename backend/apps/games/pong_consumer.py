@@ -27,6 +27,7 @@ BROADCAST_RATE: int = 30
 BROADCAST_EVERY_TICKS: int = max(1, TICK_RATE // BROADCAST_RATE)
 RECONNECT_GRACE_SECONDS: float = 12.0
 SESSION_SNAPSHOT_INTERVAL_TICKS: int = 15
+MAX_TICKS_PER_LOOP: int = 12
 
 INPUT_RATE_LIMIT: int = 120
 INPUT_RATE_WINDOW: float = 1.0
@@ -151,7 +152,10 @@ class PongConsumer(BaseConsumer):
             if player.connected:
                 old_channel = player.channel_name
                 if old_channel and old_channel != self.channel_name:
-                    await self.channel_layer.send(old_channel, {"type": "force.disconnect"})
+                    await self.channel_layer.send(
+                        old_channel,
+                        {"type": "force.disconnect"},
+                    )
             slot = existing_slot
             reconnected = True
             await self._cancel_disconnect_task(session, slot)
@@ -177,6 +181,9 @@ class PongConsumer(BaseConsumer):
             "type": "game_joined",
             "slot": slot,
             "reconnected": reconnected,
+            "last_processed_input_sequence": (
+                session.last_processed_input_sequences.get(slot, 0)
+            ),
             "game_info": session.to_info(),
         })
         await self.broadcast(
@@ -206,6 +213,9 @@ class PongConsumer(BaseConsumer):
             await self.send_json({
                 "type": "game_state",
                 "server_ts_ms": int(time.time() * 1000),
+                "last_processed_input_sequence": (
+                    session.last_processed_input_sequences.get(slot, 0)
+                ),
                 **session.engine.get_state(),
             })
             if session.paused and session.all_players_connected:
@@ -265,13 +275,6 @@ class PongConsumer(BaseConsumer):
                 "Game is paused while a player reconnects",
             )
             return
-        if self._is_rate_limited():
-            await self.send_error(
-                "rate_limited",
-                "Too many input messages — slow down",
-            )
-            return
-
         direction = content.get("direction")
         if direction not in _VALID_DIRECTIONS:
             await self.send_error(
@@ -280,6 +283,30 @@ class PongConsumer(BaseConsumer):
             )
             return
 
+        sequence = content.get("sequence")
+        if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
+            await self.send_error(
+                "invalid_input_sequence",
+                "Input sequence must be a positive integer",
+            )
+            return
+
+        player = session.players.get(self._slot)
+        if player is None or player.channel_name != self.channel_name:
+            return
+
+        last_sequence = session.last_processed_input_sequences.get(self._slot, 0)
+        if sequence <= last_sequence:
+            return
+
+        if self._is_rate_limited():
+            await self.send_error(
+                "rate_limited",
+                "Too many input messages — slow down",
+            )
+            return
+
+        session.last_processed_input_sequences[self._slot] = sequence
         session.engine.handle_input(self._slot, direction)
 
     async def _handle_ping(self, content: dict[str, Any]) -> None:
@@ -356,26 +383,53 @@ class PongConsumer(BaseConsumer):
 
     async def _tick_loop(self, session: GameSession) -> None:
         """Run the game engine at TICK_RATE Hz and broadcast snapshots."""
+        previous_time = time.monotonic()
+        accumulator = TICK_INTERVAL
+        last_broadcast_tick = session.engine.tick_count
+        last_snapshot_tick = session.engine.tick_count
         try:
             while session.status == SessionStatus.PLAYING:
                 if session.paused:
                     await asyncio.sleep(0.1)
+                    previous_time = time.monotonic()
+                    accumulator = 0.0
                     continue
 
-                tick_start = time.monotonic()
-                state = session.engine.tick()
+                now = time.monotonic()
+                accumulator += min(
+                    now - previous_time,
+                    TICK_INTERVAL * MAX_TICKS_PER_LOOP,
+                )
+                previous_time = now
 
-                if session.engine.tick_count % BROADCAST_EVERY_TICKS == 0:
+                state: dict[str, Any] | None = None
+                steps = 0
+                while accumulator >= TICK_INTERVAL and steps < MAX_TICKS_PER_LOOP:
+                    state = session.engine.tick()
+                    accumulator -= TICK_INTERVAL
+                    steps += 1
+
+                if state is None:
+                    await asyncio.sleep(max(0.0, TICK_INTERVAL - accumulator))
+                    continue
+
+                current_tick = session.engine.tick_count
+                if current_tick - last_broadcast_tick >= BROADCAST_EVERY_TICKS:
                     await self.broadcast(
                         session.group_name,
                         {
                             "state": state,
                             "server_ts_ms": int(time.time() * 1000),
+                            "last_processed_input_sequences": dict(
+                                session.last_processed_input_sequences
+                            ),
                         },
                         handler="game.state",
                     )
-                if session.engine.tick_count % SESSION_SNAPSHOT_INTERVAL_TICKS == 0:
+                    last_broadcast_tick = current_tick
+                if current_tick - last_snapshot_tick >= SESSION_SNAPSHOT_INTERVAL_TICKS:
                     await persist_session(session)
+                    last_snapshot_tick = current_tick
 
                 if state.get("status") == PongStatus.FINISHED.value:
                     winner_id = self._resolve_winner_id(session)
@@ -389,8 +443,10 @@ class PongConsumer(BaseConsumer):
                     await finalize_finished_session(session)
                     break
 
-                elapsed = time.monotonic() - tick_start
-                sleep_time = TICK_INTERVAL - elapsed
+                # Time spent broadcasting/persisting is included on the next
+                # iteration. Overdue steps are sent as one timestamped state,
+                # allowing clients to interpolate them at a steady speed.
+                sleep_time = TICK_INTERVAL - accumulator
                 if sleep_time > 0:
                     await asyncio.sleep(sleep_time)
 
@@ -558,6 +614,9 @@ class PongConsumer(BaseConsumer):
                 "game_info": session.to_info(),
                 "state": session.engine.get_state(),
                 "server_ts_ms": int(time.time() * 1000),
+                "last_processed_input_sequences": dict(
+                    session.last_processed_input_sequences
+                ),
             },
             handler="game.resumed",
         )
@@ -566,9 +625,16 @@ class PongConsumer(BaseConsumer):
             session.tick_owner = self.user.pk
 
     async def game_state(self, event: dict[str, Any]) -> None:
+        sequences = event.get("last_processed_input_sequences", {})
+        last_sequence = (
+            sequences.get(self._slot, sequences.get(str(self._slot), 0))
+            if isinstance(sequences, dict) and self._slot is not None
+            else 0
+        )
         await self.send_json({
             "type": "game_state",
             "server_ts_ms": event.get("server_ts_ms"),
+            "last_processed_input_sequence": last_sequence,
             **event.get("state", {}),
         })
 
@@ -628,6 +694,16 @@ class PongConsumer(BaseConsumer):
             "type": "game_resumed",
             "game_info": event.get("game_info"),
             "server_ts_ms": event.get("server_ts_ms"),
+            "last_processed_input_sequence": (
+                event.get("last_processed_input_sequences", {}).get(
+                    self._slot,
+                    event.get("last_processed_input_sequences", {}).get(
+                        str(self._slot), 0
+                    ),
+                )
+                if isinstance(event.get("last_processed_input_sequences"), dict)
+                else 0
+            ),
         }
         state = event.get("state")
         if isinstance(state, dict):

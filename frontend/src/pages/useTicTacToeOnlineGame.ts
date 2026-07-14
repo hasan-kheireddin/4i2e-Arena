@@ -8,6 +8,7 @@ import {
   getOpponentSlot,
   shouldAutoFindMatch,
   type GameInfoPlayer,
+  type GameResult,
   type Mode,
   type OnlineGameState,
   type OnlinePhase,
@@ -20,7 +21,6 @@ interface MatchmakingMessageContext {
   setMmPath: Dispatch<SetStateAction<string | null>>;
   setGamePath: Dispatch<SetStateAction<string | null>>;
   setOnlinePhase: Dispatch<SetStateAction<OnlinePhase>>;
-  setQueuePosition: Dispatch<SetStateAction<number | null>>;
 }
 
 interface OnlineGameMessageContext {
@@ -35,7 +35,7 @@ interface OnlineGameMessageContext {
   setIReady: Dispatch<SetStateAction<boolean>>;
   setOpponentReady: Dispatch<SetStateAction<boolean>>;
   setGamePaused: Dispatch<SetStateAction<boolean>>;
-  setOnlineWinner: Dispatch<SetStateAction<'X' | 'O' | 'draw' | null>>;
+  setOnlineWinner: Dispatch<SetStateAction<GameResult>>;
   setOpponentLeftMsg: Dispatch<SetStateAction<string | null>>;
 }
 
@@ -79,6 +79,11 @@ function syncOpponentFromGameInfo({
   }
 }
 
+function resolveOnlineGameResult(data: SocketMessage): GameResult {
+  if (data.is_draw === true) return 'draw';
+  return data.winner === 'X' || data.winner === 'O' ? data.winner : null;
+}
+
 function handleMatchmakingMessage(
   data: SocketMessage,
   ctx: MatchmakingMessageContext,
@@ -96,9 +101,6 @@ function handleMatchmakingMessage(
       ctx.setOnlinePhase('waiting');
       return;
     }
-    case 'queue_update':
-      ctx.setQueuePosition(data.position as number);
-      return;
     default:
       return;
   }
@@ -180,7 +182,7 @@ function handleOnlineGameMessage(
       ctx.setGamePaused(true);
       return;
     case 'game_over':
-      ctx.setOnlineWinner(data.winner as 'X' | 'O' | 'draw' | null);
+      ctx.setOnlineWinner(resolveOnlineGameResult(data));
       ctx.setGamePaused(false);
       ctx.setOnlinePhase('game_over');
       return;
@@ -202,8 +204,7 @@ export function useTicTacToeOnlineGame({
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(null);
   const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
   const [opponentName, setOpponentName] = useState(defaultOpponentName);
-  const [onlineWinner, setOnlineWinner] = useState<'X' | 'O' | 'draw' | null>(null);
-  const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [onlineWinner, setOnlineWinner] = useState<GameResult>(null);
   const [iReady, setIReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
@@ -230,7 +231,6 @@ export function useTicTacToeOnlineGame({
     setOpponentName(defaultOpponentName);
     setGameId(null);
     setGamePath(null);
-    setQueuePosition(null);
     setIReady(false);
     setOpponentReady(false);
     setGamePaused(false);
@@ -246,7 +246,6 @@ export function useTicTacToeOnlineGame({
         setMmPath,
         setGamePath,
         setOnlinePhase,
-        setQueuePosition,
       });
     }, []),
   });
@@ -322,7 +321,6 @@ export function useTicTacToeOnlineGame({
     onlineGameState,
     opponentName,
     onlineWinner,
-    queuePosition,
     iReady,
     opponentReady,
     gamePaused,

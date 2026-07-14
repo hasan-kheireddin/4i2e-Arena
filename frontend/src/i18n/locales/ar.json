@@ -180,8 +180,7 @@
       "display_name_empty": "لا يمكن أن يكون الاسم المعروض فارغاً",
       "save_failed": "فشل حفظ التغييرات",
       "save": "حفظ التغييرات",
-      "saving": "جارٍ الحفظ...",
-      "completeness_label": "اكتمال الملف الشخصي {{value}}%"
+      "saving": "جارٍ الحفظ..."
     },
     "security": {
       "change_password": "تغيير كلمة المرور",
@@ -266,7 +265,6 @@
   },
   "home": {
     "welcome_back": "مرحباً بعودتك،",
-    "hub_badge": "مركز FireArena",
     "level": "المستوى",
     "xp_to_next": "نقاط XP للمستوى",
     "quick_play": "لعب سريع",
@@ -322,7 +320,7 @@
     "choose_game": "اختر لعبة",
     "pick_game": "اختر اللعبة التي تريد لعبها",
     "pong_desc": "معركة أركيد كلاسيكية. PvP عبر الإنترنت، منافسو الذكاء الاصطناعي، أو لاعبان محليان.",
-    "ttt_desc": "لعبة استراتيجية. لاعبان محليان، بالتناوب على نفس الشاشة.",
+    "ttt_desc": "لعبة استراتيجية. العب عبر الإنترنت أو محليا بلاعبين.",
     "pong_tag_online": "عبر الإنترنت",
     "pong_tag_ai": "ضد الذكاء الاصطناعي",
     "pong_tag_local": "محلي 2 لاعب",
@@ -405,7 +403,7 @@
     "cta_title": "هل أنت مستعد للسيطرة؟",
     "cta_sub": "انضم إلى آلاف اللاعبين التنافسيين. أنشئ حسابك مجاناً وابدأ تسلق قائمة المتصدرين.",
     "cta_create": "إنشاء حساب مجاني",
-    "footer_rights": "© {{year}} Fire Arena. صُنع بـ ♥",
+    "footer_rights": "© {{year}} Fire Arena.",
     "footer_register": "تسجيل"
   },
   "profile": {
@@ -595,18 +593,6 @@
     "you_lose": "أنت تخسر",
     "play_again": "اللعب مجدداً",
     "back_to_games": "العودة إلى الألعاب",
-    "move_history": "سجل الحركات",
-    "no_moves": "لا توجد حركات بعد",
-    "move_entry": "{{mark}} -> {{position}}",
-    "position_top_left": "أعلى اليسار",
-    "position_top_center": "أعلى الوسط",
-    "position_top_right": "أعلى اليمين",
-    "position_mid_left": "وسط اليسار",
-    "position_center": "الوسط",
-    "position_mid_right": "وسط اليمين",
-    "position_bot_left": "أسفل اليسار",
-    "position_bot_center": "أسفل الوسط",
-    "position_bot_right": "أسفل اليمين",
     "reset_game": "إعادة تعيين اللعبة",
     "game_status": "حالة اللعبة",
     "your_turn_status": "دورك الآن!",

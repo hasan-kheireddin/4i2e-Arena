@@ -4,7 +4,7 @@ export interface OnlineGameState {
 }
 
 export interface OnlineSnapshot {
-  serverTsMs: number;
+  receivedAt: number;
   state: OnlineGameState;
 }
 
@@ -14,22 +14,33 @@ interface DrawFrameOptions {
   p1Y: number;
   p2Y: number;
   ball: { x: number; y: number; vx: number; vy: number };
+  geometry?: {
+    paddleWidth: number;
+    paddleHeight: number;
+    leftPaddleX: number;
+    rightPaddleX: number;
+    ballRadiusX: number;
+    ballRadiusY: number;
+    paddleCornerRadius: number;
+  };
 }
 
 interface OnlineFrameOptions {
   snapshots: OnlineSnapshot[];
   latestState: OnlineGameState | null;
-  latency: { rttMs: number; clockOffsetMs: number };
-  mySlot: number | null;
-  keys: Record<string, boolean>;
 }
 
 interface SmoothOnlineStateOptions {
   previousRendered: OnlineGameState | null;
   targetState: OnlineGameState;
+  latestState: OnlineGameState | null;
   nowMs: number;
   lastRenderTs: number | null;
   mySlot: number | null;
+  keys: Record<string, boolean>;
+  reconcileLocalPaddle: boolean;
+  latestLocalInputSequence: number;
+  lastProcessedInputSequence: number;
 }
 
 interface RoundedRect {
@@ -42,12 +53,19 @@ interface RoundedRect {
 
 const SERVER_TICK_RATE = 60;
 const SERVER_PADDLE_SPEED = 8;
+const ONLINE_FIELD_WIDTH = 800;
 const ONLINE_FIELD_HEIGHT = 600;
-const ONLINE_PADDLE_HALF_HEIGHT = 40;
-const INTERPOLATION_BASE_DELAY_MS = 45;
-const INTERPOLATION_MAX_EXTRAPOLATION_MS = 120;
+const ONLINE_PADDLE_WIDTH = 12;
+const ONLINE_PADDLE_HEIGHT = 80;
+const ONLINE_PADDLE_OFFSET = 20;
+const ONLINE_PADDLE_HALF_HEIGHT = ONLINE_PADDLE_HEIGHT / 2;
+const ONLINE_BALL_RADIUS = 8;
+const VISUAL_PADDLE_WIDTH = 12;
+const VISUAL_PADDLE_HEIGHT = 80;
+const VISUAL_PADDLE_CORNER_RADIUS = 6;
+const VISUAL_BALL_RADIUS = 8;
 const ONLINE_SMOOTHING_GAIN = 26;
-let lastOnlineRenderDebugSecond = -1;
+const LOCAL_RECONCILIATION_THRESHOLD = 6;
 
 export function drawFrame({
   ctx,
@@ -55,6 +73,7 @@ export function drawFrame({
   p1Y,
   p2Y,
   ball,
+  geometry,
 }: DrawFrameOptions) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#0a0e1a';
@@ -69,21 +88,25 @@ export function drawFrame({
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const paddleWidth = 12;
-  const paddleHeight = 80;
-  const radius = 6;
+  const paddleWidth = geometry?.paddleWidth ?? ONLINE_PADDLE_WIDTH;
+  const paddleHeight = geometry?.paddleHeight ?? ONLINE_PADDLE_HEIGHT;
+  const leftPaddleX = geometry?.leftPaddleX ?? 10;
+  const rightPaddleX = geometry?.rightPaddleX ?? canvas.width - 22;
+  const ballRadiusX = geometry?.ballRadiusX ?? ONLINE_BALL_RADIUS;
+  const ballRadiusY = geometry?.ballRadiusY ?? ONLINE_BALL_RADIUS;
+  const radius = geometry?.paddleCornerRadius ?? 6;
 
   const p1Gradient = ctx.createLinearGradient(
-    10,
+    leftPaddleX,
     p1Y - paddleHeight / 2,
-    10 + paddleWidth,
+    leftPaddleX + paddleWidth,
     p1Y + paddleHeight / 2,
   );
   p1Gradient.addColorStop(0, '#1D4ED8');
   p1Gradient.addColorStop(1, '#3B82F6');
   ctx.fillStyle = p1Gradient;
   roundRect(ctx, {
-    x: 10,
+    x: leftPaddleX,
     y: p1Y - paddleHeight / 2,
     width: paddleWidth,
     height: paddleHeight,
@@ -95,16 +118,16 @@ export function drawFrame({
   ctx.shadowBlur = 0;
 
   const p2Gradient = ctx.createLinearGradient(
-    canvas.width - 22,
+    rightPaddleX,
     p2Y - paddleHeight / 2,
-    canvas.width - 10,
+    rightPaddleX + paddleWidth,
     p2Y + paddleHeight / 2,
   );
   p2Gradient.addColorStop(0, '#DC2626');
   p2Gradient.addColorStop(1, '#EF4444');
   ctx.fillStyle = p2Gradient;
   roundRect(ctx, {
-    x: canvas.width - 22,
+    x: rightPaddleX,
     y: p2Y - paddleHeight / 2,
     width: paddleWidth,
     height: paddleHeight,
@@ -120,7 +143,16 @@ export function drawFrame({
     const trailX = ball.x - ball.vx * index * 2;
     const trailY = ball.y - ball.vy * index * 2;
     ctx.beginPath();
-    ctx.arc(trailX, trailY, 8 - index, 0, Math.PI * 2);
+    const radiusScale = (ONLINE_BALL_RADIUS - index) / ONLINE_BALL_RADIUS;
+    ctx.ellipse(
+      trailX,
+      trailY,
+      ballRadiusX * radiusScale,
+      ballRadiusY * radiusScale,
+      0,
+      0,
+      Math.PI * 2,
+    );
     ctx.fillStyle = `rgba(248,250,252,${alpha})`;
     if (index === 0) {
       ctx.shadowColor = 'rgba(248,250,252,0.5)';
@@ -143,46 +175,22 @@ export function getOnlineInputMessageDirection(
 export function resolveOnlineFrameState({
   snapshots,
   latestState,
-  latency,
-  mySlot,
-  keys,
 }: OnlineFrameOptions): OnlineGameState | null {
   if (snapshots.length === 0) return latestState;
-
-  const renderDelayMs = clamp(
-    INTERPOLATION_BASE_DELAY_MS + latency.rttMs * 0.25,
-    50,
-    140,
-  );
-  const targetServerTs = Date.now() + latency.clockOffsetMs - renderDelayMs;
-  const latestSnapshot = snapshots[snapshots.length - 1] ?? null;
-  const snapshotAgeMs = latestSnapshot
-    ? (Date.now() + latency.clockOffsetMs) - latestSnapshot.serverTsMs
-    : null;
-  const extrapolationMs = latestSnapshot
-    ? Math.max(0, targetServerTs - latestSnapshot.serverTsMs)
-    : 0;
-  const currentSecond = Math.floor(Date.now() / 1000);
-  if (currentSecond !== lastOnlineRenderDebugSecond) {
-    lastOnlineRenderDebugSecond = currentSecond;
-    console.debug('[PONG_RENDER]', {
-      rttMs: latency.rttMs,
-      clockOffsetMs: latency.clockOffsetMs,
-      renderDelayMs,
-      snapshotAgeMs,
-      extrapolationMs,
-      snapshotBufferSize: snapshots.length,
-    });
-  }
-  return resolveBufferedOnlineState(snapshots, targetServerTs, mySlot, keys);
+  return snapshots[snapshots.length - 1].state;
 }
 
 export function smoothOnlineState({
   previousRendered,
   targetState,
+  latestState,
   nowMs,
   lastRenderTs,
   mySlot,
+  keys,
+  reconcileLocalPaddle,
+  latestLocalInputSequence,
+  lastProcessedInputSequence,
 }: SmoothOnlineStateOptions): {
   state: OnlineGameState;
   lastRenderTs: number;
@@ -193,15 +201,11 @@ export function smoothOnlineState({
     0.08,
     1,
   );
-  const ballBlend = clamp(blend * 1.8, 0.35, 1);
   const source = previousRendered ?? targetState;
   const smoothed: OnlineGameState = {
-    ball: {
-      x: lerp(source.ball.x, targetState.ball.x, ballBlend),
-      y: lerp(source.ball.y, targetState.ball.y, ballBlend),
-      vx: targetState.ball.vx,
-      vy: targetState.ball.vy,
-    },
+    // Snapshot interpolation already produces a continuous 60 Hz path. A
+    // second easing pass changes the apparent velocity after every correction.
+    ball: { ...targetState.ball },
     paddles: {
       1: {
         y: lerp(
@@ -221,8 +225,30 @@ export function smoothOnlineState({
   };
 
   if (mySlot === 1 || mySlot === 2) {
+    const previousY = source.paddles[mySlot]?.y
+      ?? targetState.paddles[mySlot]?.y
+      ?? ONLINE_FIELD_HEIGHT / 2;
+    const direction = getOnlineInputDirection(keys);
+    const predictedY = projectOnlinePaddleY(
+      previousY,
+      direction * SERVER_PADDLE_SPEED,
+      dtMs,
+    );
+    const authoritativeY = latestState?.paddles[mySlot]?.y ?? predictedY;
+    const authoritativeBall = latestState?.ball ?? targetState.ball;
+    const paddleX = mySlot === 1
+      ? ONLINE_PADDLE_OFFSET
+      : ONLINE_FIELD_WIDTH - ONLINE_PADDLE_OFFSET;
+    const nearBall = Math.abs(authoritativeBall.x - paddleX) < 40;
+    const difference = authoritativeY - predictedY;
+    const mayReconcile = (
+      reconcileLocalPaddle
+      && lastProcessedInputSequence >= latestLocalInputSequence
+      && Math.abs(difference) >= LOCAL_RECONCILIATION_THRESHOLD
+    );
+    const correctionBlend = nearBall ? 0.6 : (mayReconcile ? blend * 0.5 : 0);
     smoothed.paddles[mySlot] = {
-      y: targetState.paddles[mySlot]?.y ?? smoothed.paddles[mySlot]?.y ?? 300,
+      y: lerp(predictedY, authoritativeY, correctionBlend),
     };
   }
 
@@ -236,6 +262,7 @@ export function drawPerspectiveOnlineFrame(
   mySlot: number | null,
 ) {
   const { ball, paddles } = state;
+  const scaleX = canvas.width / ONLINE_FIELD_WIDTH;
   const scaleY = canvas.height / ONLINE_FIELD_HEIGHT;
   const flipped = mySlot === 2;
   const leftY = flipped
@@ -245,10 +272,42 @@ export function drawPerspectiveOnlineFrame(
     ? (paddles[1]?.y ?? 300) * scaleY
     : (paddles[2]?.y ?? 300) * scaleY;
   const displayBall = flipped
-    ? { ...ball, x: canvas.width - ball.x, vx: -ball.vx, y: ball.y * scaleY }
-    : { ...ball, y: ball.y * scaleY };
+    ? {
+        ...ball,
+        x: (ONLINE_FIELD_WIDTH - ball.x) * scaleX,
+        y: ball.y * scaleY,
+        vx: -ball.vx * scaleX,
+        vy: ball.vy * scaleY,
+      }
+    : {
+        ...ball,
+        x: ball.x * scaleX,
+        y: ball.y * scaleY,
+        vx: ball.vx * scaleX,
+        vy: ball.vy * scaleY,
+      };
 
-  drawFrame({ ctx, canvas, p1Y: leftY, p2Y: rightY, ball: displayBall });
+  drawFrame({
+    ctx,
+    canvas,
+    p1Y: leftY,
+    p2Y: rightY,
+    ball: displayBall,
+    geometry: {
+      paddleWidth: VISUAL_PADDLE_WIDTH,
+      paddleHeight: VISUAL_PADDLE_HEIGHT,
+      leftPaddleX: (
+        ONLINE_PADDLE_OFFSET * scaleX - VISUAL_PADDLE_WIDTH / 2
+      ),
+      rightPaddleX: (
+        (ONLINE_FIELD_WIDTH - ONLINE_PADDLE_OFFSET) * scaleX
+        - VISUAL_PADDLE_WIDTH / 2
+      ),
+      ballRadiusX: VISUAL_BALL_RADIUS,
+      ballRadiusY: VISUAL_BALL_RADIUS,
+      paddleCornerRadius: VISUAL_PADDLE_CORNER_RADIUS,
+    },
+  });
 }
 
 function getOnlineInputDirection(keys: Record<string, boolean>): -1 | 0 | 1 {
@@ -271,143 +330,6 @@ function projectOnlinePaddleY(y: number, velocityPerTick: number, dtMs: number):
     y + velocityPerTick * dtTicks,
     ONLINE_PADDLE_HALF_HEIGHT,
     ONLINE_FIELD_HEIGHT - ONLINE_PADDLE_HALF_HEIGHT,
-  );
-}
-
-function estimatePaddleVelocityPerTick(
-  snapshots: OnlineSnapshot[],
-  slot: 1 | 2,
-): number {
-  if (snapshots.length < 2) return 0;
-  const last = snapshots[snapshots.length - 1];
-  const previous = snapshots[snapshots.length - 2];
-  const dtMs = Math.max(1, last.serverTsMs - previous.serverTsMs);
-  const dtTicks = Math.max((dtMs / 1000) * SERVER_TICK_RATE, 1);
-  const lastY = last.state.paddles[slot]?.y ?? ONLINE_FIELD_HEIGHT / 2;
-  const previousY = previous.state.paddles[slot]?.y ?? lastY;
-  return (lastY - previousY) / dtTicks;
-}
-
-function extrapolateOnlineState(
-  lastSnapshot: OnlineSnapshot,
-  snapshots: OnlineSnapshot[],
-  targetServerTs: number,
-  mySlot: number | null,
-  keys: Record<string, boolean>,
-): OnlineGameState {
-  const dtMs = clamp(
-    targetServerTs - lastSnapshot.serverTsMs,
-    0,
-    INTERPOLATION_MAX_EXTRAPOLATION_MS,
-  );
-  const dtTicks = (dtMs / 1000) * SERVER_TICK_RATE;
-  const ownVelocity = getOnlineInputDirection(keys) * SERVER_PADDLE_SPEED;
-  const paddle1Velocity = mySlot === 1
-    ? ownVelocity
-    : estimatePaddleVelocityPerTick(snapshots, 1);
-  const paddle2Velocity = mySlot === 2
-    ? ownVelocity
-    : estimatePaddleVelocityPerTick(snapshots, 2);
-
-  return {
-    ball: {
-      x: lastSnapshot.state.ball.x + lastSnapshot.state.ball.vx * dtTicks,
-      y: lastSnapshot.state.ball.y + lastSnapshot.state.ball.vy * dtTicks,
-      vx: lastSnapshot.state.ball.vx,
-      vy: lastSnapshot.state.ball.vy,
-    },
-    paddles: {
-      1: {
-        y: projectOnlinePaddleY(
-          lastSnapshot.state.paddles[1]?.y ?? ONLINE_FIELD_HEIGHT / 2,
-          paddle1Velocity,
-          dtMs,
-        ),
-      },
-      2: {
-        y: projectOnlinePaddleY(
-          lastSnapshot.state.paddles[2]?.y ?? ONLINE_FIELD_HEIGHT / 2,
-          paddle2Velocity,
-          dtMs,
-        ),
-      },
-    },
-  };
-}
-
-function trimSnapshotBuffer(
-  snapshots: OnlineSnapshot[],
-  targetServerTs: number,
-) {
-  while (snapshots.length > 2 && snapshots[1].serverTsMs < targetServerTs - 200) {
-    snapshots.shift();
-  }
-}
-
-function interpolateOnlineSnapshots(
-  previous: OnlineSnapshot,
-  next: OnlineSnapshot,
-  targetServerTs: number,
-): OnlineGameState {
-  const span = Math.max(1, next.serverTsMs - previous.serverTsMs);
-  const alpha = clamp((targetServerTs - previous.serverTsMs) / span, 0, 1);
-  const p1Previous = previous.state.paddles[1]?.y ?? 300;
-  const p1Next = next.state.paddles[1]?.y ?? p1Previous;
-  const p2Previous = previous.state.paddles[2]?.y ?? 300;
-  const p2Next = next.state.paddles[2]?.y ?? p2Previous;
-
-  return {
-    ball: {
-      x: lerp(previous.state.ball.x, next.state.ball.x, alpha),
-      y: lerp(previous.state.ball.y, next.state.ball.y, alpha),
-      vx: next.state.ball.vx,
-      vy: next.state.ball.vy,
-    },
-    paddles: {
-      1: { y: lerp(p1Previous, p1Next, alpha) },
-      2: { y: lerp(p2Previous, p2Next, alpha) },
-    },
-  };
-}
-
-function resolveBufferedOnlineState(
-  snapshots: OnlineSnapshot[],
-  targetServerTs: number,
-  mySlot: number | null,
-  keys: Record<string, boolean>,
-): OnlineGameState | null {
-  if (snapshots.length === 0) return null;
-
-  trimSnapshotBuffer(snapshots, targetServerTs);
-  if (snapshots.length === 1) {
-    return extrapolateOnlineState(
-      snapshots[0],
-      snapshots,
-      targetServerTs,
-      mySlot,
-      keys,
-    );
-  }
-
-  const upperIndex = snapshots.findIndex(
-    (snapshot) => snapshot.serverTsMs >= targetServerTs,
-  );
-  if (upperIndex === 0) return snapshots[0].state;
-  if (upperIndex === -1) {
-    const lastSnapshot = snapshots[snapshots.length - 1];
-    return extrapolateOnlineState(
-      lastSnapshot,
-      snapshots,
-      targetServerTs,
-      mySlot,
-      keys,
-    );
-  }
-
-  return interpolateOnlineSnapshots(
-    snapshots[upperIndex - 1],
-    snapshots[upperIndex],
-    targetServerTs,
   );
 }
 

@@ -44,7 +44,7 @@ PADDLE_SPEED: float = 8.0  # units per tick
 BALL_RADIUS: float = 8.0
 BALL_INITIAL_SPEED: float = 5.0  # units per tick
 BALL_MAX_SPEED: float = 12.0
-BALL_SPEED_INCREMENT: float = 0.3  # added after each paddle hit
+BALL_SPEED_INCREMENT: float = 0.0  # keep online ball speed consistent
 
 # Scoring
 WIN_SCORE: int = 7

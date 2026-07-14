@@ -1,7 +1,7 @@
 [project]
 name = "ft_transcendence-backend"
 version = "1.0.0"
-description = "ft_transcendence — Django backend with real-time game servers"
+description = "ft_transcendence Django backend with real-time game servers"
 requires-python = ">=3.12"
 
 [tool.black]

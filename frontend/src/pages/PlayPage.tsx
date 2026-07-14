@@ -172,7 +172,7 @@ export default function PlayPage() {
                   {t('play.ttt_desc')}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {[t('play.pong_tag_local')].map((tag) => (
+                  {[t('play.pong_tag_online'), t('play.pong_tag_local')].map((tag) => (
                     <span key={tag} className="px-2 py-0.5 rounded-full text-xs font-medium"
                       style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: '#fcd34d' }}>
                       {tag}
