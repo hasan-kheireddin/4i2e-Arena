@@ -1,8 +1,13 @@
-import { Link } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import HistoryBackButton from '../components/HistoryBackButton';
 
 export default function PrivacyPolicyPage() {
   const { t } = useTranslation();
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
@@ -277,11 +282,9 @@ export default function PrivacyPolicyPage() {
 
         <hr style={{ borderColor: 'var(--color-border)', margin: '2rem 0' }} />
 
-        {/* Back Links */}
+        {/* Back button */}
         <div className="mt-10 mb-6">
-          <Link to="/" style={{ color: 'var(--color-primary)' }} className="hover:opacity-80">
-            {t('privacy_policy.back_home')}
-          </Link>
+          <HistoryBackButton label={t('privacy_policy.back')} />
         </div>
       </main>
 

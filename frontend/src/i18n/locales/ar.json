@@ -664,6 +664,7 @@
   "privacy_policy": {
     "title": "سياسة الخصوصية",
     "last_updated": "آخر تحديث: ",
+    "back": "رجوع",
     "back_home": "← العودة إلى الرئيسية",
     "copyright": "© {{year}} Fire Arena. جميع الحقوق محفوظة.",
     
@@ -776,6 +777,7 @@
     "title": "شروط الاستخدام",
     "footer_link": "Terms of Service",
     "last_updated": "آخر تحديث: 27 أبريل 2026",
+    "back": "رجوع",
     "back_home": "← العودة إلى الرئيسية",
     "copyright": "© {{year}} Fire Arena. جميع الحقوق محفوظة.",
 

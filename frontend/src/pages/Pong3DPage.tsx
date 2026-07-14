@@ -28,7 +28,7 @@ interface OnlineGameState {
 }
 
 interface OnlineSnapshot {
-  serverTsMs: number;
+  receivedAt: number;
   state: OnlineGameState;
 }
 
@@ -43,11 +43,12 @@ const SERVER_PADDLE_SPEED = 8;
 const LOCAL_SIM_HZ = 60;
 const LOCAL_STEP_MS = 1000 / LOCAL_SIM_HZ;
 const LOCAL_MAX_CATCHUP_STEPS = 6;
+const ONLINE_FIELD_WIDTH = 800;
 const ONLINE_FIELD_HEIGHT = 600;
+const ONLINE_PADDLE_OFFSET = 20;
 const ONLINE_PADDLE_HALF_HEIGHT = 40;
-const INTERPOLATION_BASE_DELAY_MS = 45;
-const INTERPOLATION_MAX_EXTRAPOLATION_MS = 120;
 const ONLINE_SMOOTHING_GAIN = 26;
+const LOCAL_RECONCILIATION_THRESHOLD = 6;
 const FIELD_W = 800;
 const FIELD_H = 387;
 
@@ -57,6 +58,11 @@ function clamp(value: number, min: number, max: number): number {
 
 function lerp(a: number, b: number, alpha: number): number {
   return a + (b - a) * alpha;
+}
+
+function readInputSequence(value: unknown): number {
+  const sequence = Number(value);
+  return Number.isSafeInteger(sequence) && sequence >= 0 ? sequence : 0;
 }
 
 function getOnlineInputDirection(keys: Record<string, boolean>): -1 | 0 | 1 {
@@ -72,67 +78,6 @@ function projectOnlinePaddleY(y: number, velocityPerTick: number, dtMs: number):
     ONLINE_PADDLE_HALF_HEIGHT,
     ONLINE_FIELD_HEIGHT - ONLINE_PADDLE_HALF_HEIGHT,
   );
-}
-
-function estimatePaddleVelocityPerTick(
-  snapshots: OnlineSnapshot[],
-  slot: 1 | 2,
-): number {
-  if (snapshots.length < 2) return 0;
-  const last = snapshots[snapshots.length - 1];
-  const prev = snapshots[snapshots.length - 2];
-  const dtMs = Math.max(1, last.serverTsMs - prev.serverTsMs);
-  const dtTicks = Math.max((dtMs / 1000) * SERVER_TICK_RATE, 1);
-  const lastY = last.state.paddles[slot]?.y ?? ONLINE_FIELD_HEIGHT / 2;
-  const prevY = prev.state.paddles[slot]?.y ?? lastY;
-  return (lastY - prevY) / dtTicks;
-}
-
-function extrapolateOnlineState(
-  lastSnapshot: OnlineSnapshot,
-  snapshots: OnlineSnapshot[],
-  targetServerTs: number,
-  mySlot: number | null,
-  keys: Record<string, boolean>,
-): OnlineGameState {
-  const dtMs = clamp(
-    targetServerTs - lastSnapshot.serverTsMs,
-    0,
-    INTERPOLATION_MAX_EXTRAPOLATION_MS,
-  );
-  const dtTicks = (dtMs / 1000) * SERVER_TICK_RATE;
-  const ownVelocity = getOnlineInputDirection(keys) * SERVER_PADDLE_SPEED;
-  const paddle1Velocity = mySlot === 1
-    ? ownVelocity
-    : estimatePaddleVelocityPerTick(snapshots, 1);
-  const paddle2Velocity = mySlot === 2
-    ? ownVelocity
-    : estimatePaddleVelocityPerTick(snapshots, 2);
-
-  return {
-    ball: {
-      x: lastSnapshot.state.ball.x + lastSnapshot.state.ball.vx * dtTicks,
-      y: lastSnapshot.state.ball.y + lastSnapshot.state.ball.vy * dtTicks,
-      vx: lastSnapshot.state.ball.vx,
-      vy: lastSnapshot.state.ball.vy,
-    },
-    paddles: {
-      1: {
-        y: projectOnlinePaddleY(
-          lastSnapshot.state.paddles[1]?.y ?? ONLINE_FIELD_HEIGHT / 2,
-          paddle1Velocity,
-          dtMs,
-        ),
-      },
-      2: {
-        y: projectOnlinePaddleY(
-          lastSnapshot.state.paddles[2]?.y ?? ONLINE_FIELD_HEIGHT / 2,
-          paddle2Velocity,
-          dtMs,
-        ),
-      },
-    },
-  };
 }
 
 export default function Pong3DPage() {
@@ -192,6 +137,7 @@ export default function Pong3DPage() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [mySlot, setMySlot] = useState<number | null>(null);
   const [onlineScore, setOnlineScore] = useState({ p1: 0, p2: 0 });
+  const onlineScoreRef = useRef({ p1: 0, p2: 0 });
   const latestOnlineStateRef = useRef<OnlineGameState | null>(null);
   const snapshotBufferRef = useRef<OnlineSnapshot[]>([]);
   const [opponentName, setOpponentName] = useState('');
@@ -202,10 +148,10 @@ export default function Pong3DPage() {
   const [opponentReady, setOpponentReady] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
   const mySlotRef = useRef<number | null>(null);
-  const latencyRef = useRef({ rttMs: 0, clockOffsetMs: 0 });
   const renderedOnlineStateRef = useRef<OnlineGameState | null>(null);
   const onlineLastRenderTsRef = useRef<number | null>(null);
-  const renderFrameCountRef = useRef(0);
+  const latestLocalInputSequenceRef = useRef(0);
+  const lastProcessedInputSequenceRef = useRef(0);
 
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(null);
@@ -393,7 +339,8 @@ export default function Pong3DPage() {
       else if (keys['s'] || keys['S'] || keys['ArrowDown']) dir = 'down';
       if (dir !== prevDirectionRef.current) {
         prevDirectionRef.current = dir;
-        gameSendRef.current({ type: 'input', direction: dir });
+        const sequence = ++latestLocalInputSequenceRef.current;
+        gameSendRef.current({ type: 'input', direction: dir, sequence });
       }
       rafId = requestAnimationFrame(pushInputFrame);
     };
@@ -401,7 +348,8 @@ export default function Pong3DPage() {
     return () => {
       cancelAnimationFrame(rafId);
       if (prevDirectionRef.current !== 'stop') {
-        gameSendRef.current({ type: 'input', direction: 'stop' });
+        const sequence = ++latestLocalInputSequenceRef.current;
+        gameSendRef.current({ type: 'input', direction: 'stop', sequence });
         prevDirectionRef.current = 'stop';
       }
     };
@@ -411,10 +359,9 @@ export default function Pong3DPage() {
     ball: { x: number; y: number; vx: number; vy: number },
     p1: { score: number; paddle: { y: number } },
     p2: { score: number; paddle: { y: number } },
-    serverTsMs: number | null,
   ) => {
     debugLog(
-      `SNAPSHOT ts=${serverTsMs} ball=({x:${ball.x.toFixed(1)},y:${ball.y.toFixed(1)},vx:${ball.vx.toFixed(2)},vy:${ball.vy.toFixed(2)}})`,
+      `SNAPSHOT ball=({x:${ball.x.toFixed(1)},y:${ball.y.toFixed(1)},vx:${ball.vx.toFixed(2)},vy:${ball.vy.toFixed(2)}})`,
       `p1=${p1.paddle.y.toFixed(1)} p2=${p2.paddle.y.toFixed(1)} score=${p1.score}-${p2.score}`,
     );
     const authoritative: OnlineGameState = {
@@ -422,15 +369,22 @@ export default function Pong3DPage() {
       paddles: { 1: { y: p1.paddle.y }, 2: { y: p2.paddle.y } },
     };
     const nextSnapshot: OnlineSnapshot = {
-      serverTsMs: Number.isFinite(serverTsMs) ? Number(serverTsMs) : Date.now(),
+      receivedAt: performance.now(),
       state: authoritative,
     };
-    const buffer = snapshotBufferRef.current;
-    buffer.push(nextSnapshot);
-    if (buffer.length > 30) {
-      buffer.splice(0, buffer.length - 30);
+    const scoreChanged = onlineScoreRef.current.p1 !== p1.score
+      || onlineScoreRef.current.p2 !== p2.score;
+    if (scoreChanged) {
+      snapshotBufferRef.current = [nextSnapshot];
+    } else {
+      const buffer = snapshotBufferRef.current;
+      buffer.push(nextSnapshot);
+      if (buffer.length > 30) {
+        buffer.splice(0, buffer.length - 30);
+      }
     }
     latestOnlineStateRef.current = authoritative;
+    onlineScoreRef.current = { p1: p1.score, p2: p2.score };
     setOnlineScore((prev) => {
       if (prev.p1 !== p1.score || prev.p2 !== p2.score) {
         debugLog(`SCORE_CHANGE ${prev.p1}-${prev.p2} -> ${p1.score}-${p2.score}`);
@@ -484,6 +438,12 @@ export default function Pong3DPage() {
         const slot = data.slot as number;
         setMySlot(slot);
         mySlotRef.current = slot;
+        const sequence = readInputSequence(data.last_processed_input_sequence);
+        lastProcessedInputSequenceRef.current = sequence;
+        latestLocalInputSequenceRef.current = Math.max(
+          latestLocalInputSequenceRef.current,
+          sequence,
+        );
         const info = data.game_info as Record<string, unknown> | undefined;
         if (info) {
           const players = info.players as Record<string, { username: string }> | undefined;
@@ -507,7 +467,11 @@ export default function Pong3DPage() {
         if (p1 && p2) {
           const serverTsMs = Number(data.server_ts_ms);
           debugLog(`RECV game_state ts=${serverTsMs} ball=({x:${ball.x},y:${ball.y},vx:${ball.vx},vy:${ball.vy}})`);
-          pushOnlineSnapshot(ball, p1, p2, Number.isFinite(serverTsMs) ? serverTsMs : null);
+          lastProcessedInputSequenceRef.current = Math.max(
+            lastProcessedInputSequenceRef.current,
+            readInputSequence(data.last_processed_input_sequence),
+          );
+          pushOnlineSnapshot(ball, p1, p2);
         }
         setOnlinePhase((prev) => prev === 'waiting' ? 'playing' : prev);
       } else if (type === 'game_resumed') {
@@ -516,8 +480,11 @@ export default function Pong3DPage() {
         const p2 = data.player2 as { score: number; paddle: { y: number } } | undefined;
         debugLog(`RECV game_resumed ball=({x:${ball?.x},y:${ball?.y},vx:${ball?.vx},vy:${ball?.vy}})`);
         if (ball && p1 && p2) {
-          const serverTsMs = Number(data.server_ts_ms);
-          pushOnlineSnapshot(ball, p1, p2, Number.isFinite(serverTsMs) ? serverTsMs : null);
+          lastProcessedInputSequenceRef.current = Math.max(
+            lastProcessedInputSequenceRef.current,
+            readInputSequence(data.last_processed_input_sequence),
+          );
+          pushOnlineSnapshot(ball, p1, p2);
         }
         setGamePaused(false);
         setOpponentLeft(false);
@@ -533,6 +500,10 @@ export default function Pong3DPage() {
         setOnlineWinnerSlot(winner ?? null);
         setGamePaused(false);
         if (fs?.player1 && fs?.player2) {
+          onlineScoreRef.current = {
+            p1: fs.player1.score,
+            p2: fs.player2.score,
+          };
           setOnlineScore({ p1: fs.player1.score, p2: fs.player2.score });
         }
         setOnlinePhase('over');
@@ -586,10 +557,6 @@ export default function Pong3DPage() {
 
   useEffect(() => { gameSendRef2.current = gameSend; gameSendRef.current = gameSend; }, [gameSend]);
   useEffect(() => {
-    latencyRef.current = {
-      rttMs: gameLatency.rttMs ?? 0,
-      clockOffsetMs: gameLatency.clockOffsetMs ?? 0,
-    };
     if (gameLatency.rttMs !== null) {
       debugLog(`LATENCY rtt=${gameLatency.rttMs.toFixed(1)}ms offset=${(gameLatency.clockOffsetMs ?? 0).toFixed(1)}ms`);
     }
@@ -603,77 +570,9 @@ export default function Pong3DPage() {
     let rafId = 0;
     const renderFrame = (nowMs: number) => {
       const snapshots = snapshotBufferRef.current;
-      let frameState: OnlineGameState | null = latestOnlineStateRef.current;
-      let interpMethod = 'none';
-      let bufStart = 0, bufEnd = 0;
-
-      if (snapshots.length > 0) {
-        const { rttMs, clockOffsetMs } = latencyRef.current;
-        // was: clamp(INTERPOLATION_BASE_DELAY_MS + rttMs / 2, INTERPOLATION_BASE_DELAY_MS, 220)
-        const renderDelayMs = clamp(
-          INTERPOLATION_BASE_DELAY_MS + rttMs * 0.15,
-          35,
-          120,
-        );
-        const targetServerTs = Date.now() + clockOffsetMs - renderDelayMs;
-        const onlineKeys = keysRef.current;
-        while (snapshots.length > 2 && snapshots[1].serverTsMs < targetServerTs - 200) {
-          snapshots.shift();
-        }
-
-        bufStart = snapshots[0]?.serverTsMs ?? 0;
-        bufEnd = snapshots[snapshots.length - 1]?.serverTsMs ?? 0;
-
-        if (snapshots.length === 1) {
-          interpMethod = 'extrap1';
-          frameState = extrapolateOnlineState(snapshots[0], snapshots, targetServerTs, mySlot, onlineKeys);
-        } else {
-          const upperIndex = snapshots.findIndex((s) => s.serverTsMs >= targetServerTs);
-          if (upperIndex <= 0 && upperIndex !== -1) {
-            interpMethod = 'first';
-            frameState = snapshots[0].state;
-          } else if (upperIndex === -1) {
-            interpMethod = 'extrap';
-            const last = snapshots[snapshots.length - 1];
-            frameState = extrapolateOnlineState(last, snapshots, targetServerTs, mySlot, onlineKeys);
-          } else {
-            interpMethod = 'interp';
-            const prev = snapshots[upperIndex - 1];
-            const next = snapshots[upperIndex];
-            const span = Math.max(1, next.serverTsMs - prev.serverTsMs);
-            const alpha = clamp((targetServerTs - prev.serverTsMs) / span, 0, 1);
-            const p1Prev = prev.state.paddles[1]?.y ?? 300;
-            const p1Next = next.state.paddles[1]?.y ?? p1Prev;
-            const p2Prev = prev.state.paddles[2]?.y ?? 300;
-            const p2Next = next.state.paddles[2]?.y ?? p2Prev;
-
-            frameState = {
-              ball: {
-                x: prev.state.ball.x + (next.state.ball.x - prev.state.ball.x) * alpha,
-                y: prev.state.ball.y + (next.state.ball.y - prev.state.ball.y) * alpha,
-                vx: next.state.ball.vx,
-                vy: next.state.ball.vy,
-              },
-              paddles: {
-                1: { y: p1Prev + (p1Next - p1Prev) * alpha },
-                2: { y: p2Prev + (p2Next - p2Prev) * alpha },
-              },
-            };
-          }
-        }
-      }
-
-      renderFrameCountRef.current += 1;
-      if (renderFrameCountRef.current % 60 === 0 && frameState) {
-        const { clockOffsetMs } = latencyRef.current;
-        const lastTs = snapshots.length > 0 ? snapshots[snapshots.length - 1]?.serverTsMs ?? 0 : 0;
-        debugLog(
-          `RENDER method=${interpMethod} lag=${((Date.now() + clockOffsetMs) - lastTs).toFixed(0)}ms ` +
-          `buf=${snapshots.length} ts_range=[${bufStart}..${bufEnd}] ` +
-          `ball=({x:${frameState.ball.x.toFixed(1)},y:${frameState.ball.y.toFixed(1)}}) ` +
-          `clockOffset=${clockOffsetMs}ms`
-        );
-      }
+      const frameState = snapshots.length > 0
+        ? snapshots[snapshots.length - 1].state
+        : latestOnlineStateRef.current;
 
       const previousRendered = renderedOnlineStateRef.current;
       if (frameState) {
@@ -688,20 +587,37 @@ export default function Pong3DPage() {
         );
         const source = previousRendered ?? frameState;
         const smoothed: OnlineGameState = {
-          ball: {
-            x: lerp(source.ball.x, frameState.ball.x, blend),
-            y: lerp(source.ball.y, frameState.ball.y, blend),
-            vx: frameState.ball.vx,
-            vy: frameState.ball.vy,
-          },
+          ball: { ...frameState.ball },
           paddles: {
             1: { y: lerp(source.paddles[1]?.y ?? 300, frameState.paddles[1]?.y ?? 300, blend) },
             2: { y: lerp(source.paddles[2]?.y ?? 300, frameState.paddles[2]?.y ?? 300, blend) },
           },
         };
         if (mySlot === 1 || mySlot === 2) {
+          const predictedY = projectOnlinePaddleY(
+            source.paddles[mySlot]?.y ?? frameState.paddles[mySlot]?.y ?? 300,
+            getOnlineInputDirection(keysRef.current) * SERVER_PADDLE_SPEED,
+            dtMs,
+          );
+          const authoritativeY = latestOnlineStateRef.current
+            ?.paddles[mySlot]?.y ?? predictedY;
+          const authoritativeBall = latestOnlineStateRef.current?.ball
+            ?? frameState.ball;
+          const paddleX = mySlot === 1
+            ? ONLINE_PADDLE_OFFSET
+            : ONLINE_FIELD_WIDTH - ONLINE_PADDLE_OFFSET;
+          const nearBall = Math.abs(authoritativeBall.x - paddleX) < 40;
+          const difference = authoritativeY - predictedY;
+          const mayReconcile = (
+            lastProcessedInputSequenceRef.current
+              >= latestLocalInputSequenceRef.current
+            && Math.abs(difference) >= LOCAL_RECONCILIATION_THRESHOLD
+          );
+          const correctionBlend = nearBall
+            ? 0.6
+            : (mayReconcile ? blend * 0.5 : 0);
           smoothed.paddles[mySlot] = {
-            y: frameState.paddles[mySlot]?.y ?? smoothed.paddles[mySlot]?.y ?? 300,
+            y: lerp(predictedY, authoritativeY, correctionBlend),
           };
         }
         renderedOnlineStateRef.current = smoothed;
@@ -739,6 +655,7 @@ export default function Pong3DPage() {
     renderedOnlineStateRef.current = null;
     onlineLastRenderTsRef.current = null;
     setOnlineScore({ p1: 0, p2: 0 });
+    onlineScoreRef.current = { p1: 0, p2: 0 };
     setOpponentLeft(false);
     setOnlineReason(null);
     setOnlineWinnerSlot(null);
@@ -752,6 +669,8 @@ export default function Pong3DPage() {
     setOpponentReady(false);
     setGamePaused(false);
     prevDirectionRef.current = 'stop';
+    latestLocalInputSequenceRef.current = 0;
+    lastProcessedInputSequenceRef.current = 0;
     setMmPath('/ws/matchmaking/');
   };
 
@@ -867,6 +786,7 @@ export default function Pong3DPage() {
                 fieldWidth={FIELD_W}
                 fieldHeight={FIELD_H}
                 flipped={mode === 'online' && mySlot === 2}
+                paddleOffset={mode === 'online' ? ONLINE_PADDLE_OFFSET : undefined}
               />
             )}
           </div>

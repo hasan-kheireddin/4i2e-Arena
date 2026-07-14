@@ -22,6 +22,7 @@ export interface Renderer3DProps {
   fieldWidth: number;
   fieldHeight: number;
   flipped: boolean;
+  paddleOffset?: number;
 }
 
 const PADDLE_W = 12;
@@ -104,6 +105,7 @@ export default function Renderer3D(props: Renderer3DProps) {
     createCenterLine('center', fieldHeight, scene3D);
 
     const halfW = fieldWidth / 2;
+    const paddleOffset = props.paddleOffset ?? PADDLE_W;
 
     const bMesh = createBallMesh('ball', BALL_R, scene3D);
     bMesh.position = new Vector3(0, BALL_R, 0);
@@ -114,7 +116,7 @@ export default function Renderer3D(props: Renderer3DProps) {
       'paddle1', PADDLE_W, PADDLE_D, PADDLE_H,
       new Color3(0.11, 0.3, 0.85), new Color3(0.2, 0.4, 1), scene3D,
     );
-    p1Mesh.position = new Vector3(-halfW + PADDLE_W, PADDLE_D / 2, 0);
+    p1Mesh.position = new Vector3(-halfW + paddleOffset, PADDLE_D / 2, 0);
     shadowGen.addShadowCaster(p1Mesh);
     paddle1MeshRef.current = p1Mesh;
 
@@ -122,7 +124,7 @@ export default function Renderer3D(props: Renderer3DProps) {
       'paddle2', PADDLE_W, PADDLE_D, PADDLE_H,
       new Color3(0.86, 0.15, 0.15), new Color3(1, 0.2, 0.2), scene3D,
     );
-    p2Mesh.position = new Vector3(halfW - PADDLE_W, PADDLE_D / 2, 0);
+    p2Mesh.position = new Vector3(halfW - paddleOffset, PADDLE_D / 2, 0);
     shadowGen.addShadowCaster(p2Mesh);
     paddle2MeshRef.current = p2Mesh;
 
@@ -246,13 +248,13 @@ export default function Renderer3D(props: Renderer3DProps) {
 
     if (p1Mesh) {
       const p1Data = p.flipped ? p.paddles[2].y : p.paddles[1].y;
-      p1Mesh.position.x = -halfW + PADDLE_W;
+      p1Mesh.position.x = -halfW + (p.paddleOffset ?? PADDLE_W);
       p1Mesh.position.z = zFlip * (halfH - p1Data);
     }
 
     if (p2Mesh) {
       const p2Data = p.flipped ? p.paddles[1].y : p.paddles[2].y;
-      p2Mesh.position.x = halfW - PADDLE_W;
+      p2Mesh.position.x = halfW - (p.paddleOffset ?? PADDLE_W);
       p2Mesh.position.z = zFlip * (halfH - p2Data);
     }
 

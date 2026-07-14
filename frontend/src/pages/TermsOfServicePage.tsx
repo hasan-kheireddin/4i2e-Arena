@@ -1,8 +1,13 @@
-import { Link } from "react-router-dom";
+import { useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
+import HistoryBackButton from "../components/HistoryBackButton";
 
 export default function TermsOfServicePage() {
   const { t } = useTranslation();
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const accountItems = [
     "accounts_accurate",
@@ -210,9 +215,7 @@ export default function TermsOfServicePage() {
         <hr style={{ borderColor: "var(--color-border)", margin: "2rem 0" }} />
 
         <div className="mt-10 mb-6">
-          <Link to="/" style={{ color: "var(--color-primary)" }} className="hover:opacity-80">
-            {t("terms_of_service.back_home")}
-          </Link>
+          <HistoryBackButton label={t("terms_of_service.back")} />
         </div>
       </main>
 

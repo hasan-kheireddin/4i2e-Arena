@@ -404,8 +404,6 @@ function FormContent({
             {t("register.agree_terms_prefix")}{" "}
             <Link
               to="/terms-of-service"
-              target="_blank"
-              rel="noreferrer"
               className="font-medium hover:underline"
               style={{ color: "var(--color-text-link)" }}
             >
@@ -432,8 +430,6 @@ function FormContent({
             {t("register.agree_privacy_prefix")}{" "}
             <Link
               to="/privacy-policy"
-              target="_blank"
-              rel="noreferrer"
               className="font-medium hover:underline"
               style={{ color: "var(--color-text-link)" }}
             >
