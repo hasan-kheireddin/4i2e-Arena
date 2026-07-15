@@ -7,10 +7,12 @@ export interface ChatMessage {
   sender: string | null;
   sender_username: string | null;
   sender_avatar: string;
-  message_type: "text" | "emote" | "system";
+  message_type: "text" | "emote" | "system" | "game_invite";
   content: string;
   emote_id: string;
   created_at: string;
+  game_id?: string;
+  game_type?: string;
 }
 
 export interface TypingUser {
@@ -104,7 +106,12 @@ export function useChatSocket(): UseChatSocketReturn {
       const cid = msg.channel_id;
       setMessages((prev) => {
         const existing = prev[cid] || [];
-        if (existing.some((m) => m.id === msg.id)) return prev;
+        const idx = existing.findIndex((m) => m.id === msg.id);
+        if (idx >= 0) {
+          const updated = [...existing];
+          updated[idx] = msg;
+          return { ...prev, [cid]: updated };
+        }
         return { ...prev, [cid]: [...existing, msg] };
       });
     } else if (type === "history") {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useChatSocket } from "./useChatSocket";
 import ChatWindow from "./ChatWindow";
 import FriendsPanel from "./FriendsPanel";
+import Toast from "../Toast";
 import {
   fetchChannels,
   createChannel,
@@ -49,6 +50,7 @@ export default function FloatingChatWidget() {
   const [friendships, setFriendships] = useState<FriendshipRecord[]>([]);
   const [activeView, setActiveView] = useState<"chat" | "friends">("friends");
   const [friendNotif, setFriendNotif] = useState<typeof wsFriendRequest>(null);
+  const [inviteToast, setInviteToast] = useState<string | null>(null);
 
   const {
     status,
@@ -140,6 +142,14 @@ export default function FloatingChatWidget() {
     }));
     clearReadReceipt();
   }, [readReceipt, clearReadReceipt]);
+
+  useEffect(() => {
+    if (!gameInvite) return;
+    const label = gameInvite.game_type === "pong" ? "Pong" : gameInvite.game_type === "pong3d" ? "3D Pong" : gameInvite.game_type === "tictactoe" ? "Tic Tac Toe" : gameInvite.game_type;
+    setInviteToast(`${gameInvite.from_username} invited you to play ${label}!`);
+    const timer = setTimeout(() => setInviteToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [gameInvite]);
 
   useEffect(() => {
     if (!gameInviteAccepted) return;
@@ -642,16 +652,14 @@ export default function FloatingChatWidget() {
             )}
 
             {gameInvite && (
-              <div className="absolute bottom-0 left-0 right-0 z-50 p-3 border-t animate-slideUp" style={{ backgroundColor: "var(--color-bg-card)", borderColor: "var(--color-border)" }}>
-                <p className="text-xs mb-2" style={{ color: "var(--color-text-primary)" }}>
-                  <strong>{gameInvite.from_username}</strong> invited you to play <strong>{gameInvite.game_type === "pong3d" ? "Pong 3D" : gameInvite.game_type.charAt(0).toUpperCase() + gameInvite.game_type.slice(1)}</strong>
+              <div
+                className="absolute bottom-0 left-0 right-0 z-50 p-3 border-t animate-slideUp cursor-pointer"
+                style={{ backgroundColor: "var(--color-bg-card)", borderColor: "var(--color-border)" }}
+                onClick={() => { handleSelectChannel(gameInvite.channel_id); clearGameInvite(); }}
+              >
+                <p className="text-xs font-medium" style={{ color: "var(--color-text-primary)" }}>
+                  🎮 <strong>{gameInvite.from_username}</strong> invited you to play <strong>{gameInvite.game_type === "pong3d" ? "Pong 3D" : gameInvite.game_type.charAt(0).toUpperCase() + gameInvite.game_type.slice(1)}</strong> — open the DM to accept
                 </p>
-                <div className="flex gap-2">
-                  <button onClick={() => { sendGameInviteResponse(gameInvite.channel_id, gameInvite.game_type, gameInvite.game_id, true); clearGameInvite(); }}
-                    className="px-3 py-1 rounded text-xs text-white" style={{ backgroundColor: "#22C55E" }}>Accept</button>
-                  <button onClick={() => { sendGameInviteResponse(gameInvite.channel_id, gameInvite.game_type, gameInvite.game_id, false); clearGameInvite(); }}
-                    className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}>Decline</button>
-                </div>
               </div>
             )}
 
@@ -752,6 +760,7 @@ export default function FloatingChatWidget() {
                     pendingReceivedIds={pendingReceivedIds}
                     onFriendAction={handleFriendAction}
                     dmPartnerReadUntil={activeChannelData?.channel_type === "dm" ? activeChannelData?.dm_partner?.read_until || null : null}
+                    sendGameInviteResponse={sendGameInviteResponse}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
@@ -775,6 +784,10 @@ export default function FloatingChatWidget() {
           )}
         </button>
       </div>
+
+      {inviteToast && (
+        <Toast message={inviteToast} onClose={() => setInviteToast(null)} duration={4000} position="bottom-end" tone="success" />
+      )}
     </>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useChatSocket } from "../components/Chat/useChatSocket";
 import ChatWindow from "../components/Chat/ChatWindow";
+import Toast from "../components/Toast";
 import FriendsPanel from "../components/Chat/FriendsPanel";
 import {
   fetchChannels, createChannel, deleteChannel,
@@ -31,6 +32,7 @@ export default function ChatPage() {
   const [showInvitePicker, setShowInvitePicker] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "friends">("friends");
   const [friendNotif, setFriendNotif] = useState<typeof wsFriendRequest>(null);
+  const [inviteToast, setInviteToast] = useState<string | null>(null);
 
   const userId = user?.id || null;
 
@@ -132,6 +134,14 @@ export default function ChatPage() {
     navigate(`/games/${gtype}?game_id=${gameInviteAccepted.game_id}`);
     clearGameInviteAccepted();
   }, [gameInviteAccepted, navigate, clearGameInviteAccepted]);
+
+  useEffect(() => {
+    if (!gameInvite) return;
+    const label = gameInvite.game_type === "pong" ? "Pong" : gameInvite.game_type === "pong3d" ? "3D Pong" : gameInvite.game_type === "tictactoe" ? "Tic Tac Toe" : gameInvite.game_type;
+    setInviteToast(`${gameInvite.from_username} invited you to play ${label}!`);
+    const timer = setTimeout(() => setInviteToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [gameInvite]);
 
   useEffect(() => {
     if (activeChannel && !connectedChannels.includes(activeChannel)) {
@@ -657,6 +667,7 @@ export default function ChatPage() {
                   pendingReceivedIds={pendingReceivedIds}
                   onFriendAction={handleFriendAction}
                   dmPartnerReadUntil={activeChannelData?.channel_type === "dm" ? activeChannelData?.dm_partner?.read_until || null : null}
+                  sendGameInviteResponse={sendGameInviteResponse}
                 />
               </div>
             ) : (
@@ -667,6 +678,10 @@ export default function ChatPage() {
           )}
         </div>
       </div>
+
+      {inviteToast && (
+        <Toast message={inviteToast} onClose={() => setInviteToast(null)} duration={4000} position="bottom-end" tone="success" />
+      )}
     </div>
   );
 }

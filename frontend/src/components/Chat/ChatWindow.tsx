@@ -26,6 +26,7 @@ interface ChatWindowProps {
   pendingReceivedIds?: Set<string>;
   onFriendAction?: (userId: string) => void;
   dmPartnerReadUntil?: string | null;
+  sendGameInviteResponse?: (channelId: string, gameType: string, gameId: string, accept: boolean) => void;
 }
 
 export default function ChatWindow({
@@ -49,6 +50,7 @@ export default function ChatWindow({
   pendingReceivedIds,
   onFriendAction,
   dmPartnerReadUntil,
+  sendGameInviteResponse,
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [showEmotes, setShowEmotes] = useState(false);
@@ -137,7 +139,7 @@ export default function ChatWindow({
           .filter((msg) => !msg.sender || !blockedUserIds?.has(msg.sender))
           .map((msg) => (
             <div key={msg.id} onContextMenu={(e) => handleContextMenu(e, msg)}>
-              <ChatBubble key={msg.id} msg={msg} isOwn={msg.sender === currentUserId} onProfileClick={onProfileClick} dmPartnerReadUntil={dmPartnerReadUntil} />
+              <ChatBubble key={msg.id} msg={msg} isOwn={msg.sender === currentUserId} onProfileClick={onProfileClick} dmPartnerReadUntil={dmPartnerReadUntil} sendGameInviteResponse={sendGameInviteResponse} />
             </div>
           ))}
         {otherTyping.length > 0 && (

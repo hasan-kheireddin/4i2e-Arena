@@ -97,13 +97,15 @@ def get_user_channels(user_id):
 
 
 @database_sync_to_async
-def create_message(channel_id, sender_id, message_type, content="", emote_id=""):
+def create_message(channel_id, sender_id, message_type, content="", emote_id="", game_id="", game_type=""):
     return Message.objects.create(
         channel_id=channel_id,
         sender_id=sender_id,
         message_type=message_type,
         content=content,
         emote_id=emote_id,
+        game_id=game_id,
+        game_type=game_type,
     )
 
 
@@ -114,6 +116,21 @@ def get_messages(channel_id, limit=50):
         .select_related("sender")
         .order_by("-created_at")[:limit]
     )
+
+
+@database_sync_to_async
+def update_invite_message(channel_id, game_id, new_content, new_type):
+    try:
+        msg = Message.objects.get(channel_id=channel_id, game_id=game_id)
+        msg_id = str(msg.id)
+        msg.content = new_content
+        msg.message_type = new_type
+        msg.game_id = ""
+        msg.game_type = ""
+        msg.save(update_fields=["content", "message_type", "game_id", "game_type"])
+        return msg_id
+    except Message.DoesNotExist:
+        return None
 
 
 @database_sync_to_async
@@ -324,19 +341,22 @@ class ChatConsumer(BaseConsumer):
             ex=INVITE_TTL_SECONDS,
         )
         msg = await create_message(
-            dm.id, self.user.pk, Message.MESSAGE_SYSTEM,
+            dm.id, self.user.pk, Message.MESSAGE_GAME_INVITE,
             content=f"{self.user.username} invited you to play {game_type}",
+            game_id=invite_game_id, game_type=game_type,
         )
         event = {
             "type": "chat.message",
             "id": str(msg.id),
             "channel_id": str(dm.id),
-            "sender": None,
-            "sender_username": None,
-            "sender_avatar": "",
-            "message_type": "system",
+            "sender": str(self.user.pk),
+            "sender_username": self.user.username,
+            "sender_avatar": self.user.avatar_url or "",
+            "message_type": "game_invite",
             "content": f"{self.user.username} invited you to play {game_type}",
             "created_at": msg.created_at.isoformat(),
+            "game_id": invite_game_id,
+            "game_type": game_type,
         }
         await self.channel_layer.group_send(group, event)
         await self.channel_layer.group_send(f"user_{target_user.id}", {
@@ -438,6 +458,21 @@ class ChatConsumer(BaseConsumer):
                 except get_user_model().DoesNotExist:
                     pass
 
+            msg_id = await update_invite_message(
+                channel_id, game_id,
+                f"{self.user.username} accepted the game invite!",
+                Message.MESSAGE_SYSTEM,
+            )
+            if msg_id:
+                await self.channel_layer.group_send(group, {
+                    "type": "chat.message",
+                    "id": msg_id, "channel_id": channel_id,
+                    "sender": None, "sender_username": None, "sender_avatar": "",
+                    "message_type": "system",
+                    "content": f"{self.user.username} accepted the game invite!",
+                    "emote_id": "",
+                    "created_at": timezone.now().isoformat(),
+                })
             await self.channel_layer.group_send(group, {
                 "type": "chat.game_invite_accepted",
                 "game_id": game_id,
@@ -450,6 +485,21 @@ class ChatConsumer(BaseConsumer):
                 "accepted_by_username": self.user.username,
             })
         else:
+            msg_id = await update_invite_message(
+                channel_id, game_id,
+                f"{self.user.username} declined the game invite.",
+                Message.MESSAGE_SYSTEM,
+            )
+            if msg_id:
+                await self.channel_layer.group_send(group, {
+                    "type": "chat.message",
+                    "id": msg_id, "channel_id": channel_id,
+                    "sender": None, "sender_username": None, "sender_avatar": "",
+                    "message_type": "system",
+                    "content": f"{self.user.username} declined the game invite.",
+                    "emote_id": "",
+                    "created_at": timezone.now().isoformat(),
+                })
             await self.channel_layer.group_send(group, {
                 "type": "chat.game_invite_declined",
                 "game_id": game_id,
@@ -629,6 +679,8 @@ class ChatConsumer(BaseConsumer):
                     "message_type": m.message_type,
                     "content": m.content,
                     "emote_id": m.emote_id,
+                    "game_id": m.game_id or "",
+                    "game_type": m.game_type or "",
                     "created_at": m.created_at.isoformat(),
                 }
                 for m in reversed(messages)

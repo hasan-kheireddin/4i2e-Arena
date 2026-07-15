@@ -14,6 +14,7 @@ import {
   getOrCreateDM, type FriendshipRecord,
 } from "../services/chat";
 import { useChatSocket } from "../components/Chat/useChatSocket";
+import Toast from "../components/Toast";
 import {
   Trophy, Flame, TrendingUp, Sword, Star,
   Clock, Target, Zap, ShieldCheck, UserPlus, UserCheck, MessageCircle, Gamepad2, X,
@@ -55,6 +56,14 @@ export default function ProfilePage() {
   const isOwn = !profileUserId || profileUserId === user?.id;
 
   const { sendGameInvite, gameInvite, clearGameInvite, sendGameInviteResponse, gameInviteAccepted, clearGameInviteAccepted } = useChatSocket();
+  const [inviteToast, setInviteToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!gameInvite) return;
+    const label = gameInvite.game_type === "pong" ? "Pong" : gameInvite.game_type === "pong3d" ? "3D Pong" : gameInvite.game_type === "tictactoe" ? "Tic Tac Toe" : gameInvite.game_type;
+    setInviteToast(`${gameInvite.from_username} invited you to play ${label}!`);
+    const timer = setTimeout(() => setInviteToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [gameInvite]);
   useEffect(() => {
     if (gameInviteAccepted) {
       clearGameInviteAccepted();
@@ -518,6 +527,10 @@ useEffect(() => {
           )}
         </div>
       </div>
+
+      {inviteToast && (
+        <Toast message={inviteToast} onClose={() => setInviteToast(null)} duration={4000} position="bottom-end" tone="success" />
+      )}
     </div>
   );
 }
