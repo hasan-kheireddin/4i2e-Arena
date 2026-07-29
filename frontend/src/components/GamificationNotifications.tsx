@@ -83,6 +83,7 @@ export default function GamificationNotifications() {
   return (
     <Toast
       message={activeToast.message}
+      icon={activeToast.kind === "achievement" ? "achievement" : "xp"}
       onClose={() => setActiveToast(null)}
       duration={activeToast.kind === "achievement" ? 4500 : 3500}
       position={activeToast.kind === "achievement" ? "center" : "bottom-end"}

@@ -15,6 +15,7 @@ export interface User {
   last_activity: string | null;
   date_joined: string;
   friend_count: number;
+  blocked_by_target?: boolean;
 }
 
 export interface Tokens {

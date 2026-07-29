@@ -1,16 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useFriendships } from "../context/FriendshipContext";
+import { useBlocks } from "../context/BlockContext";
+import { useToast } from "../context/ToastContext";
+import InviteGamePicker from "../components/Chat/InviteGamePicker";
 import { useChatSocket } from "../components/Chat/useChatSocket";
 import ChatWindow from "../components/Chat/ChatWindow";
-import Toast from "../components/Toast";
 import FriendsPanel from "../components/Chat/FriendsPanel";
 import {
   fetchChannels, createChannel, deleteChannel,
   fetchMembers, kickMember, muteMember, changeMemberRole,
-  blockUser, unblockUser, fetchBlocks,
-  fetchFriendships, sendFriendRequest, acceptFriendRequest, removeFriend,
+  sendFriendRequest, acceptFriendRequest, removeFriend,
   getOrCreateDM, markChannelRead, leaveChannel, toggleNotificationMute,
-  type Channel, type Member, type BlockRecord, type FriendshipRecord,
+  type Channel, type Member,
 } from "../services/chat";
 import { useAuth } from "../context/AuthContext";
 
@@ -25,14 +27,15 @@ export default function ChatPage() {
   const [newType, setNewType] = useState<"public" | "private">("public");
   const [showSettings, setShowSettings] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
-  const [blocks, setBlocks] = useState<BlockRecord[]>([]);
-  const [friendships, setFriendships] = useState<FriendshipRecord[]>([]);
+  const { friendships, setFriendships, refresh: refreshFriendships } = useFriendships();
+  const { blocks, blockedUserIds, block: doBlock, unblock: doUnblock, refresh: refreshBlocks } = useBlocks();
+  const { showToast } = useToast();
   const [kickConfirm, setKickConfirm] = useState<Member | null>(null);
   const [inviteTarget, setInviteTarget] = useState<string | null>(null);
   const [showInvitePicker, setShowInvitePicker] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "friends">("friends");
   const [friendNotif, setFriendNotif] = useState<typeof wsFriendRequest>(null);
-  const [inviteToast, setInviteToast] = useState<string | null>(null);
+
 
   const userId = user?.id || null;
 
@@ -40,6 +43,8 @@ export default function ChatPage() {
     status, messages, connectedChannels, sendMessage, sendEmote, joinChannel, requestHistory, typingUsers, sendTyping,
     gameInvite, clearGameInvite, gameInviteAccepted, clearGameInviteAccepted, sendGameInvite, sendGameInviteResponse,
     onlineUserIds, friendRequest: wsFriendRequest, clearFriendRequest,
+    friendAccepted, clearFriendAccepted,
+    friendRemoved, clearFriendRemoved,
     readReceipt, clearReadReceipt, reconnectCount,
   } = useChatSocket();
 
@@ -93,15 +98,45 @@ export default function ChatPage() {
   }, [activeChannel, showSettings]);
 
   useEffect(() => {
-    fetchBlocks().then(setBlocks).catch(() => {});
-    fetchFriendships().then(setFriendships).catch(() => {});
-  }, [reconnectCount]);
+    refreshBlocks();
+    refreshFriendships();
+  }, [reconnectCount, refreshBlocks]);
+
+  useEffect(() => {
+    if (!friendAccepted) return;
+    setFriendships((prev) => prev.map((f) =>
+      f.id === friendAccepted.friendship_id ? { ...f, status: "accepted" as const } : f
+    ));
+    clearFriendAccepted();
+  }, [friendAccepted, clearFriendAccepted]);
+
+  useEffect(() => {
+    if (!friendRemoved) return;
+    setFriendships((prev) => prev.filter((f) => f.id !== friendRemoved.friendship_id));
+    clearFriendRemoved();
+  }, [friendRemoved, clearFriendRemoved]);
 
   useEffect(() => {
     if (wsFriendRequest) {
       setFriendNotif(wsFriendRequest);
       clearFriendRequest();
       setActiveView("friends");
+      const name = wsFriendRequest.from_display_name || wsFriendRequest.from_username;
+      showToast({ message: `${name} sent you a friend request`, icon: "friend" });
+      setFriendships((prev) => {
+        if (prev.some((f) => f.other_user_id === wsFriendRequest.from_user_id)) return prev;
+        return [...prev, {
+          id: wsFriendRequest.friendship_id,
+          other_user_id: wsFriendRequest.from_user_id,
+          other_username: wsFriendRequest.from_username,
+          other_display_name: wsFriendRequest.from_display_name,
+          other_avatar: wsFriendRequest.from_avatar,
+          status: "pending" as const,
+          direction: "received" as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }];
+      });
     }
   }, [wsFriendRequest, clearFriendRequest]);
 
@@ -134,14 +169,6 @@ export default function ChatPage() {
     navigate(`/games/${gtype}?game_id=${gameInviteAccepted.game_id}`);
     clearGameInviteAccepted();
   }, [gameInviteAccepted, navigate, clearGameInviteAccepted]);
-
-  useEffect(() => {
-    if (!gameInvite) return;
-    const label = gameInvite.game_type === "pong" ? "Pong" : gameInvite.game_type === "pong3d" ? "3D Pong" : gameInvite.game_type === "tictactoe" ? "Tic Tac Toe" : gameInvite.game_type;
-    setInviteToast(`${gameInvite.from_username} invited you to play ${label}!`);
-    const timer = setTimeout(() => setInviteToast(null), 4000);
-    return () => clearTimeout(timer);
-  }, [gameInvite]);
 
   useEffect(() => {
     if (activeChannel && !connectedChannels.includes(activeChannel)) {
@@ -187,7 +214,6 @@ export default function ChatPage() {
   const activeChannelData = channels.find((c) => c.id === activeChannel);
 
   const isOwner = activeChannelData?.owner === user?.id;
-  const blockedUserIds = new Set(blocks.map((b) => b.blocked));
   const friendUserIds = new Set(friendships.filter((f) => f.status === "accepted").map((f) => f.other_user_id));
   const pendingSentIds = new Set(friendships.filter((f) => f.status === "pending" && f.direction === "sent").map((f) => f.other_user_id));
   const pendingReceivedIds = new Set(friendships.filter((f) => f.status === "pending" && f.direction === "received").map((f) => f.other_user_id));
@@ -265,15 +291,18 @@ export default function ChatPage() {
         const created = await sendFriendRequest(targetUserId);
         setFriendships((prev) => [...prev, created as any]);
       }
+      refreshFriendships();
     } catch {}
   };
 
   const handleBlock = async (userId: string) => {
-    try { const block = await blockUser(userId); setBlocks((prev) => [...prev, block]); } catch {}
+    await doBlock(userId);
+    refreshFriendships();
   };
 
   const handleUnblock = async (blockId: string) => {
-    try { await unblockUser(blockId); setBlocks((prev) => prev.filter((b) => b.id !== blockId)); } catch {}
+    await doUnblock(blockId);
+    refreshFriendships();
   };
 
   const handleInviteGame = (userId: string) => {
@@ -462,49 +491,14 @@ export default function ChatPage() {
         {/* Main area */}
         <div className="flex-1 relative">
           {showInvitePicker && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-              <div className="rounded-xl p-4 mx-4 shadow-2xl" style={{ backgroundColor: "var(--color-bg-card)" }}>
-                <p className="text-sm mb-3" style={{ color: "var(--color-text-primary)" }}>Choose a game to play</p>
-                <div className="flex flex-col gap-2">
-                  {["pong", "pong3d", "tictactoe"].map((g) => (
-                    <button key={g} onClick={() => handleSendInvite(g)}
-                      className="px-4 py-2 rounded text-xs font-medium text-white text-left"
-                      style={{ backgroundColor: "var(--color-primary)" }}>{g === "pong3d" ? "Pong 3D" : g.charAt(0).toUpperCase() + g.slice(1)}</button>
-                  ))}
-                  <button onClick={() => { setShowInvitePicker(false); setInviteTarget(null); }}
-                    className="px-4 py-2 rounded text-xs"
-                    style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}>Cancel</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {gameInvite && (
-            <div className="absolute bottom-0 left-0 right-0 z-50 p-3 border-t animate-slideUp" style={{ backgroundColor: "var(--color-bg-card)", borderColor: "var(--color-border)" }}>
-              <p className="text-xs mb-2" style={{ color: "var(--color-text-primary)" }}>
-                <strong>{gameInvite.from_username}</strong> invited you to play <strong>{gameInvite.game_type === "pong3d" ? "Pong 3D" : gameInvite.game_type.charAt(0).toUpperCase() + gameInvite.game_type.slice(1)}</strong>
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => { sendGameInviteResponse(gameInvite.channel_id, gameInvite.game_type, gameInvite.game_id, true); clearGameInvite(); }}
-                  className="px-3 py-1 rounded text-xs text-white" style={{ backgroundColor: "#22C55E" }}>Accept</button>
-                <button onClick={() => { sendGameInviteResponse(gameInvite.channel_id, gameInvite.game_type, gameInvite.game_id, false); clearGameInvite(); }}
-                  className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}>Decline</button>
-              </div>
-            </div>
-          )}
-
-          {friendNotif && (
-            <div className="absolute bottom-14 left-0 right-0 z-50 p-3 border-t" style={{ backgroundColor: "var(--color-bg-card)", borderColor: "var(--color-border)" }}>
-              <p className="text-xs mb-2" style={{ color: "var(--color-text-primary)" }}>
-                <strong>{friendNotif.from_display_name || friendNotif.from_username}</strong> sent you a friend request
-              </p>
-              <div className="flex gap-2">
-                <button onClick={handleAcceptFriendNotif}
-                  className="px-3 py-1 rounded text-xs text-white" style={{ backgroundColor: "#22C55E" }}>Accept</button>
-                <button onClick={() => setFriendNotif(null)}
-                  className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}>Dismiss</button>
-              </div>
-            </div>
+            <InviteGamePicker
+              onSelect={(gameType) => {
+                if (inviteTarget) sendGameInvite(inviteTarget, gameType);
+                setShowInvitePicker(false);
+                setInviteTarget(null);
+              }}
+              onCancel={() => { setShowInvitePicker(false); setInviteTarget(null); }}
+            />
           )}
 
           {kickConfirm && (
@@ -679,9 +673,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {inviteToast && (
-        <Toast message={inviteToast} onClose={() => setInviteToast(null)} duration={4000} position="bottom-end" tone="success" />
-      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     is_oauth_user = serializers.ReadOnlyField()
     is_oauth_only = serializers.ReadOnlyField()
     friend_count = serializers.SerializerMethodField()
+    blocked_by_target = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -40,6 +41,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "last_activity",
             "date_joined",
             "friend_count",
+            "blocked_by_target",
         ]
         read_only_fields = fields
 
@@ -49,6 +51,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
             models.Q(from_user=obj) | models.Q(to_user=obj),
             status=Friendship.ACCEPTED,
         ).count()
+
+    def get_blocked_by_target(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        if request.user.pk == obj.pk:
+            return False
+        from apps.chat.models import Block
+        return Block.objects.filter(blocker=obj, blocked=request.user).exists()
 
 
 class RegisterSerializer(serializers.Serializer):

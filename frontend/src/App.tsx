@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { FriendshipProvider } from "./context/FriendshipContext";
+import { BlockProvider } from "./context/BlockContext";
+import { ToastProvider } from "./context/ToastContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -33,6 +36,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <FriendshipProvider>
+        <BlockProvider>
+        <ToastProvider>
         <DarkModeToggle />
         <GamificationNotifications />
         <Routes>
@@ -196,6 +202,9 @@ function App() {
           {/* ========== 404 CATCH-ALL ========== */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+      </ToastProvider>
+      </BlockProvider>
+      </FriendshipProvider>
       </AuthProvider>
     </BrowserRouter>
   );

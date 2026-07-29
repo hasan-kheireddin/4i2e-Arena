@@ -3,7 +3,10 @@ import collections
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Any
+
+from django.utils import timezone
 
 import redis.asyncio as aioredis
 from channels.db import database_sync_to_async
@@ -800,4 +803,19 @@ class ChatConsumer(BaseConsumer):
                 "friendship_id": event.get("friendship_id"),
                 "by_user_id": event.get("by_user_id"),
                 "by_username": event.get("by_username"),
+            })
+
+    async def chat_friend_removed(self, event: dict[str, Any]) -> None:
+        if str(self.user.pk) == event.get("target_user_id"):
+            await self.send_json({
+                "type": "friend_request_removed",
+                "friendship_id": event.get("friendship_id"),
+                "removed_by": event.get("removed_by"),
+            })
+
+    async def chat_unblocked(self, event: dict[str, Any]) -> None:
+        if str(self.user.pk) == event.get("target_user_id"):
+            await self.send_json({
+                "type": "unblocked",
+                "unblocked_by": event.get("unblocked_by"),
             })

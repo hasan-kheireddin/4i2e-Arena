@@ -336,10 +336,45 @@ class BlockViewSet(mixins.ListModelMixin,
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Block.objects.filter(blocker=self.request.user).select_related("blocked")
+        return Block.objects.filter(
+            models.Q(blocker=self.request.user) | models.Q(blocked=self.request.user)
+        ).select_related("blocker", "blocked")
 
     def perform_create(self, serializer):
-        serializer.save(blocker=self.request.user)
+        block = serializer.save(blocker=self.request.user)
+        Friendship.objects.filter(
+            models.Q(from_user=self.request.user, to_user=block.blocked) |
+            models.Q(from_user=block.blocked, to_user=self.request.user)
+        ).delete()
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{block.blocked_id}",
+                {
+                    "type": "chat.friend_removed",
+                    "friendship_id": "",
+                    "removed_by": str(self.request.user.pk),
+                    "target_user_id": str(block.blocked_id),
+                },
+            )
+        except Exception:
+            pass
+
+    def perform_destroy(self, instance):
+        other_id = instance.blocked_id
+        instance.delete()
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{other_id}",
+                {
+                    "type": "chat.unblocked",
+                    "unblocked_by": str(self.request.user.pk),
+                    "target_user_id": str(other_id),
+                },
+            )
+        except Exception:
+            pass
 
     def destroy(self, request, *args, **kwargs):
         block = self.get_object()
@@ -361,7 +396,36 @@ class FriendshipViewSet(mixins.ListModelMixin,
             models.Q(to_user=self.request.user)
         ).select_related("from_user", "to_user")
 
+    def perform_destroy(self, instance):
+        other_id = instance.to_user_id if instance.from_user_id == self.request.user.pk else instance.from_user_id
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{other_id}",
+                {
+                    "type": "chat.friend_removed",
+                    "friendship_id": str(instance.id),
+                    "removed_by": str(self.request.user.pk),
+                    "target_user_id": str(other_id),
+                },
+            )
+        except Exception:
+            pass
+        instance.delete()
+
     def perform_create(self, serializer):
+        to_user = serializer.validated_data.get("to_user")
+        if Block.objects.filter(
+            models.Q(blocker=self.request.user, blocked=to_user) |
+            models.Q(blocker=to_user, blocked=self.request.user)
+        ).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("Cannot send friend request. User is blocked.")
+        if Friendship.objects.filter(
+            models.Q(from_user=self.request.user, to_user=to_user) |
+            models.Q(from_user=to_user, to_user=self.request.user)
+        ).exists():
+            raise ValidationError("Friendship already exists between these users.")
         friendship = serializer.save(from_user=self.request.user, status=Friendship.PENDING)
         try:
             channel_layer = get_channel_layer()

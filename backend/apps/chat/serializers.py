@@ -214,11 +214,12 @@ class BlockSerializer(serializers.ModelSerializer):
     blocked_username = serializers.CharField(source="blocked.username", read_only=True)
     blocked_display_name = serializers.CharField(source="blocked.display_name", read_only=True)
     blocked_avatar = serializers.URLField(source="blocked.avatar_url", read_only=True)
+    blocker = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Block
         fields = [
-            "id", "blocked", "blocked_username", "blocked_display_name",
+            "id", "blocker", "blocked", "blocked_username", "blocked_display_name",
             "blocked_avatar", "created_at",
         ]
         read_only_fields = ["id", "blocker", "created_at"]
