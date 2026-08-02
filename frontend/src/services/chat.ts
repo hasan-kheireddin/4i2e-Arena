@@ -57,6 +57,7 @@ export interface Member {
 
 export interface BlockRecord {
   id: string;
+  blocker: string;
   blocked: string;
   blocked_username: string;
   blocked_display_name: string;

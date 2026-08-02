@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../services/api";
 import {
-  sendFriendRequest, acceptFriendRequest, removeFriend,
+  sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend,
   type FriendshipRecord,
 } from "../../services/chat";
 
@@ -73,6 +73,13 @@ export default function FriendsPanel({
     try {
       const updated = await acceptFriendRequest(f.id);
       onFriendshipsChange(friendships.map((fr) => fr.id === f.id ? { ...fr, ...updated } : fr));
+    } catch {}
+  };
+
+  const handleDecline = async (f: FriendshipRecord) => {
+    try {
+      await rejectFriendRequest(f.id);
+      onFriendshipsChange(friendships.filter((fr) => fr.id !== f.id));
     } catch {}
   };
 
@@ -165,36 +172,38 @@ export default function FriendsPanel({
               const isOnline = onlineUserIds.has(f.other_user_id);
               const isPendingReceived = f.status === "pending" && f.direction === "received";
               return (
-                <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg text-xs"
-                  style={{ backgroundColor: "var(--color-bg-input)" }}>
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="relative">
-                      {f.other_avatar ? (
-                        <img src={f.other_avatar} alt="" className="w-7 h-7 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                          style={{ backgroundColor: "var(--color-primary)" }}>{f.other_username[0]?.toUpperCase()}</div>
-                      )}
-                      {tab !== "pending" && (
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isOnline ? "bg-green-500" : "bg-gray-500"}`}
-                          style={{ borderColor: "var(--color-bg-input)" }} />
-                      )}
+                  <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg text-xs"
+                    style={{ backgroundColor: "var(--color-bg-input)" }}>
+                    <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => navigate(`/profile/${f.other_user_id}`)}>
+                      <div className="relative">
+                        {f.other_avatar ? (
+                          <img src={f.other_avatar} alt="" className="w-7 h-7 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                            style={{ backgroundColor: "var(--color-primary)" }}>{f.other_username[0]?.toUpperCase()}</div>
+                        )}
+                        {tab !== "pending" && (
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isOnline ? "bg-green-500" : "bg-gray-500"}`}
+                            style={{ borderColor: "var(--color-bg-input)" }} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium" style={{ color: "var(--color-text-primary)" }}>{f.other_display_name || f.other_username}</p>
+                        <p style={{ color: isOnline ? "#22C55E" : "var(--color-text-muted)" }}>
+                          {isOnline ? "Online" : "Offline"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium" style={{ color: "var(--color-text-primary)" }}>{f.other_display_name || f.other_username}</p>
-                      <p style={{ color: isOnline ? "#22C55E" : "var(--color-text-muted)" }}>
-                        {isOnline ? "Online" : "Offline"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => navigate(`/profile/${f.other_user_id}`)}
-                      className="px-1.5 py-0.5 rounded text-[9px] text-white"
-                      style={{ backgroundColor: "#8B5CF6" }} title="View Profile">👤</button>
-                    {isPendingReceived ? (
-                      <button onClick={() => handleAccept(f)}
-                        className="px-2 py-0.5 rounded text-[9px] text-white font-medium"
-                        style={{ backgroundColor: "#22C55E" }}>Accept</button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {isPendingReceived ? (
+                      <>
+                        <button onClick={() => handleAccept(f)}
+                          className="px-2 py-0.5 rounded text-[9px] text-white font-medium"
+                          style={{ backgroundColor: "#22C55E" }}>Accept</button>
+                        <button onClick={() => handleDecline(f)}
+                          className="px-2 py-0.5 rounded text-[9px] text-white font-medium"
+                          style={{ backgroundColor: "#EF4444" }}>Decline</button>
+                      </>
                     ) : f.status === "pending" ? (
                       <span className="text-[9px] px-1" style={{ color: "#F59E0B" }}>Pending</span>
                     ) : tab !== "pending" ? (

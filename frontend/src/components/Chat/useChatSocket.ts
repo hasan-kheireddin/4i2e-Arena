@@ -7,10 +7,12 @@ export interface ChatMessage {
   sender: string | null;
   sender_username: string | null;
   sender_avatar: string;
-  message_type: "text" | "emote" | "system";
+  message_type: "text" | "emote" | "system" | "game_invite";
   content: string;
   emote_id: string;
   created_at: string;
+  game_id?: string;
+  game_type?: string;
 }
 
 export interface TypingUser {
@@ -43,6 +45,17 @@ export interface FriendRequestEvent {
   from_avatar: string;
 }
 
+export interface FriendAcceptedEvent {
+  friendship_id: string;
+  by_user_id: string;
+  by_username: string;
+}
+
+export interface FriendRemovedEvent {
+  friendship_id: string;
+  removed_by: string;
+}
+
 interface ReadReceiptEvent {
   channel_id: string;
   read_until: string;
@@ -60,8 +73,13 @@ interface UseChatSocketReturn {
   onlineUserIds: Set<string>;
   friendRequest: FriendRequestEvent | null;
   clearFriendRequest: () => void;
+  friendAccepted: FriendAcceptedEvent | null;
+  clearFriendAccepted: () => void;
+  friendRemoved: FriendRemovedEvent | null;
+  clearFriendRemoved: () => void;
   readReceipt: ReadReceiptEvent | null;
   clearReadReceipt: () => void;
+  onNewMessageRef: { current: ((msg: ChatMessage) => void) | null };
   reconnectCount: number;
   sendMessage: (channelId: string, content: string) => void;
   sendEmote: (channelId: string, emoteId: string) => void;
@@ -85,10 +103,13 @@ export function useChatSocket(): UseChatSocketReturn {
   const [gameInviteAccepted, setGameInviteAccepted] = useState<GameInviteAccepted | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [friendRequest, setFriendRequest] = useState<FriendRequestEvent | null>(null);
+  const [friendAccepted, setFriendAccepted] = useState<FriendAcceptedEvent | null>(null);
+  const [friendRemoved, setFriendRemoved] = useState<FriendRemovedEvent | null>(null);
   const [readReceipt, setReadReceipt] = useState<ReadReceiptEvent | null>(null);
   const [reconnectCount, setReconnectCount] = useState(0);
   const typingTimers = useRef<Record<string, Record<string, ReturnType<typeof setTimeout>>>>({});
   const lastTypingSent = useRef<Record<string, number>>({});
+  const onNewMessageRef = useRef<((msg: ChatMessage) => void) | null>(null);
 
   const onMessage = useCallback((data: Record<string, unknown>) => {
     const type = data.type as string;
@@ -104,9 +125,17 @@ export function useChatSocket(): UseChatSocketReturn {
       const cid = msg.channel_id;
       setMessages((prev) => {
         const existing = prev[cid] || [];
-        if (existing.some((m) => m.id === msg.id)) return prev;
+        const idx = existing.findIndex((m) => m.id === msg.id);
+        if (idx >= 0) {
+          const updated = [...existing];
+          updated[idx] = msg;
+          return { ...prev, [cid]: updated };
+        }
         return { ...prev, [cid]: [...existing, msg] };
       });
+      if (msg.sender && (msg.message_type === "text" || msg.message_type === "emote") && onNewMessageRef.current) {
+        onNewMessageRef.current(msg);
+      }
     } else if (type === "history") {
       const cid = data.channel_id as string;
       const msgs = (data.messages as ChatMessage[]) || [];
@@ -193,7 +222,21 @@ export function useChatSocket(): UseChatSocketReturn {
         from_avatar: data.from_avatar as string,
       });
     } else if (type === "friend_request_accepted") {
-      // Could show a toast/notification here
+      setFriendAccepted({
+        friendship_id: data.friendship_id as string,
+        by_user_id: data.by_user_id as string,
+        by_username: data.by_username as string,
+      });
+    } else if (type === "friend_request_removed") {
+      setFriendRemoved({
+        friendship_id: data.friendship_id as string,
+        removed_by: data.removed_by as string,
+      });
+    } else if (type === "unblocked") {
+      setFriendRemoved({
+        friendship_id: "",
+        removed_by: data.unblocked_by as string,
+      });
     } else if (type === "read_receipt") {
       setReadReceipt({
         channel_id: data.channel_id as string,
@@ -254,6 +297,14 @@ export function useChatSocket(): UseChatSocketReturn {
     setFriendRequest(null);
   }, []);
 
+  const clearFriendAccepted = useCallback(() => {
+    setFriendAccepted(null);
+  }, []);
+
+  const clearFriendRemoved = useCallback(() => {
+    setFriendRemoved(null);
+  }, []);
+
   const clearReadReceipt = useCallback(() => {
     setReadReceipt(null);
   }, []);
@@ -301,8 +352,13 @@ export function useChatSocket(): UseChatSocketReturn {
     onlineUserIds,
     friendRequest,
     clearFriendRequest,
+    friendAccepted,
+    clearFriendAccepted,
+    friendRemoved,
+    clearFriendRemoved,
     readReceipt,
     clearReadReceipt,
+    onNewMessageRef,
     reconnectCount,
     sendMessage,
     sendEmote,

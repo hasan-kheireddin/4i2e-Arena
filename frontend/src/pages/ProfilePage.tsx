@@ -14,11 +14,17 @@ import {
   getOrCreateDM, type FriendshipRecord,
 } from "../services/chat";
 import { useChatSocket } from "../components/Chat/useChatSocket";
+import Toast from "../components/Toast";
 import {
   Trophy, Flame, TrendingUp, Sword, Star,
   Clock, Target, Zap, ShieldCheck, UserPlus, UserCheck, MessageCircle, Gamepad2, X,
 } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
+import { apiFetch } from "../services/api";
+import { useFriendships } from "../context/FriendshipContext";
+import { useToast } from "../context/ToastContext";
+import { useBlocks } from "../context/BlockContext";
+import InviteGamePicker from "../components/Chat/InviteGamePicker";
 
 function timeAgo(iso: string, t: TFunction): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -48,13 +54,34 @@ export default function ProfilePage() {
   const [achStats, setAchStats] = useState<AchievementStats | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<AchievementUnlock[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [friendships, setFriendships] = useState<FriendshipRecord[]>([]);
+  const { friendships, setFriendships, refresh: refreshFriendships } = useFriendships();
+  console.log("ProfilePage friendships count:", friendships.length);
 
   const navigate = useNavigate();
 
   const isOwn = !profileUserId || profileUserId === user?.id;
 
-  const { sendGameInvite, gameInvite, clearGameInvite, sendGameInviteResponse, gameInviteAccepted, clearGameInviteAccepted } = useChatSocket();
+  const { sendGameInvite, gameInvite, clearGameInvite, sendGameInviteResponse, gameInviteAccepted, clearGameInviteAccepted, friendRemoved, clearFriendRemoved } = useChatSocket();
+  const { showToast } = useToast();
+  const { blocks, blockedUserIds, block: doBlock, unblock: doUnblock } = useBlocks();
+  // Re-fetch profile when friendships change (to update friend_count for other users)
+  useEffect(() => {
+    if (!isOwn && profileUserId) {
+      getUserProfile(profileUserId).then(setProfileUser).catch(() => {});
+    }
+  }, [friendships, blocks, profileUserId, isOwn]);
+
+  // Re-fetch profile + friendships when blocked/unblocked by the target user
+  useEffect(() => {
+    if (!friendRemoved) return;
+    if (!isOwn && profileUserId) {
+      getUserProfile(profileUserId).then(setProfileUser).catch(() => {});
+    }
+    refreshFriendships();
+    clearFriendRemoved();
+  }, [friendRemoved, clearFriendRemoved]);
+
+
   useEffect(() => {
     if (gameInviteAccepted) {
       clearGameInviteAccepted();
@@ -129,6 +156,7 @@ useEffect(() => {
 
   const recentForm = stats?.recent_form ?? [];
 
+ const isBlockedByTarget = !isOwn && profileUser?.blocked_by_target;
  const friendCount = isOwn
   ? friendships.filter((f) => f.status === "accepted").length
   : profileUser?.friend_count ?? 0;
@@ -140,22 +168,22 @@ useEffect(() => {
   const friendDirection = friendRel?.direction;
 
   const handleFriendAction = async () => {
+    console.log("handleFriendAction called, status:", friendStatus, "target:", targetUserId);
     if (!targetUserId) return;
     try {
       if (friendStatus === "accepted" && friendRel) {
         await removeFriend(friendRel.id);
-        setFriendships((prev) => prev.filter((f) => f.id !== friendRel.id));
       } else if (friendStatus === "pending" && friendDirection === "received" && friendRel) {
-        const updated = await acceptFriendRequest(friendRel.id);
-        setFriendships((prev) => prev.map((f) => f.id === friendRel.id ? { ...f, ...updated } : f));
+        await acceptFriendRequest(friendRel.id);
       } else if (friendStatus === "pending" && friendDirection === "sent" && friendRel) {
         await removeFriend(friendRel.id);
-        setFriendships((prev) => prev.filter((f) => f.id !== friendRel.id));
       } else {
-        const created = await sendFriendRequest(targetUserId);
-        setFriendships((prev) => [...prev, created as any]);
+        await sendFriendRequest(targetUserId);
       }
-    } catch {}
+      await refreshFriendships();
+    } catch (e) {
+      console.error("Friend action error:", e);
+    }
   };
 
   const handleOpenDM = async () => {
@@ -171,6 +199,22 @@ useEffect(() => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-10 h-10 rounded-full border-4 animate-spin"
           style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }} />
+      </div>
+    );
+  }
+
+  if (isBlockedByTarget) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn">
+        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
+          <div className="text-5xl mb-4">🚫</div>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--color-text-primary)" }}>
+            {profileUser?.display_name || profileUser?.username}
+          </h2>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+            This profile is unavailable
+          </p>
+        </div>
       </div>
     );
   }
@@ -234,29 +278,42 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ── Friend / DM Actions ───────────────────────────────────────────── */}
+      {/* ── Friend / DM Actions ── */}
       {!isOwn && targetUserId && (
-        <div className="flex items-center justify-center sm:justify-start gap-3">
-          <button
-            onClick={handleFriendAction}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-            style={{
-              backgroundColor:
-                friendStatus === "accepted" ? "#EF4444" :
-                friendStatus === "pending" && friendDirection === "received" ? "#22C55E" :
-                friendStatus === "pending" && friendDirection === "sent" ? "#F59E0B" :
-                "var(--color-primary)",
-            }}
-          >
-            {friendStatus === "accepted" ? <X className="w-4 h-4" /> :
-             friendStatus === "pending" && friendDirection === "received" ? <UserCheck className="w-4 h-4" /> :
-             friendStatus === "pending" && friendDirection === "sent" ? <X className="w-4 h-4" /> :
-             <UserPlus className="w-4 h-4" />}
-            {friendStatus === "accepted" ? "Remove Friend" :
-             friendStatus === "pending" && friendDirection === "received" ? "Accept Request" :
-             friendStatus === "pending" && friendDirection === "sent" ? "Cancel Request" :
-             "Add Friend"}
-          </button>
+        <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
+          {blockedUserIds.has(targetUserId) ? (
+            <button
+              onClick={async () => {
+                const blockRec = blocks.find(b => b.blocked === targetUserId);
+                if (blockRec) { await doUnblock(blockRec.id); refreshFriendships(); }
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "#10B981" }}
+            >
+              Unblock
+            </button>
+          ) : (
+            <button
+              onClick={handleFriendAction}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{
+                backgroundColor:
+                  friendStatus === "accepted" ? "#EF4444" :
+                  friendStatus === "pending" && friendDirection === "received" ? "#22C55E" :
+                  friendStatus === "pending" && friendDirection === "sent" ? "#F59E0B" :
+                  "var(--color-primary)",
+              }}
+            >
+              {friendStatus === "accepted" ? <X className="w-4 h-4" /> :
+               friendStatus === "pending" && friendDirection === "received" ? <UserCheck className="w-4 h-4" /> :
+               friendStatus === "pending" && friendDirection === "sent" ? <X className="w-4 h-4" /> :
+               <UserPlus className="w-4 h-4" />}
+              {friendStatus === "accepted" ? "Remove Friend" :
+               friendStatus === "pending" && friendDirection === "received" ? "Accept Request" :
+               friendStatus === "pending" && friendDirection === "sent" ? "Cancel Request" :
+               "Add Friend"}
+            </button>
+          )}
           <button
             onClick={handleOpenDM}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
@@ -265,48 +322,30 @@ useEffect(() => {
             <MessageCircle className="w-4 h-4" />
             Send Message
           </button>
-          <button
-            onClick={() => setShowInvitePicker(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "#22C55E" }}
-          >
-            <Gamepad2 className="w-4 h-4" />
-            Invite to Game
-          </button>
+          {!blockedUserIds.has(targetUserId) && (
+            <button
+              onClick={() => setShowInvitePicker(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "#22C55E" }}
+            >
+              <Gamepad2 className="w-4 h-4" />
+              Invite to Game
+            </button>
+          )}
         </div>
       )}
 
       {showInvitePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="rounded-xl p-4 mx-4 shadow-2xl" style={{ backgroundColor: "var(--color-bg-card)" }}>
-            <p className="text-sm mb-3" style={{ color: "var(--color-text-primary)" }}>Choose a game to play</p>
-            <div className="flex flex-col gap-2">
-              {["pong", "pong3d", "tictactoe"].map((g) => (
-                <button key={g} onClick={() => handleSendInvite(g)}
-                  className="px-4 py-2 rounded text-xs font-medium text-white text-left"
-                  style={{ backgroundColor: "var(--color-primary)" }}>{g === "pong3d" ? "Pong 3D" : g.charAt(0).toUpperCase() + g.slice(1)}</button>
-              ))}
-              <button onClick={() => setShowInvitePicker(false)}
-                className="px-4 py-2 rounded text-xs"
-                style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        <InviteGamePicker
+          onSelect={(gameType) => {
+            if (targetUserId) sendGameInvite(targetUserId, gameType);
+            setShowInvitePicker(false);
+          }}
+          onCancel={() => setShowInvitePicker(false)}
+        />
       )}
 
-      {gameInvite && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-3 border-t animate-slideUp" style={{ backgroundColor: "var(--color-bg-card)", borderColor: "var(--color-border)" }}>
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-primary)" }}>
-            <strong>{gameInvite.from_username}</strong> invited you to play <strong>{gameInvite.game_type === "pong3d" ? "Pong 3D" : gameInvite.game_type.charAt(0).toUpperCase() + gameInvite.game_type.slice(1)}</strong>
-          </p>
-          <div className="flex gap-2">
-            <button onClick={() => { sendGameInviteResponse(gameInvite.channel_id, gameInvite.game_type, gameInvite.game_id, true); clearGameInvite(); }}
-              className="px-3 py-1 rounded text-xs text-white" style={{ backgroundColor: "#22C55E" }}>Accept</button>
-            <button onClick={() => { sendGameInviteResponse(gameInvite.channel_id, gameInvite.game_type, gameInvite.game_id, false); clearGameInvite(); }}
-              className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}>Decline</button>
-          </div>
-        </div>
-      )}
+
 
       {/* ── Game Analytics Grid ─────────────────────────────────────────────── */}
       <div>
@@ -518,6 +557,7 @@ useEffect(() => {
           )}
         </div>
       </div>
+
     </div>
   );
 }

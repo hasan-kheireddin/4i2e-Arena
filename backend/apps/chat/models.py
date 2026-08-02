@@ -148,11 +148,13 @@ class Message(models.Model):
     MESSAGE_TEXT = "text"
     MESSAGE_EMOTE = "emote"
     MESSAGE_SYSTEM = "system"
+    MESSAGE_GAME_INVITE = "game_invite"
 
     MESSAGE_TYPES = [
         (MESSAGE_TEXT, "Text"),
         (MESSAGE_EMOTE, "Emote"),
         (MESSAGE_SYSTEM, "System"),
+        (MESSAGE_GAME_INVITE, "Game Invite"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -166,9 +168,11 @@ class Message(models.Model):
         blank=True,
         related_name="sent_messages",
     )
-    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default=MESSAGE_TEXT)
+    message_type = models.CharField(max_length=20, choices=MESSAGE_TYPES, default=MESSAGE_TEXT)
     content = models.TextField(blank=True, default="")
     emote_id = models.CharField(max_length=50, blank=True, default="")
+    game_id = models.CharField(max_length=100, blank=True, default="")
+    game_type = models.CharField(max_length=20, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

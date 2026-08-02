@@ -10,6 +10,7 @@ import {
 } from './TicTacToeGameShared';
 import { useTicTacToeLocalGame } from './useTicTacToeLocalGame';
 import { useTicTacToeOnlineGame } from './useTicTacToeOnlineGame';
+import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 
 export default function TicTacToePage() {
   const { t } = useTranslation();
@@ -62,35 +63,38 @@ export default function TicTacToePage() {
   };
 
   return (
-    <TicTacToeGameView
-      mode={mode}
-      displayBoard={displayBoard}
-      displayWinner={displayWinner}
-      displayLine={displayLine}
-      scores={localGame.scores}
-      localPlayerNames={localGame.localPlayerNames}
-      localNamesReady={localGame.localNamesReady}
-      isXTurn={localGame.isXTurn}
-      mySymbol={onlineGame.mySymbol}
-      opponentName={onlineGame.opponentName}
-      onlinePhase={onlineGame.onlinePhase}
-      onlineWinner={onlineGame.onlineWinner}
-      iReady={onlineGame.iReady}
-      opponentReady={onlineGame.opponentReady}
-      gamePaused={onlineGame.gamePaused}
-      gameSocketStatus={onlineGame.gameSocketStatus}
-      isMyTurn={isMyTurn}
-      showRealtimeRecoveryOverlay={showRealtimeRecoveryOverlay}
-      opponentLeftMsg={onlineGame.opponentLeftMsg}
-      onDismissOpponentLeft={onlineGame.dismissOpponentLeft}
-      onLocalPlayerNamesChange={localGame.setLocalPlayerNames}
-      onStartLocalGame={localGame.startLocalGame}
-      onReady={onlineGame.ready}
-      onCancelOnline={onlineGame.cancelOnline}
-      onCellClick={handleCellClick}
-      onResetGame={localGame.resetGame}
-      onPlayAgainOnline={onlineGame.findMatch}
-      onBackToGames={() => navigate('/games/playpage')}
-    />
+    <>
+      <TicTacToeGameView
+        mode={mode}
+        displayBoard={displayBoard}
+        displayWinner={displayWinner}
+        displayLine={displayLine}
+        scores={localGame.scores}
+        localPlayerNames={localGame.localPlayerNames}
+        localNamesReady={localGame.localNamesReady}
+        isXTurn={localGame.isXTurn}
+        mySymbol={onlineGame.mySymbol}
+        opponentName={onlineGame.opponentName}
+        onlinePhase={onlineGame.onlinePhase}
+        onlineWinner={onlineGame.onlineWinner}
+        iReady={onlineGame.iReady}
+        opponentReady={onlineGame.opponentReady}
+        gamePaused={onlineGame.gamePaused}
+        gameSocketStatus={onlineGame.gameSocketStatus}
+        isMyTurn={isMyTurn}
+        showRealtimeRecoveryOverlay={showRealtimeRecoveryOverlay}
+        opponentLeftMsg={onlineGame.opponentLeftMsg}
+        onDismissOpponentLeft={onlineGame.dismissOpponentLeft}
+        onLocalPlayerNamesChange={localGame.setLocalPlayerNames}
+        onStartLocalGame={localGame.startLocalGame}
+        onReady={onlineGame.ready}
+        onCancelOnline={onlineGame.cancelOnline}
+        onCellClick={handleCellClick}
+        onResetGame={localGame.resetGame}
+        onPlayAgainOnline={onlineGame.findMatch}
+        onBackToGames={() => navigate('/games/playpage')}
+      />
+      <FloatingChatWidget />
+    </>
   );
 }

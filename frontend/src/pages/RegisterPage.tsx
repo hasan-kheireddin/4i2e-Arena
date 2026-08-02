@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import registerImgDark from "../images/registerimgDark.png";
+import registerImgDark from "../images/registerimgDark.jpg";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";

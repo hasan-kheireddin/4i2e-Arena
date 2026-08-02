@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EMOTES } from "../../assets/emotes/emotes";
 import { playEmoteSound } from "../../assets/emotes/sound";
 import type { ChatMessage } from "./useChatSocket";
@@ -9,10 +9,12 @@ interface ChatBubbleProps {
   onProfileClick?: (userId: string) => void;
   readUntilTimestamp?: string | null;
   dmPartnerReadUntil?: string | null;
+  sendGameInviteResponse?: (channelId: string, gameType: string, gameId: string, accept: boolean) => void;
 }
 
-export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUntil }: ChatBubbleProps) {
+export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUntil, sendGameInviteResponse }: ChatBubbleProps) {
   const [played, setPlayed] = useState(false);
+  const [inviteResponded, setInviteResponded] = useState(false);
 
   const emoteDef = msg.message_type === "emote" ? EMOTES.find((e) => e.id === msg.emote_id) : null;
 
@@ -24,6 +26,80 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
     }
     setTimeout(() => setPlayed(false), 1000);
   };
+
+  const isGameInvite = (msg.message_type === "system" || msg.message_type === "game_invite") && !!msg.game_id;
+  const gameTypeLabel = msg.game_type === "pong" ? "Pong" : msg.game_type === "pong3d" ? "3D Pong" : msg.game_type === "tictactoe" ? "Tic Tac Toe" : msg.game_type || "Game";
+
+  const [expired, setExpired] = useState(false);
+  const [countdown, setCountdown] = useState(30);
+  useEffect(() => {
+    if (!isGameInvite) return;
+    const createdAt = new Date(msg.created_at).getTime();
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((30000 - (Date.now() - createdAt)) / 1000));
+      setCountdown(remaining);
+      if (remaining <= 0) setExpired(true);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [isGameInvite, msg.created_at]);
+
+  if (isGameInvite) {
+    const handleAccept = () => {
+      if (inviteResponded || !sendGameInviteResponse || !msg.game_id || !msg.game_type) return;
+      setInviteResponded(true);
+      sendGameInviteResponse(msg.channel_id, msg.game_type, msg.game_id, true);
+    };
+    const handleDecline = () => {
+      if (inviteResponded || !sendGameInviteResponse || !msg.game_id || !msg.game_type) return;
+      setInviteResponded(true);
+      sendGameInviteResponse(msg.channel_id, msg.game_type, msg.game_id, false);
+    };
+    return (
+      <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"} mb-2`}>
+        <div
+          className="max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed break-words flex flex-wrap items-center gap-x-2 gap-y-1"
+          style={{
+            backgroundColor: isOwn ? "var(--color-primary)" : "#2B2D31",
+            borderTopLeftRadius: isOwn ? "1rem" : "0.25rem",
+            borderTopRightRadius: isOwn ? "0.25rem" : "1rem",
+          }}
+        >
+          <span style={{ color: "var(--color-text-primary)", fontWeight: 500, whiteSpace: "normal" }}>
+            🎮 {msg.content}
+          </span>
+          {!isOwn && !inviteResponded && !expired && sendGameInviteResponse && (
+            <>
+              <button onClick={handleAccept}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
+                style={{ backgroundColor: "#22C55E" }}>Accept</button>
+              <button onClick={handleDecline}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold hover:opacity-90"
+                style={{ backgroundColor: "#EF4444", color: "#ffffff" }}>Decline</button>
+            </>
+          )}
+          {!isOwn && inviteResponded && (
+            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Response sent</span>
+          )}
+          {!isOwn && expired && !inviteResponded && (
+            <span className="text-xs" style={{ color: "#EF4444" }}>Expired</span>
+          )}
+          {!inviteResponded && !expired && (
+            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Expires in {countdown}s</span>
+          )}
+          {isOwn && expired && (
+            <span className="text-xs" style={{ color: "#EF4444" }}>Expired</span>
+          )}
+        </div>
+        {isOwn && (
+          <span className="text-[10px] mt-0.5 mr-1" style={{ color: dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "#22C55E" : "#6B7280" }}>
+            {dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "✓✓" : "✓"}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   if (msg.message_type === "emote" && emoteDef) {
     return (
