@@ -5,6 +5,7 @@ import { useBlocks } from "../../context/BlockContext";
 import { useToast } from "../../context/ToastContext";
 import InviteGamePicker from "./InviteGamePicker";
 import { useChatSocket } from "./useChatSocket";
+import { useChatEventEffects } from "../../hooks/useChatEventEffects";
 import ChatWindow from "./ChatWindow";
 import FriendsPanel from "./FriendsPanel";
 import {
@@ -46,7 +47,6 @@ export default function FloatingChatWidget() {
   const [inviteTarget, setInviteTarget] = useState<string | null>(null);
   const [showInvitePicker, setShowInvitePicker] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "friends">("friends");
-  const [friendNotif, setFriendNotif] = useState<typeof wsFriendRequest>(null);
 
 
   const { showToast } = useToast();
@@ -76,8 +76,26 @@ export default function FloatingChatWidget() {
     clearFriendRemoved,
     readReceipt,
     clearReadReceipt,
+    onNewMessageRef,
     reconnectCount,
   } = useChatSocket();
+
+  const friendNotif = useChatEventEffects({
+    gameInvite, gameInviteAccepted, clearGameInviteAccepted,
+    friendAccepted, clearFriendAccepted,
+    friendRemoved, clearFriendRemoved,
+    wsFriendRequest, clearFriendRequest,
+    readReceipt, clearReadReceipt,
+    onNewMessageRef,
+    setChannels, setFriendships,
+    showToast,
+    setActiveView,
+    navigateToChat: (cid) => { setOpen(true); handleSelectChannel(cid); },
+    navigateToProfile: (uid) => navigate(`/profile/${uid}`),
+    currentUserId: user?.id,
+    channels,
+    activeChannel,
+  });
 
   const handleSelectChannel = useCallback(async (channelId: string) => {
     setActiveChannel(channelId);
@@ -102,7 +120,6 @@ export default function FloatingChatWidget() {
   }, [handleSelectChannel]);
 
   useEffect(() => {
-    if (!open && reconnectCount === 0) return;
     fetchChannels()
       .then((list) => {
         setChannels(list);
@@ -124,86 +141,6 @@ export default function FloatingChatWidget() {
   useEffect(() => {
     refreshFriendships();
   }, [reconnectCount]);
-
-  // Handle friend accepted via WS
-  useEffect(() => {
-    if (!friendAccepted) return;
-    setFriendships((prev) => prev.map((f) =>
-      f.id === friendAccepted.friendship_id ? { ...f, status: "accepted" as const } : f
-    ));
-    clearFriendAccepted();
-  }, [friendAccepted, clearFriendAccepted]);
-
-  // Handle friend removed via WS
-  useEffect(() => {
-    if (!friendRemoved) return;
-    setFriendships((prev) => prev.filter((f) => f.id !== friendRemoved.friendship_id));
-    clearFriendRemoved();
-  }, [friendRemoved, clearFriendRemoved]);
-
-  // Show friend request notifications
-  useEffect(() => {
-    if (wsFriendRequest) {
-      setFriendNotif(wsFriendRequest);
-      clearFriendRequest();
-      setActiveView("friends");
-      const name = wsFriendRequest.from_display_name || wsFriendRequest.from_username;
-      showToast({ message: `${name} sent you a friend request`, icon: "friend" });
-      setFriendships((prev) => {
-        if (prev.some((f) => f.other_user_id === wsFriendRequest.from_user_id)) return prev;
-        return [...prev, {
-          id: wsFriendRequest.friendship_id,
-          other_user_id: wsFriendRequest.from_user_id,
-          other_username: wsFriendRequest.from_username,
-          other_display_name: wsFriendRequest.from_display_name,
-          other_avatar: wsFriendRequest.from_avatar,
-          status: "pending" as const,
-          direction: "received" as const,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }];
-      });
-    }
-  }, [wsFriendRequest, clearFriendRequest]);
-
-  useEffect(() => {
-    if (!readReceipt) return;
-    setChannels((prev) => prev.map((ch) => {
-      if (ch.id === readReceipt.channel_id && ch.dm_partner) {
-        return { ...ch, dm_partner: { ...ch.dm_partner, read_until: readReceipt.read_until } };
-      }
-      return ch;
-    }));
-    clearReadReceipt();
-  }, [readReceipt, clearReadReceipt]);
-
-  useEffect(() => {
-    if (!gameInvite) return;
-    const label = gameInvite.game_type === "pong" ? "Pong" : gameInvite.game_type === "pong3d" ? "3D Pong" : gameInvite.game_type === "tictactoe" ? "Tic Tac Toe" : gameInvite.game_type;
-    showToast({ message: `${gameInvite.from_username} invited you to play ${label}!`, icon: "game" });
-  }, [gameInvite]);
-
-  useEffect(() => {
-    if (!gameInviteAccepted) return;
-    const gtype = gameInviteAccepted.game_type === "pong3d" ? "pong3d" : gameInviteAccepted.game_type;
-    navigate(`/games/${gtype}?game_id=${gameInviteAccepted.game_id}`);
-    clearGameInviteAccepted();
-  }, [gameInviteAccepted, navigate, clearGameInviteAccepted]);
-
-  const handleAcceptFriendNotif = async () => {
-    if (!friendNotif) return;
-    try {
-      const f = friendships.find((fr) => fr.other_user_id === friendNotif.from_user_id);
-      if (f) {
-        const { acceptFriendRequest } = await import("../../services/chat");
-        const updated = await acceptFriendRequest(f.id);
-        setFriendships((prev) => prev.map((fr) => fr.id === f.id ? { ...fr, ...updated } : fr));
-      }
-    } catch {}
-    setFriendNotif(null);
-  };
-
-  const handleDismissFriendNotif = () => setFriendNotif(null);
 
   // If the kicked user had this channel active, switch away
   useEffect(() => {
@@ -625,10 +562,10 @@ export default function FloatingChatWidget() {
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
       )}
 
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2">
         {open && (
           <div
             className="w-[480px] h-[500px] rounded-xl shadow-2xl flex overflow-hidden relative"
@@ -773,7 +710,7 @@ export default function FloatingChatWidget() {
         )}
 
         <button
-          onClick={() => { setOpen(!open); if (!open) { setActiveView("friends"); setActiveChannel(null); } }}
+          onClick={() => { const wasOpen = open; setOpen(!open); if (!wasOpen) { setActiveView("friends"); } if (wasOpen) { setActiveChannel(null); } }}
           className="w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-lg transition-transform active:scale-95 relative"
           style={{ backgroundColor: "var(--color-primary)", color: "white" }}
         >

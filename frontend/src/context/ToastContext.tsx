@@ -5,10 +5,12 @@ type ToastIcon = "success" | "achievement" | "game" | "friend" | "xp";
 
 interface ToastItem {
   message: string;
-  icon: ToastIcon;
+  icon?: ToastIcon;
   duration?: number;
   position?: "bottom-end" | "center";
-  tone?: "success" | "achievement";
+  tone?: "success" | "achievement" | "message";
+  onClick?: () => void;
+  avatar?: string;
 }
 
 interface ToastContextType {
@@ -21,6 +23,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [active, setActive] = useState<ToastItem | null>(null);
   const processingRef = useRef(false);
+  const audioUnlocked = useRef(false);
+
+  // Unlock audio on first user interaction
+  useEffect(() => {
+    const unlock = () => {
+      if (audioUnlocked.current) return;
+      audioUnlocked.current = true;
+      new Audio("/sounds/notification.mp3"); // preload
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
+    };
+    document.addEventListener("click", unlock);
+    document.addEventListener("keydown", unlock);
+    return () => {
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   const showToast = useCallback((item: ToastItem) => {
     setQueue((prev) => [...prev, item]);
@@ -37,6 +57,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const next = queue[0];
     setQueue((prev) => prev.slice(1));
     setActive(next);
+    try {
+      const a = new Audio("/sounds/notification.mp3");
+      a.volume = 0.3;
+      a.play().catch(() => {});
+    } catch (e) {
+      console.warn("Notification sound error:", e);
+    }
   }, [active, queue]);
 
   return (
@@ -46,7 +73,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <Toast
           message={active.message}
           icon={active.icon}
+          avatar={active.avatar}
           onClose={handleClose}
+          onClick={active.onClick}
           duration={active.duration ?? 4000}
           position={active.position ?? "bottom-end"}
           tone={active.tone ?? "success"}

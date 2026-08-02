@@ -79,6 +79,7 @@ interface UseChatSocketReturn {
   clearFriendRemoved: () => void;
   readReceipt: ReadReceiptEvent | null;
   clearReadReceipt: () => void;
+  onNewMessageRef: { current: ((msg: ChatMessage) => void) | null };
   reconnectCount: number;
   sendMessage: (channelId: string, content: string) => void;
   sendEmote: (channelId: string, emoteId: string) => void;
@@ -108,6 +109,7 @@ export function useChatSocket(): UseChatSocketReturn {
   const [reconnectCount, setReconnectCount] = useState(0);
   const typingTimers = useRef<Record<string, Record<string, ReturnType<typeof setTimeout>>>>({});
   const lastTypingSent = useRef<Record<string, number>>({});
+  const onNewMessageRef = useRef<((msg: ChatMessage) => void) | null>(null);
 
   const onMessage = useCallback((data: Record<string, unknown>) => {
     const type = data.type as string;
@@ -131,6 +133,9 @@ export function useChatSocket(): UseChatSocketReturn {
         }
         return { ...prev, [cid]: [...existing, msg] };
       });
+      if (msg.sender && (msg.message_type === "text" || msg.message_type === "emote") && onNewMessageRef.current) {
+        onNewMessageRef.current(msg);
+      }
     } else if (type === "history") {
       const cid = data.channel_id as string;
       const msgs = (data.messages as ChatMessage[]) || [];
@@ -353,6 +358,7 @@ export function useChatSocket(): UseChatSocketReturn {
     clearFriendRemoved,
     readReceipt,
     clearReadReceipt,
+    onNewMessageRef,
     reconnectCount,
     sendMessage,
     sendEmote,

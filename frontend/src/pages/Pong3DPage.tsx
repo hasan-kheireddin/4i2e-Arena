@@ -147,6 +147,8 @@ export default function Pong3DPage() {
   const [iReady, setIReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
+  const [localPaused, setLocalPaused] = useState(false);
+  const localPausedRef = useRef(false);
   const mySlotRef = useRef<number | null>(null);
   const renderedOnlineStateRef = useRef<OnlineGameState | null>(null);
   const onlineLastRenderTsRef = useRef<number | null>(null);
@@ -268,6 +270,12 @@ export default function Pong3DPage() {
       deltaMs = Math.min(deltaMs, 250);
       localAccumulatorMsRef.current += deltaMs;
 
+      if (localPausedRef.current) {
+        localAccumulatorMsRef.current = 0;
+        rafId = requestAnimationFrame(animate);
+        return;
+      }
+
       let steps = 0;
       while (
         !gameOverRef.current
@@ -286,13 +294,14 @@ export default function Pong3DPage() {
         rafId = requestAnimationFrame(animate);
       }
     };
+    localPausedRef.current = localPaused;
     rafId = requestAnimationFrame(animate);
     return () => {
       cancelAnimationFrame(rafId);
       localLastFrameTsRef.current = null;
       localAccumulatorMsRef.current = 0;
     };
-  }, [mode, gameOver, gameStartTime, localNamesReady, simulateLocalStep]);
+  }, [mode, gameOver, gameStartTime, localNamesReady, simulateLocalStep, localPaused]);
 
   useEffect(() => {
     if (!gameOver || mode === 'online' || !gameStartTime || matchSavedRef.current) return;
@@ -963,6 +972,20 @@ export default function Pong3DPage() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {mode !== 'online' && (
+              <>
+                <button onClick={() => setLocalPaused((p) => !p)}
+                  className="px-4 py-1.5 rounded-lg text-sm font-medium"
+                  style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
+                  {localPaused ? 'Resume' : 'Pause'}
+                </button>
+                <button onClick={() => navigate('/games/playpage')}
+                  className="px-4 py-1.5 rounded-lg text-sm font-medium"
+                  style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+                  Exit
+                </button>
+              </>
+            )}
             {mode === 'online' && onlinePhase === 'playing' && (
               <>
                 <button

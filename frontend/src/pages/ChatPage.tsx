@@ -5,6 +5,7 @@ import { useBlocks } from "../context/BlockContext";
 import { useToast } from "../context/ToastContext";
 import InviteGamePicker from "../components/Chat/InviteGamePicker";
 import { useChatSocket } from "../components/Chat/useChatSocket";
+import { useChatEventEffects } from "../hooks/useChatEventEffects";
 import ChatWindow from "../components/Chat/ChatWindow";
 import FriendsPanel from "../components/Chat/FriendsPanel";
 import {
@@ -34,9 +35,6 @@ export default function ChatPage() {
   const [inviteTarget, setInviteTarget] = useState<string | null>(null);
   const [showInvitePicker, setShowInvitePicker] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "friends">("friends");
-  const [friendNotif, setFriendNotif] = useState<typeof wsFriendRequest>(null);
-
-
   const userId = user?.id || null;
 
   const {
@@ -45,8 +43,22 @@ export default function ChatPage() {
     onlineUserIds, friendRequest: wsFriendRequest, clearFriendRequest,
     friendAccepted, clearFriendAccepted,
     friendRemoved, clearFriendRemoved,
-    readReceipt, clearReadReceipt, reconnectCount,
+    readReceipt, clearReadReceipt,
+    reconnectCount,
   } = useChatSocket();
+
+  useChatEventEffects({
+    gameInvite, gameInviteAccepted, clearGameInviteAccepted,
+    friendAccepted, clearFriendAccepted,
+    friendRemoved, clearFriendRemoved,
+    wsFriendRequest, clearFriendRequest,
+    readReceipt, clearReadReceipt,
+    setChannels, setFriendships,
+    showToast,
+    setActiveView,
+    navigateToChat: (cid) => { setActiveChannel(cid); joinChannel(cid); setActiveView("chat"); },
+    navigateToProfile: (uid) => navigate(`/profile/${uid}`),
+  });
 
   const handleSelectChannel = useCallback(async (channelId: string) => {
     setActiveChannel(channelId);
@@ -101,74 +113,6 @@ export default function ChatPage() {
     refreshBlocks();
     refreshFriendships();
   }, [reconnectCount, refreshBlocks]);
-
-  useEffect(() => {
-    if (!friendAccepted) return;
-    setFriendships((prev) => prev.map((f) =>
-      f.id === friendAccepted.friendship_id ? { ...f, status: "accepted" as const } : f
-    ));
-    clearFriendAccepted();
-  }, [friendAccepted, clearFriendAccepted]);
-
-  useEffect(() => {
-    if (!friendRemoved) return;
-    setFriendships((prev) => prev.filter((f) => f.id !== friendRemoved.friendship_id));
-    clearFriendRemoved();
-  }, [friendRemoved, clearFriendRemoved]);
-
-  useEffect(() => {
-    if (wsFriendRequest) {
-      setFriendNotif(wsFriendRequest);
-      clearFriendRequest();
-      setActiveView("friends");
-      const name = wsFriendRequest.from_display_name || wsFriendRequest.from_username;
-      showToast({ message: `${name} sent you a friend request`, icon: "friend" });
-      setFriendships((prev) => {
-        if (prev.some((f) => f.other_user_id === wsFriendRequest.from_user_id)) return prev;
-        return [...prev, {
-          id: wsFriendRequest.friendship_id,
-          other_user_id: wsFriendRequest.from_user_id,
-          other_username: wsFriendRequest.from_username,
-          other_display_name: wsFriendRequest.from_display_name,
-          other_avatar: wsFriendRequest.from_avatar,
-          status: "pending" as const,
-          direction: "received" as const,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }];
-      });
-    }
-  }, [wsFriendRequest, clearFriendRequest]);
-
-  useEffect(() => {
-    if (!readReceipt) return;
-    setChannels((prev) => prev.map((ch) => {
-      if (ch.id === readReceipt.channel_id && ch.dm_partner) {
-        return { ...ch, dm_partner: { ...ch.dm_partner, read_until: readReceipt.read_until } };
-      }
-      return ch;
-    }));
-    clearReadReceipt();
-  }, [readReceipt, clearReadReceipt]);
-
-  const handleAcceptFriendNotif = async () => {
-    if (!friendNotif) return;
-    try {
-      const f = friendships.find((fr) => fr.other_user_id === friendNotif.from_user_id);
-      if (f) {
-        const updated = await acceptFriendRequest(f.id);
-        setFriendships((prev) => prev.map((fr) => fr.id === f.id ? { ...fr, ...updated } : fr));
-      }
-    } catch {}
-    setFriendNotif(null);
-  };
-
-  useEffect(() => {
-    if (!gameInviteAccepted) return;
-    const gtype = gameInviteAccepted.game_type === "pong3d" ? "pong3d" : gameInviteAccepted.game_type;
-    navigate(`/games/${gtype}?game_id=${gameInviteAccepted.game_id}`);
-    clearGameInviteAccepted();
-  }, [gameInviteAccepted, navigate, clearGameInviteAccepted]);
 
   useEffect(() => {
     if (activeChannel && !connectedChannels.includes(activeChannel)) {

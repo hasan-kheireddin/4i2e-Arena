@@ -5,10 +5,12 @@ type ToastIcon = "success" | "achievement" | "game" | "friend" | "xp";
 interface ToastProps {
   message: string;
   onClose: () => void;
+  onClick?: () => void;
   duration?: number;
   position?: "bottom-end" | "center";
-  tone?: "success" | "achievement";
+  tone?: "success" | "achievement" | "message";
   icon?: ToastIcon;
+  avatar?: string;
 }
 
 const ICONS: Record<ToastIcon, React.ReactNode> = {
@@ -49,10 +51,12 @@ const ICONS: Record<ToastIcon, React.ReactNode> = {
 export default function Toast({
   message,
   onClose,
+  onClick,
   duration = 2000,
   position = "bottom-end",
   tone = "success",
   icon,
+  avatar,
 }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(onClose, duration);
@@ -62,6 +66,8 @@ export default function Toast({
   const isCenter = position === "center";
   const backgroundColor = tone === "achievement"
     ? "rgba(17,24,39,0.95)"
+    : tone === "message"
+    ? "rgba(30,30,35,0.95)"
     : "var(--color-success)";
 
   return (
@@ -69,20 +75,33 @@ export default function Toast({
       className="fixed z-50 animate-slideUp"
       style={isCenter
         ? { inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
-        : { bottom: "1.5rem", insetInlineEnd: "1.5rem" }}
+        : { bottom: "5rem", insetInlineEnd: "1.5rem" }}
     >
       <div
+        onClick={onClick}
         className="px-4 py-3 rounded-lg shadow-lg flex items-center gap-3"
         style={{
           backgroundColor,
           color: "#ffffff",
+          cursor: onClick ? "pointer" : undefined,
           border: tone === "achievement" ? "1px solid rgba(250,204,21,0.75)" : "none",
           boxShadow: tone === "achievement"
             ? "0 16px 40px rgba(0,0,0,0.45)"
             : undefined,
         }}
       >
-        {ICONS[icon || (tone === "achievement" ? "achievement" : "success")]}
+        {avatar ? (
+          <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+        ) : icon ? (
+          ICONS[icon]
+        ) : tone !== "message" ? (
+          ICONS.success
+        ) : (
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+            style={{ backgroundColor: "var(--color-primary)" }}>
+            {message.charAt(0)?.toUpperCase()}
+          </div>
+        )}
         <span className="font-medium">{message}</span>
       </div>
     </div>
