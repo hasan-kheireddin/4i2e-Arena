@@ -109,7 +109,6 @@ export default function LoginPage() {
               setShowPassword={setShowPassword}
               handleChange={handleChange}
               handleSubmit={handleSubmit}
-              handle42Login={handle42Login}
               t={t}
             />
           </div>
@@ -145,7 +144,6 @@ export default function LoginPage() {
               setShowPassword={setShowPassword}
               handleChange={handleChange}
               handleSubmit={handleSubmit}
-              handle42Login={handle42Login}
               t={t}
             />
           </div>
@@ -167,7 +165,6 @@ interface FormProps {
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
-  handle42Login: () => void;
   t: TFunction;
 }
 
@@ -180,7 +177,6 @@ function FormContent({
   setShowPassword,
   handleChange,
   handleSubmit,
-  handle42Login,
   t,
 }: FormProps) {
   return (

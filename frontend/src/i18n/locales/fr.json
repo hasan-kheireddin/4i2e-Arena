@@ -136,7 +136,6 @@
     "password_digit": "Le mot de passe doit contenir au moins un chiffre",
     "password_special": "Le mot de passe doit contenir au moins un caractère spécial",
     "unexpected": "Une erreur inattendue s'est produite. Veuillez réessayer.",
-    "login_42_failed": "Échec de la connexion avec 42. Veuillez réessayer.",
     "reset_failed": "Échec de la réinitialisation du mot de passe. Le lien a peut-être expiré.",
     "missing_token": "Jeton temporaire manquant. Veuillez vous reconnecter.",
     "enter_recovery_code": "Veuillez entrer un code de récupération.",

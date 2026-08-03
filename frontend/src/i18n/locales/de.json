@@ -136,7 +136,6 @@
     "password_digit": "Passwort muss mindestens eine Zahl enthalten",
     "password_special": "Passwort muss mindestens ein Sonderzeichen enthalten",
     "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
-    "login_42_failed": "Anmeldung mit 42 fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "reset_failed": "Passwort zurücksetzen fehlgeschlagen. Der Link ist möglicherweise abgelaufen.",
     "missing_token": "Temporäres Token fehlt. Bitte melden Sie sich erneut an.",
     "enter_recovery_code": "Bitte geben Sie einen Wiederherstellungscode ein.",

@@ -12,7 +12,6 @@
     "no_account": "Don't have an account?",
     "sign_up": "Register",
     "or": "or",
-    "42": "Log in with 42",
     "forgot": "Forgot password?",
     "back_home": "Back to Home",
     "hero_image_alt": "Sports arena illustration"
@@ -136,7 +135,6 @@
     "password_digit": "Password must contain at least one digit",
     "password_special": "Password must contain at least one special character",
     "unexpected": "An unexpected error occurred. Please try again.",
-    "login_42_failed": "Failed to initiate 42 login. Please try again.",
     "reset_failed": "Failed to reset password. The link may have expired.",
     "missing_token": "Missing temporary token. Please log in again.",
     "enter_recovery_code": "Please enter a recovery code",
