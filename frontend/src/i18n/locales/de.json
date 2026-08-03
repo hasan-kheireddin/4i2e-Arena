@@ -118,13 +118,6 @@
     "sending": "Senden...",
     "resetting": "Zurücksetzen..."
   },
-  "oauth": {
-    "completing": "Authentifizierung wird abgeschlossen...",
-    "auth_failed_title": "Authentifizierung fehlgeschlagen",
-    "auth_failed": "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
-    "invalid_callback": "Ungültige Callback-Parameter. Autorisierungscode oder Status fehlt.",
-    "back_to_login": "Zurück zur Anmeldung"
-  },
   "errors": {
     "email_required": "E-Mail ist erforderlich",
     "email_invalid": "E-Mail ist ungültig",
@@ -191,8 +184,6 @@
       "two_factor": "Zwei-Faktor-Authentifizierung",
       "two_factor_desc": "Fügen Sie Ihrem Konto eine zusätzliche Sicherheitsebene hinzu",
       "authenticator_app": "Authentifizierungs-App",
-      "oauth_badge": "42 OAuth",
-      "oauth_info": "Dieses Konto verwendet 42 OAuth. Passwort-Anmeldung und Passwortänderungen sind deaktiviert.",
       "enabled": "Aktiviert",
       "enabled_on": "Aktiviert am {{date}}",
       "disabled": "Deaktiviert",
@@ -678,9 +669,6 @@
     "collect_account_username": "Benutzername",
     "collect_account_password": "Passwort (sicher gehasht, niemals im Klartext gespeichert)",
     
-    "collect_oauth_title": "Anmeldung durch Dritte",
-    "collect_oauth_text": "Wenn Sie sich mit Ihrem 42-Konto anmelden, erhalten wir grundlegende Profil- und Kontoinformationen von 42, die zur Authentifizierung erforderlich sind.",
-    
     "collect_device_title": "Geräte- und Sicherheitsinformationen",
     "collect_device_text": "Wir sammeln Folgendes zu Sicherheits- und Analysezwecken:",
     "collect_device_device": "Geräteinformationen",
@@ -710,7 +698,6 @@
     "sharing_text": "Fire Arena verkauft keine personenbezogenen Daten. Begrenzte Daten können wir nur weitergeben an:",
     "sharing_vendors": "Infrastruktur- und Hosting-Anbieter, die für den Betrieb des Dienstes erforderlich sind",
     "sharing_delivery": "E-Mail-Dienstleister für Verifizierungs- und Passwort-Zurücksetzen-Nachrichten",
-    "sharing_affiliates": "OAuth-Identitätsanbieter, die Sie freiwillig verwenden, etwa 42 School",
     "sharing_crm": "Anbieter für Sicherheit, Missbrauchsprävention oder operativen Support",
     "sharing_ads": "Behörden, wenn dies gesetzlich vorgeschrieben ist oder zum Schutz des Dienstes erforderlich ist",
     "sharing_note": "Wir verkaufen keine personenbezogenen Daten und geben sie nicht zu Werbezwecken weiter. Jede begrenzte Offenlegung dient ausschließlich dem Betrieb, der Absicherung oder der rechtlichen Compliance des Dienstes.",
@@ -834,11 +821,6 @@
     "ip_license": "Sie erhalten eine beschränkte, persönliche und nicht-kommerzielle Lizenz zur Nutzung der Plattform ausschließlich zum Spielen.",
     "ip_no_copy": "Code oder Design der Plattform dürfen nicht kopiert, verteilt oder wiederverwendet werden.",
     "ip_no_reverse": "Reverse Engineering ist nicht erlaubt.",
-
-    "third_party_title": "Drittanbieter-Dienste",
-    "third_party_42": "Sie können sich mit einem 42-Konto anmelden.",
-    "third_party_not_responsible": "Fire Arena ist nicht verantwortlich für Ausfälle oder Probleme bei 42.",
-    "third_party_refer": "Bitte beachten Sie die eigenen Nutzungs- und Datenschutzrichtlinien von 42.",
 
     "availability_title": "Verfügbarkeit",
     "availability_modify": "Fire Arena kann den Dienst jederzeit ändern, aussetzen oder einstellen.",

@@ -129,24 +129,6 @@ def track_registration(
     )
 
 
-def track_oauth_login(
-    user_id: UUID | int,
-    *,
-    provider: str,
-    ip_address: Optional[str] = None,
-    user_agent: str = "",
-) -> ActivityEvent:
-    """Record an OAuth provider login."""
-    return track_event(
-        user_id=user_id,
-        category=EventCategory.AUTH,
-        event_type="oauth_login",
-        metadata={"provider": provider},
-        ip_address=ip_address,
-        user_agent=user_agent,
-    )
-
-
 def track_2fa_verified(
     user_id: UUID | int,
     *,

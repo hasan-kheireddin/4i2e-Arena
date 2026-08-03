@@ -59,13 +59,6 @@ export default function PrivacyPolicyPage() {
           </div>
 
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">{t('privacy_policy.collect_oauth_title')}</h3>
-            <p style={{ color: 'var(--color-text-secondary)' }} className="mb-3">
-              {t('privacy_policy.collect_oauth_text')}
-            </p>
-          </div>
-
-          <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">{t('privacy_policy.collect_device_title')}</h3>
             <p style={{ color: 'var(--color-text-secondary)' }} className="mb-3">
               {t('privacy_policy.collect_device_text')}
@@ -122,7 +115,6 @@ export default function PrivacyPolicyPage() {
           <ul style={{ color: 'var(--color-text-secondary)' }} className="list-disc list-inside space-y-2 ml-2">
             <li>{t('privacy_policy.sharing_vendors')}</li>
             <li>{t('privacy_policy.sharing_delivery')}</li>
-            <li>{t('privacy_policy.sharing_affiliates')}</li>
             <li>{t('privacy_policy.sharing_crm')}</li>
             <li>{t('privacy_policy.sharing_ads')}</li>
           </ul>

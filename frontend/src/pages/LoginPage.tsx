@@ -8,7 +8,7 @@ import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
-import { clearPendingTwoFA, login as apiLogin, isTwoFARequired, oauthInitiate } from "../services/auth";
+import { clearPendingTwoFA, login as apiLogin, isTwoFARequired } from "../services/auth";
 import { clearTokens } from "../services/api";
 import type { ApiError } from "../services/api";
 
@@ -81,17 +81,6 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handle42Login = async () => {
-    try {
-      clearPendingTwoFA();
-      const { authorize_url } = await oauthInitiate("42");
-      sessionStorage.setItem("oauth_provider", "42");
-      window.location.href = authorize_url;
-    } catch {
-      setServerError(t("errors.login_42_failed"));
     }
   };
 
@@ -225,26 +214,6 @@ function FormContent({
           {serverError}
         </div>
       )}
-
-      {/* 42 OAuth button */}
-      <Button
-        type="button"
-        onClick={handle42Login}
-        variant="secondary"
-        className="mb-6 w-full"
-        icon={<span className="text-lg font-bold leading-none">42</span>}
-      >
-        {t("login.42", "Log in with 42")}
-      </Button>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--color-border)" }} />
-        <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          {t("login.or", "Or")}
-        </span>
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--color-border)" }} />
-      </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">

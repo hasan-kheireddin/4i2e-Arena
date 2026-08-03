@@ -128,15 +128,12 @@ def _issue_temp_token(
     user: User,
     *,
     auth_method: str,
-    provider: str = "",
 ) -> str:
     """Issue a short-lived token that gates final login behind TOTP."""
     temp_token = AccessToken.for_user(user)
     temp_token.set_exp(lifetime=timezone.timedelta(minutes=5))
     temp_token["twofa_pending"] = True
     temp_token["auth_method"] = auth_method
-    if provider:
-        temp_token["oauth_provider"] = provider
     return str(temp_token)
 
 

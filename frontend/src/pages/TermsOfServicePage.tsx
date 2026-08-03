@@ -43,12 +43,6 @@ export default function TermsOfServicePage() {
 
   const ipItems = ["ip_owned", "ip_no_copy", "ip_no_reverse"] as const;
 
-  const thirdPartyItems = [
-    "third_party_42",
-    "third_party_not_responsible",
-    "third_party_refer",
-  ] as const;
-
   return (
     <div style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text-primary)" }}>
       <div
@@ -145,15 +139,6 @@ export default function TermsOfServicePage() {
           <h2 className="text-2xl font-bold mb-4">{t("terms_of_service.ip_title")}</h2>
           <ul style={{ color: "var(--color-text-secondary)" }} className="list-disc list-inside space-y-2 ml-2">
             {ipItems.map((item) => (
-              <li key={item}>{t(`terms_of_service.${item}`)}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4">{t("terms_of_service.third_party_title")}</h2>
-          <ul style={{ color: "var(--color-text-secondary)" }} className="list-disc list-inside space-y-2 ml-2">
-            {thirdPartyItems.map((item) => (
               <li key={item}>{t(`terms_of_service.${item}`)}</li>
             ))}
           </ul>

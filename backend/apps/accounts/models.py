@@ -17,7 +17,7 @@ class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)  # enforce unique emails
     display_name = models.CharField(unique=True, max_length=50, blank=True, default="")
-    avatar_url = models.URLField(max_length=500, blank=True, default="")
+    avatar_url = models.URLField(max_length=500, blank=True, default="") # usage where
     preferred_language = models.CharField(
         max_length=5,
         choices=[
@@ -31,9 +31,9 @@ class User(AbstractUser):
     xp = models.PositiveIntegerField(default=0, db_index=True)
     level = models.PositiveIntegerField(default=1, db_index=True)
     is_2fa_enabled = models.BooleanField(default=False)
-    last_activity = models.DateTimeField(default=timezone.now, db_index=True)
+    last_activity = models.DateTimeField(default=timezone.now, db_index=True)# usage where
 
-    # Use email as the login field alongside username
+    # Use email as the login field alongside username # understand this part
     USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["email"]
 
@@ -68,17 +68,6 @@ class User(AbstractUser):
             self.display_name = self.username
 
         super().save(*args, **kwargs)
-
-    @property
-    def is_oauth_user(self) -> bool:
-        """True when the account is linked to at least one OAuth provider."""
-        return self.oauth_accounts.exists()
-
-    @property
-    def is_oauth_only(self) -> bool:
-        """True when OAuth is linked and no password credential exists."""
-        return self.is_oauth_user and not self.has_usable_password()
-
 
 class PendingRegistration(models.Model):
     """
@@ -135,40 +124,6 @@ class PendingRegistration(models.Model):
     def issue_code(self) -> None:
         self.code = str(random.randint(100000, 999999))
         self.expires_at = timezone.now() + timezone.timedelta(minutes=15)
-
-
-class OAuthAccount(models.Model):
-    """
-    Links a third-party OAuth provider (42) to a local User.
-
-    A user may have multiple OAuth accounts (one per provider).
-    The (provider, provider_user_id) pair is unique so the same external
-    account can never be linked twice.
-    """
-
-    PROVIDER_CHOICES = [
-        ("42", "42 School"),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="oauth_accounts",
-    )
-    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
-    provider_user_id = models.CharField(max_length=100)
-    access_token = models.TextField(blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "oauth_accounts"
-        unique_together = [("provider", "provider_user_id")]
-        verbose_name = "OAuth Account"
-        verbose_name_plural = "OAuth Accounts"
-
-    def __str__(self):
-        return f"{self.provider} – {self.user.username}"
 
 
 class TOTPDevice(models.Model):

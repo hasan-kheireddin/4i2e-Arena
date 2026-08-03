@@ -11,8 +11,6 @@
 #   POST   /api/accounts/me/change-password/        → Change password
 #   POST   /api/accounts/password-reset/            → Send password reset email
 #   POST   /api/accounts/password-reset/confirm/    → Confirm password reset
-#   GET    /api/accounts/oauth/<provider>/initiate/ → Get OAuth redirect URL
-#   POST   /api/accounts/oauth/<provider>/callback/ → Handle OAuth callback
 #   POST   /api/accounts/2fa/setup/                 → Generate TOTP secret + QR code
 #   POST   /api/accounts/2fa/verify/                → Verify setup code and enable 2FA
 #   POST   /api/accounts/2fa/login-verify/          → Verify TOTP during login
@@ -23,7 +21,7 @@
 
 from django.urls import path
 from django.urls import path, re_path
-from . import oauth_views, twofa_views, views
+from . import twofa_views, views
 
 urlpatterns = [
     # Auth
@@ -50,17 +48,6 @@ urlpatterns = [
     # Password reset
     path("password-reset/", views.PasswordResetRequestView.as_view(), name="password-reset"),
     path("password-reset/confirm/", views.PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
-    # OAuth 2.0
-    path(
-        "oauth/<str:provider>/initiate/",
-        oauth_views.OAuthInitiateView.as_view(),
-        name="oauth-initiate",
-    ),
-    path(
-        "oauth/<str:provider>/callback/",
-        oauth_views.OAuthCallbackView.as_view(),
-        name="oauth-callback",
-    ),
     # Two-Factor Authentication
     path("2fa/setup/", twofa_views.TwoFactorSetupView.as_view(), name="2fa-setup"),
     path("2fa/verify/", twofa_views.TwoFactorConfirmView.as_view(), name="2fa-verify-setup"),

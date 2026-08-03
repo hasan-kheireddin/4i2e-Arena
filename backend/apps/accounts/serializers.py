@@ -19,8 +19,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
     Used in auth responses and profile endpoints.
     """
 
-    is_oauth_user = serializers.ReadOnlyField()
-    is_oauth_only = serializers.ReadOnlyField()
     friend_count = serializers.SerializerMethodField()
     blocked_by_target = serializers.SerializerMethodField()
 
@@ -36,8 +34,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "xp",
             "level",
             "is_2fa_enabled",
-            "is_oauth_user",
-            "is_oauth_only",
             "last_activity",
             "date_joined",
             "friend_count",
@@ -141,16 +137,6 @@ class LoginSerializer(serializers.Serializer):
                 user_obj = User.objects.get(username=username_or_email)
             except User.DoesNotExist:
                 user_obj = None
-
-        if user_obj is not None and user_obj.is_oauth_only:
-            raise serializers.ValidationError(
-                {
-                    "detail": (
-                        "This account uses 42 OAuth sign-in. "
-                        "Use the 42 login button."
-                    )
-                }
-            )
 
         user = authenticate(username=username_or_email, password=password)
 

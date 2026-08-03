@@ -16,7 +16,6 @@ import DarkModeToggle from "./components/Darkmodetoggle";
 import TicTacToePage from "./pages/Tictactoepage";
 import PongPage from "./pages/PongPage";
 import Pong3DPage from "./pages/Pong3DPage";
-import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import NotFoundPage from "./pages/Notfoundpage";
 import LandingPage from "./pages/LandingPage";
 import PlayPage from "./pages/PlayPage";
@@ -50,7 +49,6 @@ function App() {
           <Route path="/verify-2fa" element={<Verify2FAPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 

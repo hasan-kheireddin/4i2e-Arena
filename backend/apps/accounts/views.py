@@ -310,12 +310,6 @@ class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        if request.user.is_oauth_only:
-            return Response(
-                {"detail": "Password changes are disabled for 42 OAuth accounts."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         serializer = ChangePasswordSerializer(
             data=request.data,
             context={"request": request},
@@ -422,11 +416,6 @@ class PasswordResetRequestView(APIView):
 
         try:
             user = User.objects.get(email__iexact=email, is_active=True)
-            if user.is_oauth_only:
-                return Response(
-                    {"detail": "If that email exists, a reset link has been sent."},
-                    status=status.HTTP_200_OK,
-                )
             token = EmailVerificationToken.create_reset_token(user)
             send_password_reset_email(
                 user,
@@ -476,14 +465,6 @@ class PasswordResetConfirmView(APIView):
         if token.is_expired:
             return Response(
                 {"detail": "This reset link has expired. Please request a new one."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if token.user.is_oauth_only:
-            token.used = True
-            token.save(update_fields=["used"])
-            return Response(
-                {"detail": "Password reset is disabled for 42 OAuth accounts."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

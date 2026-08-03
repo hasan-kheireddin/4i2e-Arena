@@ -286,7 +286,7 @@ CACHES = (
 )
 
 # ---------------------------------------------------------------------------
-# Sessions (Redis-backed for reliability across OAuth redirects)
+# Sessions
 # ---------------------------------------------------------------------------
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
@@ -295,13 +295,6 @@ SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
-
-# ---------------------------------------------------------------------------
-# OAuth — 42 School
-# (oauth_providers.py reads these directly from os.environ at runtime)
-# ---------------------------------------------------------------------------
-OAUTH_42_CLIENT_ID = config("OAUTH_42_CLIENT_ID", default="")
-OAUTH_42_CLIENT_SECRET = config("OAUTH_42_CLIENT_SECRET", default="")
 
 # ---------------------------------------------------------------------------
 # Email

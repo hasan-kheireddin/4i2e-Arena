@@ -118,13 +118,6 @@
     "sending": "Sending...",
     "resetting": "Resetting..."
   },
-  "oauth": {
-    "completing": "Completing authentication...",
-    "auth_failed_title": "Authentication Failed",
-    "auth_failed": "Authentication failed. Please try again.",
-    "invalid_callback": "Invalid callback parameters. Missing authorization code or state.",
-    "back_to_login": "Back to Login"
-  },
   "errors": {
     "email_required": "Email is required",
     "email_invalid": "Email is invalid",
@@ -191,8 +184,6 @@
       "two_factor": "Two-Factor Authentication",
       "two_factor_desc": "Add an extra layer of security to your account",
       "authenticator_app": "Authenticator App",
-      "oauth_badge": "42 OAuth",
-      "oauth_info": "This account uses 42 OAuth. Password login and password changes are disabled.",
       "enabled": "Enabled",
       "enabled_on": "Enabled on {{date}}",
       "disabled": "Disabled",
@@ -677,9 +668,6 @@
     "collect_account_username": "Username",
     "collect_account_password": "Password (securely hashed, never stored in plain text)",
     
-    "collect_oauth_title": "Third-Party Login",
-    "collect_oauth_text": "If you log in using your 42 account, we receive basic profile and account information from 42 necessary for authentication.",
-    
     "collect_device_title": "Device & Security Information",
     "collect_device_text": "We collect the following for security and analytics purposes:",
     "collect_device_device": "Device information",
@@ -709,7 +697,6 @@
     "sharing_text": "Fire Arena does not sell personal data. We may share limited data only with:",
     "sharing_vendors": "Infrastructure and hosting providers needed to run the service",
     "sharing_delivery": "Email delivery providers for verification and password-reset messages",
-    "sharing_affiliates": "OAuth identity providers you choose to use, such as 42 School",
     "sharing_crm": "Security, abuse-prevention, or operational support providers",
     "sharing_ads": "Legal authorities when required by law or to protect the service",
     "sharing_note": "We do not sell personal data or share it for advertising. Any limited disclosure is only for operating, securing, or legally complying with the service.",
@@ -833,11 +820,6 @@
     "ip_license": "You are granted a limited, personal, non-commercial license to use the platform for gameplay only.",
     "ip_no_copy": "You may not copy, distribute, reproduce, or reuse any part of the Fire Arena platform, code, design, or assets.",
     "ip_no_reverse": "Reverse engineering, decompiling, or disassembling the platform is strictly prohibited.",
-    
-    "third_party_title": "Third-Party Services and Accounts",
-    "third_party_42": "Fire Arena allows login via 42 School accounts. By using this feature, you agree to 42's terms and privacy policies.",
-    "third_party_not_responsible": "Fire Arena is not responsible for outages, security issues, or changes to the 42 service.",
-    "third_party_refer": "For issues related to 42 login, please contact 42 directly and refer to their support.",
     
     "availability_title": "Service Availability",
     "availability_modify": "Fire Arena may modify, suspend, or discontinue the service (or any part of it) at any time without notice.",

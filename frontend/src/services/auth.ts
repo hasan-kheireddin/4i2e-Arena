@@ -10,8 +10,6 @@ export interface User {
   xp: number;
   level: number;
   is_2fa_enabled: boolean;
-  is_oauth_user: boolean;
-  is_oauth_only: boolean;
   last_activity: string | null;
   date_joined: string;
   friend_count: number;
@@ -50,8 +48,6 @@ export type LoginResponse = AuthResponse | TwoFARequired;
 export function isTwoFARequired(res: LoginResponse): res is TwoFARequired {
   return "requires_2fa" in res && res.requires_2fa === true;
 }
-
-export type OAuthCallbackResponse = AuthResponse | TwoFARequired;
 
 export interface TwoFASetupResponse {
   secret: string;
@@ -235,39 +231,6 @@ export async function refreshToken(refresh: string): Promise<Tokens> {
   });
   setTokens(tokens.access, tokens.refresh);
   return tokens;
-}
-
-/** GET /api/accounts/oauth/<provider>/initiate/ */
-export async function oauthInitiate(
-  provider: string,
-  link = false,
-): Promise<{ authorize_url: string }> {
-  const query = link ? "?link=true" : "";
-  return apiFetch(`${AUTH}/oauth/${provider}/initiate/${query}`, {
-    auth: link,
-    withCredentials: true,
-  });
-}
-
-/** POST /api/accounts/oauth/<provider>/callback/ */
-export async function oauthCallback(
-  provider: string,
-  data: { code: string; state: string },
-): Promise<OAuthCallbackResponse> {
-  const res = await apiFetch<OAuthCallbackResponse>(`${AUTH}/oauth/${provider}/callback/`, {
-    method: "POST",
-    body: data,
-    auth: false,
-    withCredentials: true,
-  });
-  if (isTwoFARequired(res)) {
-    clearTokens();
-    storePendingTwoFA(res.temp_token, res.user_id);
-  } else {
-    clearPendingTwoFA();
-    setTokens(res.tokens.access, res.tokens.refresh);
-  }
-  return res;
 }
 
 /** POST /api/accounts/2fa/setup/  (authenticated) */

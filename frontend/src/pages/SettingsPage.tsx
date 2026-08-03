@@ -11,7 +11,6 @@ import { Spinner } from '../components/ui/Spinner';
 import { useAuth } from '../context/AuthContext';
 import {
   changePassword,
-  oauthInitiate,
   regenerateTwoFARecoveryCodes,
   twoFADisable,
   twoFAStatus,
@@ -37,8 +36,6 @@ export default function SettingsPage() {
   // Profile state — read-only fields from server
   const username = user?.username ?? '';
   const email = user?.email ?? '';
-  const isOAuthUser = user?.is_oauth_user ?? false;
-  const isOAuthOnly = user?.is_oauth_only ?? false;
 
   // Editable profile fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
@@ -189,18 +186,6 @@ export default function SettingsPage() {
       setTwoFAError(apiErr.detail ?? t('settings.security.load_status_failed'));
     } finally {
       setRecoveryLoading(false);
-    }
-  };
-
-  const handleLink42OAuth = async () => {
-    setSaveError(null);
-    try {
-      const { authorize_url } = await oauthInitiate('42', true);
-      sessionStorage.setItem('oauth_provider', '42');
-      window.location.href = authorize_url;
-    } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setSaveError(apiErr.detail ?? 'Unable to start 42 account linking.');
     }
   };
 
@@ -366,54 +351,34 @@ export default function SettingsPage() {
                 <h2 className="mb-4 text-base font-semibold text-primary">
                   {t('settings.security.change_password')}
                 </h2>
-                {isOAuthOnly ? (
-                  <div className="rounded-xl border border-info/30 bg-info/10 p-4 text-sm text-secondary">
-                    <div className="mb-2">
-                      <Badge variant="info">{t('settings.security.oauth_badge')}</Badge>
-                    </div>
-                    {t('settings.security.oauth_info')}
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-4">
-                      <Input
-                        label={t('settings.security.current_password')}
-                        type="password"
-                        placeholder="••••••••"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                      />
-                      <Input
-                        label={t('settings.security.new_password')}
-                        type="password"
-                        placeholder="••••••••"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-                      <Input
-                        label={t('settings.security.confirm_password')}
-                        type="password"
-                        placeholder="••••••••"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </div>
-                    {passwordError && <p className="mt-3 text-sm text-danger">{passwordError}</p>}
-                    {passwordSuccess && <p className="mt-3 text-sm text-success">{passwordSuccess}</p>}
-                    <Button className="mt-4" onClick={handleChangePassword} loading={passwordLoading}>
-                      {t('settings.security.update_password')}
-                    </Button>
-                    {!isOAuthUser && (
-                      <Button
-                        className="mt-4 ms-3"
-                        variant="secondary"
-                        onClick={() => { void handleLink42OAuth(); }}
-                      >
-                        Link 42 OAuth
-                      </Button>
-                    )}
-                  </>
-                )}
+                <div className="space-y-4">
+                  <Input
+                    label={t('settings.security.current_password')}
+                    type="password"
+                    placeholder="••••••••"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                  <Input
+                    label={t('settings.security.new_password')}
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  <Input
+                    label={t('settings.security.confirm_password')}
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+                {passwordError && <p className="mt-3 text-sm text-danger">{passwordError}</p>}
+                {passwordSuccess && <p className="mt-3 text-sm text-success">{passwordSuccess}</p>}
+                <Button className="mt-4" onClick={handleChangePassword} loading={passwordLoading}>
+                  {t('settings.security.update_password')}
+                </Button>
               </SurfaceCard>
 
               <SurfaceCard className="p-6">
