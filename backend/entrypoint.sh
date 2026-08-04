@@ -37,6 +37,10 @@ echo "Applying committed migrations..."
 python manage.py migrate --noinput
 echo "Migrations applied."
 
+echo "Synchronizing achievement catalogue..."
+python manage.py seed_achievements --update
+echo "Achievement catalogue synchronized."
+
 echo "Collecting static files..."
 python manage.py collectstatic --noinput 2>/dev/null || true
 echo "Static files collected."

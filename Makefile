@@ -40,6 +40,9 @@ status:
 migrate: ## Run Django database migrations
 	docker compose exec backend python manage.py migrate
 
+seed-achievements: ## Synchronize the achievement catalogue
+	docker compose exec backend python manage.py seed_achievements --update
+
 makemigrations: ## Generate Django migrations after model changes
 	docker compose exec backend python manage.py makemigrations
 
@@ -77,6 +80,6 @@ prune: ## Remove all unused Docker resources
 	@echo "Docker system pruned."
 
 .PHONY: help setup up down build rebuild logs \
-        migrate makemigrations shell \
+        migrate seed-achievements makemigrations shell \
         lint clean fclean ssl-generate \
         db-shell redis-cli
