@@ -51,7 +51,9 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production-very-secret-key}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-False}
       - PUBLIC_APP_ORIGIN=${PUBLIC_APP_ORIGIN:-https://localhost:${HTTPS_PORT:-8443}}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend,host.docker.internal}
+      # Accept the current LAN address even when DHCP changes it. Nginx is the
+      # only published web entry point; CORS remains restricted separately.
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS:-False}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS-}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS-}

@@ -14,7 +14,10 @@ from config.channelsmiddleware import JWTAuthMiddleware  # noqa: E402
 from config.routing import websocket_urlpatterns  # noqa: E402
 
 websocket_app = JWTAuthMiddleware(URLRouter(websocket_urlpatterns))
-if settings.CORS_ALLOW_ALL_ORIGINS:
+# In dynamic-host/LAN mode ALLOWED_HOSTS is deliberately "*", because the
+# machine's DHCP address can change. Use the matching Channels validator so
+# WebSockets work through the same current browser host as HTTP requests.
+if settings.CORS_ALLOW_ALL_ORIGINS or settings.ALLOWED_HOSTS == ["*"]:
     websocket_app = AllowedHostsOriginValidator(websocket_app)
 else:
     websocket_app = OriginValidator(
