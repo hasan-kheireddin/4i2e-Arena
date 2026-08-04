@@ -35,5 +35,13 @@ class CookieOrHeaderJWTAuthentication(JWTAuthentication):
             if not origin or origin not in allowed:
                 raise AuthenticationFailed("Untrusted request origin.")
 
-        validated_token = self.get_validated_token(raw_token)
-        return self.get_user(validated_token), validated_token
+        try:
+            validated_token = self.get_validated_token(raw_token)
+            return self.get_user(validated_token), validated_token
+        except AuthenticationFailed:
+            # Cookies are ambient credentials and can outlive the database
+            # they were issued against (for example after a local DB reset).
+            # Treat a stale/invalid cookie as anonymous so AllowAny endpoints
+            # such as register and login remain reachable. An explicit invalid
+            # Authorization header is still rejected by the branch above.
+            return None
