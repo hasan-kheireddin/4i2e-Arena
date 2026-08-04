@@ -12,26 +12,20 @@ import {
 type StatusFilter = "all" | "unlocked" | "locked";
 
 const TIER_STYLES: Record<string, { color: string; bg: string; border: string }> = {
-  bronze: { color: "#d97706", bg: "rgba(217,119,6,0.12)", border: "rgba(217,119,6,0.35)" },
-  silver: { color: "#94a3b8", bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.35)" },
-  gold: { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.35)" },
-  platinum: { color: "#06b6d4", bg: "rgba(6,182,212,0.12)", border: "rgba(6,182,212,0.35)" },
+  common: { color: "#94a3b8", bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.35)" },
+  rare: { color: "#3b82f6", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.35)" },
+  epic: { color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.35)" },
+  legendary: { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.35)" },
 };
 
 function categoryGlyph(category: Achievement["category"]): string {
   switch (category) {
-    case "wins":
+    case "pong":
       return "M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3z";
-    case "games":
+    case "tictactoe":
       return "M7 8h10a2 2 0 012 2v4a2 2 0 01-2 2H7a2 2 0 01-2-2v-4a2 2 0 012-2zm1 2v4m8-4v4m-9 0h10";
-    case "streaks":
-      return "M13 2L6 13h5l-1 9 8-12h-5l0-8z";
-    case "skill":
+    case "level":
       return "M12 3l8 4v5c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V7l8-4z";
-    case "social":
-      return "M8 12a3 3 0 100-6 3 3 0 000 6zm8 1a2.5 2.5 0 10-2.5-2.5A2.5 2.5 0 0016 13zM3.5 19a4.5 4.5 0 019 0m2 0a3.5 3.5 0 017 0";
-    case "milestone":
-      return "M5 4h14v3H5V4zm2 3h10l-1 11H8L7 7zm2-3V2h6v2";
     default:
       return "M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3z";
   }
@@ -114,8 +108,8 @@ export default function AchievementsPage() {
   const tierEntries = useMemo(
     () =>
       stats
-        ? Object.entries(stats.by_tier).sort(([a], [b]) => {
-            const order = ["bronze", "silver", "gold", "platinum"];
+        ? Object.entries(stats.by_rarity).sort(([a], [b]) => {
+            const order = ["common", "rare", "epic", "legendary"];
             return order.indexOf(a) - order.indexOf(b);
           })
         : [],
@@ -230,13 +224,13 @@ export default function AchievementsPage() {
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {tierEntries.map(([tier, data]) => {
-              const style = TIER_STYLES[tier] ?? TIER_STYLES.bronze;
+              const style = TIER_STYLES[tier] ?? TIER_STYLES.common;
               const percentage = data.total > 0 ? (data.unlocked / data.total) * 100 : 0;
               return (
                 <div key={tier} className="rounded-lg p-3" style={{ border: "1px solid var(--color-border)" }}>
                   <div className="mb-1 flex items-center justify-between text-xs">
                     <span className="font-semibold" style={{ color: style.color }}>
-                      {t(`achievements_page.tier.${tier}`)}
+                      {t(`achievements_page.rarity.${tier}`)}
                     </span>
                     <span style={{ color: "var(--color-text-muted)" }}>
                       {data.unlocked}/{data.total}
@@ -269,7 +263,7 @@ export default function AchievementsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredAchievements.map((achievement) => {
-              const tierStyle = TIER_STYLES[achievement.tier] ?? TIER_STYLES.bronze;
+              const tierStyle = TIER_STYLES[achievement.rarity] ?? TIER_STYLES.common;
               const progress = Math.max(0, Math.min(100, Number(achievement.progress_percentage ?? 0)));
               const unlockedOn = achievement.unlocked_at
                 ? new Date(achievement.unlocked_at).toLocaleDateString(i18n.resolvedLanguage || undefined)
@@ -305,7 +299,7 @@ export default function AchievementsPage() {
                       className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                       style={{ backgroundColor: tierStyle.bg, color: tierStyle.color }}
                     >
-                      {t(`achievements_page.tier.${achievement.tier}`)}
+                      {t(`achievements_page.rarity.${achievement.rarity}`)}
                     </span>
                   </div>
 

@@ -63,17 +63,23 @@ class NotificationConsumer(BaseConsumer):
                 "key": "first_win",
                 "name": "First Blood",
                 "description": "Win your first game.",
-                "tier": "bronze",
+                "rarity": "common",
                 "icon": "sword",
                 "xp_reward": 50,
                 "unlocked_at": "2026-03-03T12:00:00Z"
             }
         }
         """
+        achievement = event.get("achievement", {})
         await self.send_json({
             "type": "achievement_unlocked",
-            "achievement": event.get("achievement", {}),
+            "achievement": achievement,
         })
+        logger.info(
+            "Achievement notification delivered: user=%s achievement=%s",
+            self.user.pk,
+            achievement.get("key"),
+        )
 
     async def xp_gained(self, event: dict[str, Any]) -> None:
         """

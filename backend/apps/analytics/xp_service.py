@@ -27,9 +27,6 @@ XP_FORFEIT_WIN: int = 15
 # Draw (TTT) — both players get a small bonus
 XP_DRAW_BONUS: int = 10
 
-# AI game modifier (reduced XP for AI games)
-AI_XP_MULTIPLIER: float = 0.5
-
 # Streak bonuses — extra XP on top of the win bonus
 STREAK_BONUSES: dict[int, int] = {
     3: 10,   # 3-game streak bonus
@@ -296,14 +293,6 @@ def _game_specific_xp(
     return 0
 
 
-def _apply_ai_modifier(total: int, breakdown: dict[str, int]) -> int:
-    adjusted_total = int(total * AI_XP_MULTIPLIER)
-    ai_reduction = total - adjusted_total
-    if ai_reduction > 0:
-        breakdown["ai_modifier"] = -ai_reduction
-    return adjusted_total
-
-
 def _calculate_game_xp(
     *,
     session: GameSession,
@@ -318,7 +307,6 @@ def _calculate_game_xp(
     breakdown: dict[str, int] = {}
     total = 0
 
-    is_ai_game = session.ai is not None
     is_forfeit = session.finish_reason in (
         FinishReason.FORFEIT,
         FinishReason.DISCONNECT_FORFEIT,
@@ -343,10 +331,6 @@ def _calculate_game_xp(
     # We'll read the streak from the achievement progress counter
     # Note: streak bonuses are applied in the async path, not here
     # (see _add_streak_bonus below)
-
-    # 5) AI game modifier — reduce XP for AI games
-    if is_ai_game:
-        total = _apply_ai_modifier(total, breakdown)
 
     return max(total, 0), breakdown
 

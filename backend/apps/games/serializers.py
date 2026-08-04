@@ -12,7 +12,7 @@ class StatsQuerySerializer(serializers.Serializer):
         allow_null=True,
     )
     mode = serializers.ChoiceField(
-        choices=["pvp", "pva", "local"],
+        choices=["pvp", "local"],
         required=False,
         allow_null=True,
     )
@@ -49,7 +49,7 @@ class CreateLocalMatchSerializer(serializers.Serializer):
 
     game_type = serializers.ChoiceField(choices=["pong", "tictactoe"])
     game_mode = serializers.ChoiceField(
-        choices=["pvp", "pva", "pve"],
+        choices=["pvp"],
         required=False,
         default="pvp",
     )
@@ -73,12 +73,6 @@ class CreateLocalMatchSerializer(serializers.Serializer):
         required=False,
         default=0,
         min_value=0,
-    )
-    ai_difficulty = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        default="",
-        max_length=20,
     )
     metadata = serializers.JSONField(required=False, default=dict)
 
@@ -138,11 +132,11 @@ class MatchQuerySerializer(serializers.Serializer):
         required=False,
     )
     mode = serializers.ChoiceField(
-        choices=["pvp", "pva", "local"],
+        choices=["pvp", "local"],
         required=False,
     )
     game_mode = serializers.ChoiceField(
-        choices=["pvp", "pva", "pve"],
+        choices=["pvp"],
         required=False,
     )
     ordering = serializers.ChoiceField(
@@ -222,7 +216,6 @@ class MatchListSerializer(serializers.ModelSerializer):
             "started_at",
             "finished_at",
             "duration_seconds",
-            "ai_difficulty",
             "metadata",
             "players",
         ]
@@ -254,7 +247,6 @@ class MatchDetailSerializer(serializers.ModelSerializer):
             "started_at",
             "finished_at",
             "duration_seconds",
-            "ai_difficulty",
             "metadata",
             "players",
             "created_at",

@@ -13,20 +13,15 @@
 #   GET  /api/analytics/xp/me/                   → My XP & level details
 #   GET  /api/analytics/xp/levels/               → Level progression table
 #
-#   (Task 10.1 — Activity Tracking)
-#   GET  /api/analytics/activity/summary/        → User activity summary
-#   GET  /api/analytics/activity/timeline/       → Daily activity timeline
-#   GET  /api/analytics/activity/heatmap/        → Hourly heatmap
-#   GET  /api/analytics/activity/recent/         → Recent activity feed
 #   POST /api/analytics/activity/track/          → Frontend page-view tracking
 # =============================================================================
 
 from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.db.models import (
-    BooleanField,
     Case,
     Count,
+    Exists,
     F,
     FloatField,
     IntegerField,
@@ -66,7 +61,7 @@ CATALOG_KEYS = tuple(ACHIEVEMENT_MAP.keys())
 class AchievementListView(generics.ListAPIView):
     """
     List all achievements with the requesting user's unlock status and
-    progress.  Supports filtering by ``category`` and ``tier`` query
+    progress. Supports filtering by ``category`` and ``rarity`` query
     parameters.
 
     Hidden achievements are excluded unless already unlocked by the user.
@@ -106,11 +101,7 @@ class AchievementListView(generics.ListAPIView):
             Achievement.objects
             .filter(pk__in=visible_ids)
             .annotate(
-                is_unlocked=Case(
-                    When(unlocks__user=user, then=Value(True)),
-                    default=Value(False),
-                    output_field=BooleanField(),
-                ),
+                is_unlocked=Exists(unlock_sq),
                 unlocked_at=Subquery(
                     unlock_sq.values("unlocked_at")[:1],
                 ),
@@ -141,9 +132,9 @@ class AchievementListView(generics.ListAPIView):
         if category:
             qs = qs.filter(category=category)
 
-        tier = self.request.query_params.get("tier")
-        if tier:
-            qs = qs.filter(tier=tier)
+        rarity = self.request.query_params.get("rarity")
+        if rarity:
+            qs = qs.filter(tier=rarity)
 
         return qs.order_by("category", "ordering_priority", "name")
 
@@ -228,8 +219,7 @@ class AchievementStatsView(APIView):
                 "percentage": (cat_unlocked / cat_total * 100) if cat_total > 0 else 0.0,
             }
 
-        # Breakdown by tier
-        by_tier = {}
+        by_rarity = {}
         for tier_value, tier_label in AchievementTier.choices:
             tier_total = Achievement.objects.filter(
                 tier=tier_value,
@@ -239,7 +229,7 @@ class AchievementStatsView(APIView):
             tier_unlocked = unlocked_qs.filter(
                 achievement__tier=tier_value,
             ).count()
-            by_tier[tier_value] = {
+            by_rarity[tier_value] = {
                 "label": tier_label,
                 "total": tier_total,
                 "unlocked": tier_unlocked,
@@ -257,7 +247,7 @@ class AchievementStatsView(APIView):
             "completion_percentage": round(pct, 2),
             "total_xp_from_achievements": total_xp,
             "by_category": by_category,
-            "by_tier": by_tier,
+            "by_rarity": by_rarity,
             "recent_unlocks": recent_data,
         }
 
@@ -284,11 +274,7 @@ class AchievementDetailView(generics.RetrieveAPIView):
             Achievement.objects
             .filter(key__in=CATALOG_KEYS)
             .annotate(
-                is_unlocked=Case(
-                    When(unlocks__user=user, then=Value(True)),
-                    default=Value(False),
-                    output_field=BooleanField(),
-                ),
+                is_unlocked=Exists(unlock_sq),
                 unlocked_at=Subquery(
                     unlock_sq.values("unlocked_at")[:1],
                 ),
@@ -454,152 +440,9 @@ class PublicStatsView(APIView):
         )
 
 
-from .aggregation_service import (
-    get_activity_heatmap,
-    get_activity_timeline,
-    get_recent_activity,
-    get_user_activity_summary,
-)
 from .tracking_service import get_client_ip, get_user_agent, track_page_view
 
 
-def _parse_bounded_int_param(
-    request,
-    *,
-    name: str,
-    default: int,
-    min_value: int,
-    max_value: int,
-):
-    raw = request.query_params.get(name)
-    if raw is None:
-        return default
-    try:
-        parsed = int(raw)
-    except (TypeError, ValueError):
-        raise ValueError(f"'{name}' must be an integer.")
-    if parsed < min_value:
-        raise ValueError(f"'{name}' must be >= {min_value}.")
-    return min(parsed, max_value)
-
-
-# ---------------------------------------------------------------------------
-# GET /api/analytics/activity/summary/ — User activity summary
-# ---------------------------------------------------------------------------
-
-class ActivitySummaryView(APIView):
-    """
-    Return an aggregated activity summary for the authenticated user.
-
-    Includes total events, today/week counts, breakdowns by category
-    and event type, most active hour/day, and latest event.
-    Cached for 5 minutes.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        data = get_user_activity_summary(request.user.pk)
-        return Response(data, status=status.HTTP_200_OK)
-
-
-# ---------------------------------------------------------------------------
-# GET /api/analytics/activity/timeline/ — Daily activity timeline
-# ---------------------------------------------------------------------------
-
-class ActivityTimelineView(APIView):
-    """
-    Return daily activity counts for the authenticated user.
-
-    Query parameters:
-      - ``days`` — lookback window (default 30, max 365)
-      - ``category`` — optional filter
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        try:
-            days = _parse_bounded_int_param(
-                request,
-                name="days",
-                default=30,
-                min_value=1,
-                max_value=365,
-            )
-        except ValueError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        category = request.query_params.get("category")
-
-        data = get_activity_timeline(
-            request.user.pk,
-            days=days,
-            category=category,
-        )
-        return Response(data, status=status.HTTP_200_OK)
-
-
-# ---------------------------------------------------------------------------
-# GET /api/analytics/activity/heatmap/ — Activity heatmap
-# ---------------------------------------------------------------------------
-
-class ActivityHeatmapView(APIView):
-    """
-    Return hourly × day-of-week event counts for building a heatmap.
-
-    Based on the last 90 days.  ``day`` 0 = Monday, ``hour`` 0–23.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        data = get_activity_heatmap(request.user.pk)
-        return Response(data, status=status.HTTP_200_OK)
-
-
-# ---------------------------------------------------------------------------
-# GET /api/analytics/activity/recent/ — Recent activity feed
-# ---------------------------------------------------------------------------
-
-class RecentActivityView(APIView):
-    """
-    Return the latest activity events for the authenticated user.
-
-    Query parameters:
-      - ``limit`` — max events (default 20, max 100)
-      - ``category`` — optional filter
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        try:
-            limit = _parse_bounded_int_param(
-                request,
-                name="limit",
-                default=20,
-                min_value=1,
-                max_value=100,
-            )
-        except ValueError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        category = request.query_params.get("category")
-
-        data = get_recent_activity(
-            request.user.pk,
-            limit=limit,
-            category=category,
-        )
-        return Response(data, status=status.HTTP_200_OK)
-
-
-# ---------------------------------------------------------------------------
 # POST /api/analytics/activity/track/ — Frontend event tracking
 # ---------------------------------------------------------------------------
 

@@ -9,6 +9,7 @@ from django.db import IntegrityError
 from django.db.models import F
 
 from apps.analytics.models import Achievement, AchievementProgress, AchievementUnlock
+from apps.analytics.achievement_definitions import ACHIEVEMENTS_BY_CATEGORY
 from apps.analytics.tracking_service import track_achievement_unlocked
 from apps.analytics.xp_service import award_xp_for_achievement
 from apps.games.models import GameMode, MatchPlayer
@@ -28,8 +29,6 @@ def _slot_lookup(raw: Any, slot: int, default: Any = 0) -> Any:
 
 
 def _is_online_pvp_session(session: GameSession) -> bool:
-    if session.ai is not None:
-        return False
     if session.game_id.startswith("local-"):
         return False
     if len(session.players) < 2:
@@ -124,10 +123,15 @@ async def check_achievements_after_game(session: GameSession) -> None:
 
 
 async def check_level_achievements(user_id: int, new_level: int) -> None:
-    """
-    Level achievements are intentionally disabled for the current canvas.
-    """
-    return
+    unlocked: list[dict[str, Any]] = []
+    for definition in ACHIEVEMENTS_BY_CATEGORY["level"]:
+        await _append_progressed(
+            unlocked,
+            user_id,
+            definition.key,
+            new_level,
+        )
+    await _finalize_unlocked_achievements(user_id, unlocked)
 
 
 async def _evaluate_all_checkers(
@@ -137,11 +141,10 @@ async def _evaluate_all_checkers(
     slot: int,
     is_winner: bool,
 ) -> list[dict[str, Any]]:
-    if session.game_type == GameType.PONG:
-        return await _evaluate_pong_achievements(user_id, session, slot, is_winner)
-    if session.game_type == GameType.TICTACTOE:
-        return await _evaluate_ttt_achievements(user_id, session, slot, is_winner)
-    return []
+    evaluator = GAME_ACHIEVEMENT_EVALUATORS.get(session.game_type)
+    if evaluator is None:
+        return []
+    return await evaluator(user_id, session, slot, is_winner)
 
 
 async def _evaluate_pong_achievements(
@@ -161,12 +164,13 @@ async def _evaluate_pong_achievements(
         )
 
     if is_winner:
-        await _append_incremented(
-            unlocked,
-            user_id,
-            "pong_getting_warm",
-            game_session_id=session.game_id,
-        )
+        for key in ("pong_getting_warm", "pong_ace", "pong_master"):
+            await _append_incremented(
+                unlocked,
+                user_id,
+                key,
+                game_session_id=session.game_id,
+            )
 
     state = _game_state_dict(session)
     stats = _stats_dict(state)
@@ -433,14 +437,6 @@ async def _evaluate_ttt_achievements(
         is_winner,
     )
 
-    leaderboard_unlocks = await _evaluate_leaderboard_achievements(
-        user_id=user_id,
-        game_type=GameType.TICTACTOE,
-        top10_key="ttt_champion",
-        rank1_key="ttt_legend",
-        game_session_id=session.game_id,
-    )
-    unlocked.extend(leaderboard_unlocks)
     return unlocked
 
 
@@ -627,7 +623,7 @@ def _create_unlock(
         "key": achievement.key,
         "name": achievement.name,
         "description": achievement.description,
-        "tier": achievement.tier,
+        "rarity": achievement.tier,
         "icon": achievement.icon,
         "xp_reward": achievement.xp_reward,
         "unlocked_at": unlock.unlocked_at.isoformat(),
@@ -651,3 +647,14 @@ async def _send_unlock_notifications(
                 "achievement": achievement_data,
             },
         )
+        logger.info(
+            "Achievement notification queued: user=%s achievement=%s",
+            user_id,
+            achievement_data.get("key"),
+        )
+
+
+GAME_ACHIEVEMENT_EVALUATORS = {
+    GameType.PONG: _evaluate_pong_achievements,
+    GameType.TICTACTOE: _evaluate_ttt_achievements,
+}

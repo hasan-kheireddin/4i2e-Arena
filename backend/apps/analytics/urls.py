@@ -12,10 +12,6 @@ from .views import (
     UserXPDetailView,
     PublicStatsView,
     # Activity tracking endpoints (Task 10.1)
-    ActivityHeatmapView,
-    ActivitySummaryView,
-    ActivityTimelineView,
-    RecentActivityView,
     TrackEventView,
 )
 
@@ -72,26 +68,6 @@ urlpatterns = [
     ),
 
     # Activity tracking endpoints (Task 10.1)
-    path(
-        "activity/summary/",
-        ActivitySummaryView.as_view(),
-        name="activity-summary",
-    ),
-    path(
-        "activity/timeline/",
-        ActivityTimelineView.as_view(),
-        name="activity-timeline",
-    ),
-    path(
-        "activity/heatmap/",
-        ActivityHeatmapView.as_view(),
-        name="activity-heatmap",
-    ),
-    path(
-        "activity/recent/",
-        RecentActivityView.as_view(),
-        name="activity-recent",
-    ),
     path(
         "activity/track/",
         TrackEventView.as_view(),

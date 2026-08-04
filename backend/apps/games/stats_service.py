@@ -71,11 +71,7 @@ def get_user_stats(
 
 def _apply_mode_filter(base_qs, user_id: UUID | int, mode: Optional[str]):
     if mode == "local":
-        return base_qs.filter(
-            match__game_session_id__startswith="local-",
-        ).filter(
-            Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
-        )
+        return base_qs.filter(match__game_session_id__startswith="local-")
 
     if mode == "pvp":
         opponent_exists = MatchPlayer.objects.filter(
@@ -85,15 +81,7 @@ def _apply_mode_filter(base_qs, user_id: UUID | int, mode: Optional[str]):
             match__game_mode="pvp",
         ).exclude(
             match__game_session_id__startswith="local-",
-        ).filter(
-            Q(match__ai_difficulty="") | Q(match__ai_difficulty__isnull=True),
-            Exists(opponent_exists),
-        )
-
-    if mode == "pva":
-        return base_qs.filter(
-            Q(match__game_mode__in=["pva", "pve"]) | ~Q(match__ai_difficulty=""),
-        )
+        ).filter(Exists(opponent_exists))
 
     return base_qs
 
@@ -169,10 +157,7 @@ def _build_by_game_type(base_qs) -> dict[str, Any]:
 
 def _build_by_game_mode(base_qs) -> dict[str, Any]:
     by_game_mode: dict[str, Any] = {}
-    mode_filters = (
-        ("pvp", Q(match__game_mode="pvp")),
-        ("pva", Q(match__game_mode__in=["pva", "pve"])),
-    )
+    mode_filters = (("pvp", Q(match__game_mode="pvp")),)
     for mode_name, mode_filter in mode_filters:
         mode_agg = _breakdown_for_query(base_qs.filter(mode_filter))
         if mode_agg["total"] <= 0:

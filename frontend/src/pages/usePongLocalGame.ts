@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { createLocalMatch } from '../services/games';
 import { drawFrame } from './PongRenderer';
-import type { PongDifficulty, PongMode } from './PongGameView';
+import type { PongMode } from './PongGameView';
 
 interface PaddleState {
   y: number;
@@ -34,21 +34,10 @@ interface LocalPlayerNames {
 interface LocalGameOptions {
   canvasRef: RefObject<HTMLCanvasElement>;
   mode: PongMode;
-  difficulty: PongDifficulty;
 }
 
 const WIN_SCORE = 7;
 const PADDLE_SPEED = 6;
-const AI_SPEED: Record<PongDifficulty, number> = {
-  easy: 0.06,
-  medium: 0.10,
-  hard: 0.18,
-};
-const BALL_SPEED: Record<PongDifficulty, number> = {
-  easy: 0.7,
-  medium: 1.0,
-  hard: 1.4,
-};
 const BASE_BALL_VX = 4;
 const BASE_BALL_VY = 3;
 const LOCAL_STEP_MS = 1000 / 60;
@@ -57,7 +46,6 @@ const LOCAL_MAX_CATCHUP_STEPS = 6;
 export function usePongLocalGame({
   canvasRef,
   mode,
-  difficulty,
 }: LocalGameOptions) {
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState(false);
@@ -74,7 +62,7 @@ export function usePongLocalGame({
   const lastFrameTsRef = useRef<number | null>(null);
   const accumulatorMsRef = useRef(0);
   const keysRef = useRef<Record<string, boolean>>({});
-  const initialBall = getBallSpeed(mode, difficulty, BASE_BALL_VX, BASE_BALL_VY);
+  const initialBall = { vx: BASE_BALL_VX, vy: BASE_BALL_VY };
   const gameStateRef = useRef<LocalGameState>({
     p1: { y: 250 },
     p2: { y: 250 },
@@ -124,13 +112,13 @@ export function usePongLocalGame({
     });
 
     if (gameEnded) return;
-    const resetSpeed = getBallSpeed(mode, difficulty, resetVx, resetVy);
+    const resetSpeed = { vx: resetVx, vy: resetVy };
     state.ball = {
       x: canvas.width / 2,
       y: canvas.height / 2,
       ...resetSpeed,
     };
-  }, [mode, difficulty]);
+  }, []);
 
   const handleScore = useCallback((
     state: LocalGameState,
@@ -149,12 +137,12 @@ export function usePongLocalGame({
     const state = gameStateRef.current;
     const keys = keysRef.current;
 
-    movePlayerOne(state, keys, mode, canvas.height);
-    movePlayerTwo(state, keys, mode, difficulty, canvas.height);
+    movePlayerOne(state, keys, canvas.height);
+    movePlayerTwo(state, keys, canvas.height);
     moveBall(state, canvas);
     handlePaddleCollisions(state, canvas.width);
     handleScore(state, canvas);
-  }, [mode, difficulty, handleScore]);
+  }, [mode, handleScore]);
 
   const animate = useCallback((nowMs: number) => {
     if (!canAnimateLocalGame(mode, localNamesReady)) return;
@@ -207,12 +195,11 @@ export function usePongLocalGame({
     matchSavedRef.current = true;
     void saveLocalMatch({
       mode,
-      difficulty,
       score,
       gameStartTime,
       localPlayerNames,
     });
-  }, [gameOver, mode, gameStartTime, score, difficulty, localPlayerNames]);
+  }, [gameOver, mode, gameStartTime, score, localPlayerNames]);
 
   const resetGame = () => {
     setScore({ p1: 0, p2: 0 });
@@ -226,12 +213,7 @@ export function usePongLocalGame({
       setLocalNamesReady(false);
     }
 
-    const resetSpeed = getBallSpeed(
-      mode,
-      difficulty,
-      BASE_BALL_VX,
-      BASE_BALL_VY,
-    );
+    const resetSpeed = { vx: BASE_BALL_VX, vy: BASE_BALL_VY };
     gameStateRef.current = {
       p1: { y: 250 },
       p2: { y: 250 },
@@ -270,24 +252,13 @@ export function usePongLocalGame({
   };
 }
 
-function getBallSpeed(
-  mode: PongMode,
-  difficulty: PongDifficulty,
-  vx: number,
-  vy: number,
-) {
-  const multiplier = mode === 'ai' ? BALL_SPEED[difficulty] : 1;
-  return { vx: vx * multiplier, vy: vy * multiplier };
-}
-
 function movePlayerOne(
   state: LocalGameState,
   keys: Record<string, boolean>,
-  mode: PongMode,
   canvasHeight: number,
 ) {
-  const movingUp = keys.w || keys.W || (mode === 'ai' && keys.ArrowUp);
-  const movingDown = keys.s || keys.S || (mode === 'ai' && keys.ArrowDown);
+  const movingUp = keys.w || keys.W;
+  const movingDown = keys.s || keys.S;
   if (movingUp) {
     state.p1.y = Math.max(40, state.p1.y - PADDLE_SPEED);
   }
@@ -299,14 +270,8 @@ function movePlayerOne(
 function movePlayerTwo(
   state: LocalGameState,
   keys: Record<string, boolean>,
-  mode: PongMode,
-  difficulty: PongDifficulty,
   canvasHeight: number,
 ) {
-  if (mode === 'ai') {
-    state.p2.y += (state.ball.y - state.p2.y) * AI_SPEED[difficulty];
-    return;
-  }
   if (keys.ArrowUp) {
     state.p2.y = Math.max(40, state.p2.y - PADDLE_SPEED);
   }
@@ -417,13 +382,11 @@ function shouldSaveMatch(
 
 async function saveLocalMatch({
   mode,
-  difficulty,
   score,
   gameStartTime,
   localPlayerNames,
 }: {
   mode: PongMode;
-  difficulty: PongDifficulty;
   score: { p1: number; p2: number };
   gameStartTime: number;
   localPlayerNames: LocalPlayerNames;
@@ -431,12 +394,11 @@ async function saveLocalMatch({
   try {
     await createLocalMatch({
       game_type: 'pong',
-      game_mode: mode === 'ai' ? 'pve' : 'pvp',
+      game_mode: 'pvp',
       winner: score.p1 >= WIN_SCORE ? 'X' : 'O',
       duration_seconds: Math.round((Date.now() - gameStartTime) / 1000),
       player1_score: score.p1,
       player2_score: score.p2,
-      ai_difficulty: mode === 'ai' ? difficulty : undefined,
       metadata: {
         mode,
         final_score: score,

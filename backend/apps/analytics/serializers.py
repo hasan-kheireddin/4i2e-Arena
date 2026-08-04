@@ -7,6 +7,7 @@ User = get_user_model()
 
 class AchievementSerializer(serializers.ModelSerializer):
     """Read-only serializer for the achievement catalogue."""
+    rarity = serializers.CharField(source="tier", read_only=True)
 
     class Meta:
         model = Achievement
@@ -16,7 +17,7 @@ class AchievementSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "category",
-            "tier",
+            "rarity",
             "icon",
             "xp_reward",
             "threshold",
@@ -69,6 +70,7 @@ class AchievementWithUserStatusSerializer(serializers.ModelSerializer):
     unlocked_at = serializers.DateTimeField(read_only=True, allow_null=True)
     progress_current = serializers.IntegerField(read_only=True, default=0)
     progress_percentage = serializers.FloatField(read_only=True, default=0.0)
+    rarity = serializers.CharField(source="tier", read_only=True)
 
     class Meta:
         model = Achievement
@@ -78,7 +80,7 @@ class AchievementWithUserStatusSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "category",
-            "tier",
+            "rarity",
             "icon",
             "xp_reward",
             "threshold",
@@ -99,7 +101,7 @@ class AchievementStatsSerializer(serializers.Serializer):
     completion_percentage = serializers.FloatField()
     total_xp_from_achievements = serializers.IntegerField()
     by_category = serializers.DictField(child=serializers.DictField())
-    by_tier = serializers.DictField(child=serializers.DictField())
+    by_rarity = serializers.DictField(child=serializers.DictField())
     recent_unlocks = AchievementUnlockSerializer(many=True)
 
 class LeaderboardEntrySerializer(serializers.ModelSerializer):

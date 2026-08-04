@@ -35,10 +35,10 @@ function timeAgo(iso: string, t: TFunction): string {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  bronze: "#b45309",
-  silver: "#94a3b8",
-  gold: "#fbbf24",
-  platinum: "#06b6d4",
+  common: "#94a3b8",
+  rare: "#3b82f6",
+  epic: "#a855f7",
+  legendary: "#f59e0b",
 };
 
 export default function ProfilePage() {
@@ -536,7 +536,7 @@ useEffect(() => {
                 <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-lg"
                   style={{ border: "1px solid var(--color-border)", backgroundColor: "rgba(251,191,36,0.04)" }}>
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
-                    style={{ backgroundColor: `${TIER_COLORS[u.achievement.tier] ?? "#a855f7"}18`, border: `1px solid ${TIER_COLORS[u.achievement.tier] ?? "#a855f7"}35` }}>
+                    style={{ backgroundColor: `${TIER_COLORS[u.achievement.rarity] ?? "#a855f7"}18`, border: `1px solid ${TIER_COLORS[u.achievement.rarity] ?? "#a855f7"}35` }}>
                     {u.achievement.icon || <Star className="w-4 h-4" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -548,7 +548,7 @@ useEffect(() => {
                     </p>
                   </div>
                   <span className="text-xs font-bold shrink-0"
-                    style={{ color: TIER_COLORS[u.achievement.tier] ?? "#a855f7" }}>
+                    style={{ color: TIER_COLORS[u.achievement.rarity] ?? "#a855f7" }}>
                     {t("profile.xp_gain", { xp: u.achievement.xp_reward })}
                   </span>
                 </div>

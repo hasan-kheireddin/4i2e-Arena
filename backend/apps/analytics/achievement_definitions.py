@@ -9,7 +9,7 @@ class AchievementDef:
     name: str
     description: str
     category: str
-    tier: str
+    rarity: str
     icon: str
     xp_reward: int
     threshold: int = 1
@@ -17,246 +17,72 @@ class AchievementDef:
     ordering_priority: int = 0
 
 
+def achievement(
+    key: str,
+    name: str,
+    description: str,
+    category: str,
+    rarity: str,
+    icon: str,
+    xp_reward: int,
+    threshold: int = 1,
+    ordering_priority: int = 0,
+) -> AchievementDef:
+    return AchievementDef(
+        key=key,
+        name=name,
+        description=description,
+        category=category,
+        rarity=rarity,
+        icon=icon,
+        xp_reward=xp_reward,
+        threshold=threshold,
+        ordering_priority=ordering_priority,
+    )
+
+
 ACHIEVEMENTS: list[AchievementDef] = [
-    # ---------------------------------------------------------------------
-    # Pong achievements (online PvP only)
-    # ---------------------------------------------------------------------
-    AchievementDef(
-        key="pong_first_rally",
-        name="First Rally",
-        description="Complete your first online Pong match.",
-        category="games",
-        tier="bronze",
-        icon="table-tennis",
-        xp_reward=50,
-        threshold=1,
-        ordering_priority=1,
-    ),
-    AchievementDef(
-        key="pong_getting_warm",
-        name="Getting Warm",
-        description="Win your first online Pong match.",
-        category="wins",
-        tier="bronze",
-        icon="flame",
-        xp_reward=100,
-        threshold=1,
-        ordering_priority=2,
-    ),
-    AchievementDef(
-        key="pong_rally_master",
-        name="Rally Master",
-        description="Reach a 20-hit rally in online Pong.",
-        category="skill",
-        tier="silver",
-        icon="repeat",
-        xp_reward=150,
-        threshold=1,
-        ordering_priority=3,
-    ),
-    AchievementDef(
-        key="pong_speed_demon",
-        name="Speed Demon",
-        description="Score 3 points in under 10 seconds in online Pong.",
-        category="skill",
-        tier="silver",
-        icon="zap",
-        xp_reward=150,
-        threshold=1,
-        ordering_priority=4,
-    ),
-    AchievementDef(
-        key="pong_unstoppable",
-        name="Unstoppable",
-        description="Win 3 online Pong matches in a row.",
-        category="streaks",
-        tier="silver",
-        icon="rocket",
-        xp_reward=200,
-        threshold=1,
-        ordering_priority=5,
-    ),
-    AchievementDef(
-        key="pong_precision_player",
-        name="Precision Player",
-        description="Win an online Pong match without missing the ball.",
-        category="skill",
-        tier="silver",
-        icon="crosshair",
-        xp_reward=250,
-        threshold=1,
-        ordering_priority=6,
-    ),
-    AchievementDef(
-        key="pong_comeback_king",
-        name="Comeback King",
-        description="Win an online Pong match after trailing by 3 points.",
-        category="skill",
-        tier="silver",
-        icon="arrow-up",
-        xp_reward=250,
-        threshold=1,
-        ordering_priority=7,
-    ),
-    AchievementDef(
-        key="pong_defensive_wall",
-        name="Defensive Wall",
-        description="Block 10 consecutive shots in online Pong.",
-        category="skill",
-        tier="silver",
-        icon="shield",
-        xp_reward=200,
-        threshold=1,
-        ordering_priority=8,
-    ),
-    AchievementDef(
-        key="pong_dominator",
-        name="Dominator",
-        description="Win an online Pong match with a perfect shutout.",
-        category="skill",
-        tier="gold",
-        icon="crown",
-        xp_reward=300,
-        threshold=1,
-        ordering_priority=9,
-    ),
-    AchievementDef(
-        key="pong_veteran",
-        name="Veteran",
-        description="Play 25 online Pong matches.",
-        category="games",
-        tier="silver",
-        icon="gamepad",
-        xp_reward=200,
-        threshold=25,
-        ordering_priority=10,
-    ),
-    AchievementDef(
-        key="pong_grinder",
-        name="Grinder",
-        description="Play 100 online Pong matches.",
-        category="games",
-        tier="gold",
-        icon="target",
-        xp_reward=400,
-        threshold=100,
-        ordering_priority=11,
-    ),
-
-    # ---------------------------------------------------------------------
-    # Tic-Tac-Toe achievements (online PvP only)
-    # ---------------------------------------------------------------------
-    AchievementDef(
-        key="ttt_first_move",
-        name="First Move",
-        description="Play your first online Tic-Tac-Toe match.",
-        category="games",
-        tier="bronze",
-        icon="grid",
-        xp_reward=50,
-        threshold=1,
-        ordering_priority=21,
-    ),
-    AchievementDef(
-        key="ttt_first_victory",
-        name="First Victory",
-        description="Win your first online Tic-Tac-Toe match.",
-        category="wins",
-        tier="bronze",
-        icon="sword",
-        xp_reward=100,
-        threshold=1,
-        ordering_priority=22,
-    ),
-    AchievementDef(
-        key="ttt_quick_thinker",
-        name="Quick Thinker",
-        description="Win an online Tic-Tac-Toe match in 5 moves.",
-        category="skill",
-        tier="silver",
-        icon="bolt",
-        xp_reward=150,
-        threshold=1,
-        ordering_priority=23,
-    ),
-    AchievementDef(
-        key="ttt_strategist",
-        name="Strategist",
-        description="Win 3 online Tic-Tac-Toe matches in a row.",
-        category="streaks",
-        tier="silver",
-        icon="chess",
-        xp_reward=200,
-        threshold=1,
-        ordering_priority=24,
-    ),
-    AchievementDef(
-        key="ttt_mind_reader",
-        name="Mind Reader",
-        description="Block an opponent winning move 5 times in online Tic-Tac-Toe.",
-        category="skill",
-        tier="silver",
-        icon="eye",
-        xp_reward=150,
-        threshold=5,
-        ordering_priority=25,
-    ),
-    AchievementDef(
-        key="ttt_perfect_game",
-        name="Perfect Game",
-        description="Win online Tic-Tac-Toe with opponent placing at most 2 marks.",
-        category="skill",
-        tier="silver",
-        icon="sparkles",
-        xp_reward=200,
-        threshold=1,
-        ordering_priority=26,
-    ),
-    AchievementDef(
-        key="ttt_draw_master",
-        name="Draw Master",
-        description="Get 5 draws in online Tic-Tac-Toe.",
-        category="games",
-        tier="bronze",
-        icon="minus",
-        xp_reward=100,
-        threshold=5,
-        ordering_priority=27,
-    ),
-    AchievementDef(
-        key="ttt_veteran",
-        name="Veteran",
-        description="Play 25 online Tic-Tac-Toe matches.",
-        category="games",
-        tier="silver",
-        icon="gamepad-2",
-        xp_reward=200,
-        threshold=25,
-        ordering_priority=28,
-    ),
-    AchievementDef(
-        key="ttt_grinder",
-        name="Grinder",
-        description="Play 100 online Tic-Tac-Toe matches.",
-        category="games",
-        tier="gold",
-        icon="activity",
-        xp_reward=400,
-        threshold=100,
-        ordering_priority=29,
-    ),
-    AchievementDef(
-        key="ttt_unbeatable",
-        name="Unbeatable",
-        description="Win 10 online Tic-Tac-Toe matches in a row.",
-        category="streaks",
-        tier="gold",
-        icon="shield-check",
-        xp_reward=400,
-        threshold=1,
-        ordering_priority=30,
-    ),
-
+    achievement("pong_first_rally", "First Rally", "Complete your first online Pong match.", "pong", "common", "table-tennis", 50, 1, 1),
+    achievement("pong_getting_warm", "Getting Warm", "Win your first online Pong match.", "pong", "common", "flame", 100, 1, 2),
+    achievement("pong_ace", "Pong Ace", "Win 10 online Pong matches.", "pong", "rare", "medal", 200, 10, 3),
+    achievement("pong_master", "Pong Master", "Win 50 online Pong matches.", "pong", "epic", "trophy", 500, 50, 4),
+    achievement("pong_rally_master", "Rally Master", "Reach a 20-hit rally in online Pong.", "pong", "rare", "repeat", 150, 1, 5),
+    achievement("pong_speed_demon", "Speed Demon", "Score 3 points in under 10 seconds in online Pong.", "pong", "rare", "zap", 150, 1, 6),
+    achievement("pong_unstoppable", "Unstoppable", "Win 3 online Pong matches in a row.", "pong", "rare", "rocket", 200, 1, 7),
+    achievement("pong_precision_player", "Precision Player", "Win online Pong without missing the ball.", "pong", "epic", "crosshair", 250, 1, 8),
+    achievement("pong_comeback_king", "Comeback King", "Win online Pong after trailing by 3 points.", "pong", "epic", "arrow-up", 250, 1, 9),
+    achievement("pong_defensive_wall", "Defensive Wall", "Return 10 consecutive shots in online Pong.", "pong", "rare", "shield", 200, 1, 10),
+    achievement("pong_dominator", "Dominator", "Win an online Pong match with a shutout.", "pong", "epic", "crown", 300, 1, 11),
+    achievement("pong_veteran", "Pong Veteran", "Play 25 online Pong matches.", "pong", "rare", "gamepad", 200, 25, 12),
+    achievement("pong_grinder", "Pong Grinder", "Play 100 online Pong matches.", "pong", "epic", "target", 400, 100, 13),
+    achievement("pong_champion", "Pong Champion", "Reach the online Pong top 10.", "pong", "epic", "award", 400, 1, 14),
+    achievement("pong_legend", "Pong Legend", "Reach rank 1 on the online Pong leaderboard.", "pong", "legendary", "crown", 750, 1, 15),
+    achievement("ttt_first_move", "First Move", "Complete your first online Tic-Tac-Toe match.", "tictactoe", "common", "grid", 50, 1, 101),
+    achievement("ttt_first_victory", "First Victory", "Win your first online Tic-Tac-Toe match.", "tictactoe", "common", "sword", 100, 1, 102),
+    achievement("ttt_quick_thinker", "Quick Thinker", "Win online Tic-Tac-Toe in 5 moves.", "tictactoe", "rare", "bolt", 150, 1, 103),
+    achievement("ttt_strategist", "Strategist", "Win 3 online Tic-Tac-Toe matches in a row.", "tictactoe", "rare", "chess", 200, 1, 104),
+    achievement("ttt_mind_reader", "Mind Reader", "Block 5 opponent winning moves online.", "tictactoe", "rare", "eye", 150, 5, 105),
+    achievement("ttt_perfect_game", "Perfect Game", "Win while the opponent places at most 2 marks.", "tictactoe", "epic", "sparkles", 250, 1, 106),
+    achievement("ttt_draw_master", "Draw Master", "Draw 5 online Tic-Tac-Toe matches.", "tictactoe", "common", "minus", 100, 5, 107),
+    achievement("ttt_veteran", "Tic-Tac-Toe Veteran", "Play 25 online Tic-Tac-Toe matches.", "tictactoe", "rare", "gamepad-2", 200, 25, 108),
+    achievement("ttt_grinder", "Tic-Tac-Toe Grinder", "Play 100 online Tic-Tac-Toe matches.", "tictactoe", "epic", "activity", 400, 100, 109),
+    achievement("ttt_unbeatable", "Unbeatable", "Win 10 online Tic-Tac-Toe matches in a row.", "tictactoe", "legendary", "shield-check", 600, 1, 110),
+    achievement("level_5", "Rising Player", "Reach player level 5.", "level", "common", "trending-up", 100, 5, 201),
+    achievement("level_10", "Seasoned Player", "Reach player level 10.", "level", "rare", "star", 200, 10, 202),
+    achievement("level_25", "Elite Player", "Reach player level 25.", "level", "epic", "gem", 400, 25, 203),
+    achievement("level_50", "Arena Master", "Reach player level 50.", "level", "epic", "shield", 750, 50, 204),
+    achievement("level_100", "Arena Legend", "Reach player level 100.", "level", "legendary", "crown", 1500, 100, 205),
 ]
 
-ACHIEVEMENT_MAP: dict[str, AchievementDef] = {a.key: a for a in ACHIEVEMENTS}
+ACHIEVEMENT_MAP: dict[str, AchievementDef] = {
+    definition.key: definition for definition in ACHIEVEMENTS
+}
+
+ACHIEVEMENTS_BY_CATEGORY: dict[str, tuple[AchievementDef, ...]] = {
+    category: tuple(
+        definition
+        for definition in ACHIEVEMENTS
+        if definition.category == category
+    )
+    for category in ("pong", "tictactoe", "level")
+}

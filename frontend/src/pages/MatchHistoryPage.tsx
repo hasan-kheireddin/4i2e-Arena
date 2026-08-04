@@ -13,7 +13,7 @@ import {
 
 type GameFilter = 'all' | 'pong' | 'tictactoe';
 type ResultFilter = 'all' | 'win' | 'loss' | 'draw';
-type ModeFilter = 'all' | '2p' | 'pvp' | 'pva';
+type ModeFilter = 'all' | '2p' | 'pvp';
 type OutcomeBadge = 'win' | 'loss' | 'draw';
 
 const PAGE_SIZE = 20;
@@ -139,9 +139,7 @@ export default function MatchHistoryPage() {
       return localOpponent;
     }
 
-    return match.ai_difficulty
-      ? t('match_history.ai_opponent', { difficulty: match.ai_difficulty })
-      : t('match_history.opponent');
+    return t('match_history.opponent');
   };
 
   const getLocalPlayerNames = (match: Match): { player1: string; player2: string } | null => {
@@ -168,11 +166,7 @@ export default function MatchHistoryPage() {
   };
 
   const getMatchMode = (match: Match): Exclude<ModeFilter, 'all'> => {
-    const mode = (match.game_mode ?? '').toLowerCase();
     const isLocal = match.game_session_id.startsWith('local-');
-    const isPva = mode === 'pva' || mode === 'pve' || !!match.ai_difficulty;
-
-    if (isPva) return 'pva';
     if (isLocal) return '2p';
     return 'pvp';
   };
@@ -270,7 +264,7 @@ export default function MatchHistoryPage() {
             className="flex gap-1 rounded-xl p-1"
             style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
           >
-            {(['all', '2p', 'pvp', 'pva'] as ModeFilter[]).map((f) => (
+            {(['all', '2p', 'pvp'] as ModeFilter[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setModeFilter(f)}
@@ -284,9 +278,7 @@ export default function MatchHistoryPage() {
                   ? t('match_history.filter_all_modes')
                   : f === '2p'
                     ? t('match_history.filter_2p')
-                    : f === 'pvp'
-                      ? t('match_history.filter_pvp')
-                      : t('match_history.filter_pva')}
+                    : t('match_history.filter_pvp')}
               </button>
             ))}
           </div>

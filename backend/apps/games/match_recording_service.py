@@ -200,7 +200,6 @@ def _match_defaults(context: dict[str, Any], session: GameSession) -> dict[str, 
         "duration_seconds": round(max(context["duration"], 0), 2),
         "player1_score": context["p1_score"],
         "player2_score": context["p2_score"],
-        "ai_difficulty": session.ai_difficulty or "",
         "metadata": context["metadata"],
     }
 
@@ -259,10 +258,11 @@ def _create_match_record(
                 )
                 return None
             _upsert_match_players(match, context["player_results"])
-    except IntegrityError:
-        logger.warning(
-            "Concurrent match recording detected for session %s — skipping",
+    except IntegrityError as exc:
+        logger.exception(
+            "Match persistence failed for session %s: %s",
             session.game_id,
+            exc,
         )
         return None
 
@@ -333,9 +333,7 @@ def _map_finish_reason(reason: FinishReason | None) -> str:
 
 
 def _determine_game_mode(session: GameSession) -> str:
-    """Determine the game mode (PvP / PvA)."""
-    if session.ai is not None:
-        return GameMode.PVA
+    """Determine the game mode."""
     return GameMode.PVP
 
 
@@ -533,8 +531,4 @@ def _extract_metadata(session: GameSession) -> dict[str, Any]:
         metadata = {}
 
     metadata["game_type"] = session.game_type.value
-    metadata["ai_opponent"] = session.ai is not None
-    if session.ai_difficulty:
-        metadata["ai_difficulty"] = session.ai_difficulty
-
     return metadata

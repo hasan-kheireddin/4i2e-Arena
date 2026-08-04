@@ -2,14 +2,6 @@ import { apiFetch } from './api';
 
 const A = '/api/analytics';
 
-function buildQuery(params: Record<string, string | number | undefined>): string {
-  const q = Object.entries(params)
-    .filter(([, value]) => value !== undefined && value !== '')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-    .join('&');
-  return q ? `?${q}` : '';
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Achievement {
@@ -17,8 +9,8 @@ export interface Achievement {
   key: string;
   name: string;
   description: string;
-  category: 'wins' | 'games' | 'streaks' | 'skill' | 'social' | 'milestone';
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  category: 'pong' | 'tictactoe' | 'level';
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
   icon: string;
   xp_reward: number;
   threshold: number;
@@ -53,7 +45,7 @@ export interface AchievementStats {
   completion_percentage: number;
   total_xp_from_achievements: number;
   by_category: Record<string, { total: number; unlocked: number }>;
-  by_tier: Record<string, { total: number; unlocked: number }>;
+  by_rarity: Record<string, { total: number; unlocked: number }>;
   recent_unlocks: AchievementUnlock[];
 }
 
@@ -96,47 +88,12 @@ export interface PaginatedLeaderboard {
   results: AnalyticsLeaderboardEntry[];
 }
 
-export interface ActivitySummary {
-  user_id: string;
-  total_events: number;
-  events_today: number;
-  events_this_week: number;
-  today_count: number;
-  week_count: number;
-  by_category: Record<string, number>;
-  by_type: Record<string, number>;
-  top_event_types: Array<{ event_type: string; count: number }>;
-  latest_event: { event_type: string; created_at: string } | null;
-  latest_event_at: string | null;
-  most_active_hour: number | null;
-  most_active_day: string | null;
-}
-
-export interface ActivityTimelinePoint {
-  date: string;
-  count: number;
-}
-
-export interface ActivityHeatmapCell {
-  day: number;
-  hour: number;
-  count: number;
-}
-
-export interface RecentActivityEvent {
-  id: string;
-  category: string;
-  event_type: string;
-  metadata: Record<string, unknown>;
-  created_at: string;
-}
-
 
 
 // ── Achievement API ───────────────────────────────────────────────────────────
 
 /** GET /api/analytics/achievements/ */
-export function getAchievements(filters: { category?: string; tier?: string } = {}): Promise<Achievement[]> {
+export function getAchievements(filters: { category?: string; rarity?: string } = {}): Promise<Achievement[]> {
   const q = Object.entries(filters)
     .filter(([, v]) => v)
     .map(([k, v]) => `${k}=${v}`)
@@ -179,34 +136,6 @@ export function getAnalyticsLeaderboard(params: {
   return apiFetch<PaginatedLeaderboard>(`${A}/leaderboard/${q ? `?${q}` : ''}`);
 }
 
-// ── Activity API ──────────────────────────────────────────────────────────────
-
-/** GET /api/analytics/activity/summary/ */
-export function getActivitySummary(): Promise<ActivitySummary> {
-  return apiFetch<ActivitySummary>(`${A}/activity/summary/`);
-}
-
-/** GET /api/analytics/activity/timeline/ */
-export function getActivityTimeline(params: {
-  days?: number;
-  category?: string;
-} = {}): Promise<ActivityTimelinePoint[]> {
-  return apiFetch<ActivityTimelinePoint[]>(`${A}/activity/timeline/${buildQuery(params)}`);
-}
-
-/** GET /api/analytics/activity/heatmap/ */
-export function getActivityHeatmap(): Promise<ActivityHeatmapCell[]> {
-  return apiFetch<ActivityHeatmapCell[]>(`${A}/activity/heatmap/`);
-}
-
-/** GET /api/analytics/activity/recent/ */
-export function getRecentActivity(params: {
-  limit?: number;
-  category?: string;
-} = {}): Promise<RecentActivityEvent[]> {
-  return apiFetch<RecentActivityEvent[]>(`${A}/activity/recent/${buildQuery(params)}`);
-}
-
 /** POST /api/analytics/activity/track/ — track a page view */
 export function trackPageView(path: string): Promise<{ detail: string }> {
   return apiFetch(`${A}/activity/track/`, {
@@ -214,5 +143,3 @@ export function trackPageView(path: string): Promise<{ detail: string }> {
     body: { path },
   });
 }
-
-

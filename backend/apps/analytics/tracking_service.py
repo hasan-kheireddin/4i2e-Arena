@@ -4,7 +4,6 @@ from typing import Any, Optional
 from uuid import UUID
 from asgiref.sync import sync_to_async
 from apps.analytics.models import ActivityEvent, EventCategory
-from apps.analytics.aggregation_service import invalidate_user_activity_cache
 
 logger = logging.getLogger("analytics.tracking")
 
@@ -53,7 +52,6 @@ def track_event(
         "Tracked %s:%s for user %s",
         category, event_type, user_id,
     )
-    invalidate_user_activity_cache(user_id)
     return event
 
 

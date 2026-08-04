@@ -5,21 +5,16 @@ from django.db import models
 from django.utils import timezone
 
 class AchievementCategory(models.TextChoices):
-    """Broad grouping for achievements."""
-    WINS = "wins", "Wins"
-    GAMES = "games", "Games Played"
-    STREAKS = "streaks", "Streaks"
-    SKILL = "skill", "Skill"
-    SOCIAL = "social", "Social"
-    MILESTONE = "milestone", "Milestone"
+    PONG = "pong", "Pong"
+    TICTACTOE = "tictactoe", "Tic-Tac-Toe"
+    LEVEL = "level", "Player Level"
 
 
 class AchievementTier(models.TextChoices):
-    """Rarity / difficulty tier — drives UI badge colour."""
-    BRONZE = "bronze", "Bronze"
-    SILVER = "silver", "Silver"
-    GOLD = "gold", "Gold"
-    PLATINUM = "platinum", "Platinum"
+    COMMON = "common", "Common"
+    RARE = "rare", "Rare"
+    EPIC = "epic", "Epic"
+    LEGENDARY = "legendary", "Legendary"
 
 class Achievement(models.Model):
     """
@@ -44,13 +39,13 @@ class Achievement(models.Model):
     category = models.CharField(
         max_length=20,
         choices=AchievementCategory.choices,
-        default=AchievementCategory.MILESTONE,
+        default=AchievementCategory.PONG,
         db_index=True,
     )
     tier = models.CharField(
         max_length=12,
         choices=AchievementTier.choices,
-        default=AchievementTier.BRONZE,
+        default=AchievementTier.COMMON,
     )
     icon = models.CharField(
         max_length=60,

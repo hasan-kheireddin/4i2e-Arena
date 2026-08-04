@@ -88,18 +88,12 @@ async def create_session_async(
     game_type: GameType,
     engine: Any,
     game_id: str | None = None,
-    ai: Any = None,
-    ai_slot: int | None = None,
-    ai_difficulty: str | None = None,
     authorized_player_ids: set[str] | list[str] | tuple[str, ...] | None = None,
 ) -> GameSession:
     session = create_session(
         game_type=game_type,
         engine=engine,
         game_id=game_id,
-        ai=ai,
-        ai_slot=ai_slot,
-        ai_difficulty=ai_difficulty,
         authorized_player_ids=authorized_player_ids,
     )
     await persist_session(session)
@@ -161,9 +155,6 @@ def create_session(
     game_type: GameType,
     engine: Any,
     game_id: str | None = None,
-    ai: Any = None,
-    ai_slot: int | None = None,
-    ai_difficulty: str | None = None,
     authorized_player_ids: set[str] | list[str] | tuple[str, ...] | None = None,
 ) -> GameSession:
     """Create and register a new game session."""
@@ -172,19 +163,10 @@ def create_session(
     if gid in _sessions:
         raise ValueError(f"Session with game_id '{gid}' already exists")
 
-    if ai is not None:
-        if ai_slot not in (1, 2):
-            raise ValueError(f"ai_slot must be 1 or 2, got {ai_slot!r}")
-    elif ai_slot is not None:
-        raise ValueError("ai_slot set without an AI instance")
-
     session = GameSession(
         game_id=gid,
         game_type=game_type,
         engine=engine,
-        ai=ai,
-        ai_slot=ai_slot,
-        ai_difficulty=ai_difficulty,
         authorized_player_ids={str(value) for value in (authorized_player_ids or ())},
     )
     _sessions[gid] = session
@@ -254,7 +236,7 @@ def _should_abandon_disconnected_pvp_session(
     now: float,
     ttl_seconds: float,
 ) -> bool:
-    if session.ai is not None or not session.all_players_disconnected():
+    if not session.all_players_disconnected():
         return False
 
     latest_disconnect_at = _latest_disconnect_at(session)

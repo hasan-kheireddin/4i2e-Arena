@@ -27,7 +27,7 @@ export interface Match {
   id: string;
   game_session_id: string;
   game_type: 'pong' | 'tictactoe';
-  game_mode: 'pvp' | 'pve' | 'pva';
+  game_mode: 'pvp';
   finish_reason: string;
   winner_id: string | null;
   winner_username: string | null;
@@ -36,7 +36,6 @@ export interface Match {
   started_at: string;
   finished_at: string;
   duration_seconds: number;
-  ai_difficulty: string | null;
   metadata?: Record<string, unknown>;
   players: MatchPlayer[];
 }
@@ -117,11 +116,11 @@ export type MatchOrdering = 'date' | '-date' | 'score' | '-score' | 'duration' |
 
 export interface MatchFilters {
   game_type?: 'pong' | 'tictactoe';
-  game_mode?: 'pvp' | 'pve' | 'pva';
+  game_mode?: 'pvp';
   outcome?: 'win' | 'loss' | 'draw';
   search?: string;
   result?: 'win' | 'loss' | 'draw';
-  mode?: 'pvp' | 'pva' | 'local';
+  mode?: 'pvp' | 'local';
   ordering?: MatchOrdering;
   page?: number;
   page_size?: number;
@@ -147,7 +146,7 @@ export function getUserMatches(userId: string, filters: { game_type?: string; pa
 }
 
 /** GET /api/games/stats/me/ */
-export function getMyStats(game_type?: string, mode?: 'pvp' | 'pva' | 'local'): Promise<UserStats> {
+export function getMyStats(game_type?: string, mode?: 'pvp' | 'local'): Promise<UserStats> {
   return apiFetch<UserStats>(
     `${G}/stats/me/${buildQuery({
       game_type,
@@ -160,7 +159,7 @@ export function getMyStats(game_type?: string, mode?: 'pvp' | 'pva' | 'local'): 
 export function getUserStats(
   userId: string,
   game_type?: string,
-  mode?: 'pvp' | 'pva' | 'local',
+  mode?: 'pvp' | 'local',
 ): Promise<UserStats> {
   return apiFetch<UserStats>(
     `${G}/stats/user/${userId}/${buildQuery({
@@ -192,12 +191,11 @@ export function getMatchSummary(): Promise<Record<string, unknown>> {
 /** POST /api/games/matches/create/ - Create local match record */
 export async function createLocalMatch(data: {
   game_type: 'pong' | 'tictactoe';
-  game_mode: 'pvp' | 'pve';
+  game_mode: 'pvp';
   winner: string | null;
   duration_seconds: number;
   player1_score: number;
   player2_score: number;
-  ai_difficulty?: string;
   metadata?: Record<string, unknown>;
 }): Promise<{ match_id: string; status: string }> {
   return apiFetch<{ match_id: string; status: string }>(`${G}/matches/create/`, {

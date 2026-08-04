@@ -58,7 +58,7 @@ def invalidate_user_stats(user_id: UUID | int, *, include_leaderboard: bool = Tr
     keys = [
         user_stats_key(user_id, game_type, mode)
         for game_type in [None, "pong", "tictactoe"]
-        for mode in [None, "pvp", "pva", "local"]
+        for mode in [None, "pvp", "local"]
     ]
     cache.delete_many(keys)
 

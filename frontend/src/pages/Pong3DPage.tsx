@@ -18,8 +18,7 @@ function debugLog(...args: unknown[]) {
 interface PaddleState { y: number }
 interface BallState { x: number; y: number; vx: number; vy: number }
 
-type Mode = 'local' | 'online' | 'ai';
-type Difficulty = 'easy' | 'medium' | 'hard';
+type Mode = 'local' | 'online';
 type OnlinePhase = 'idle' | 'matchmaking' | 'waiting' | 'playing' | 'over';
 
 interface OnlineGameState {
@@ -34,8 +33,6 @@ interface OnlineSnapshot {
 
 const WIN_SCORE = 7;
 const PADDLE_SPEED = 6;
-const AI_SPEED: Record<Difficulty, number> = { easy: 0.06, medium: 0.10, hard: 0.18 };
-const BALL_SPEED: Record<Difficulty, number> = { easy: 0.7, medium: 1.0, hard: 1.4 };
 const BASE_BALL_VX = 4;
 const BASE_BALL_VY = 3;
 const SERVER_TICK_RATE = 60;
@@ -86,15 +83,11 @@ export default function Pong3DPage() {
   const [searchParams] = useSearchParams();
   const rawMode = searchParams.get('mode') ?? 'local';
   const hasGameId = searchParams.has('game_id');
-  const mode: Mode = hasGameId ? 'online' : rawMode === 'online' ? 'online' : rawMode === 'ai' ? 'ai' : 'local';
-  const rawDiff = searchParams.get('difficulty') ?? 'medium';
-  const difficulty: Difficulty = (['easy', 'medium', 'hard'] as Difficulty[]).includes(rawDiff as Difficulty)
-    ? rawDiff as Difficulty : 'medium';
+  const mode: Mode = hasGameId || rawMode === 'online' ? 'online' : 'local';
 
   const getBallSpeed = useCallback((vx: number, vy: number) => {
-    const multiplier = mode === 'ai' ? BALL_SPEED[difficulty] : 1.0;
-    return { vx: vx * multiplier, vy: vy * multiplier };
-  }, [mode, difficulty]);
+    return { vx, vy };
+  }, []);
 
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState(false);
@@ -187,15 +180,10 @@ export default function Pong3DPage() {
     gs: { p1: PaddleState; p2: PaddleState; ball: BallState },
     keys: Record<string, boolean>,
   ) => {
-    if (keys['w'] || keys['W'] || (mode === 'ai' && keys['ArrowUp'])) gs.p1.y = Math.max(40, gs.p1.y - PADDLE_SPEED);
-    if (keys['s'] || keys['S'] || (mode === 'ai' && keys['ArrowDown'])) gs.p1.y = Math.min(FIELD_H - 40, gs.p1.y + PADDLE_SPEED);
-
-    if (mode === 'ai') {
-      gs.p2.y += (gs.ball.y - gs.p2.y) * AI_SPEED[difficulty];
-    } else {
-      if (keys['ArrowUp']) gs.p2.y = Math.max(40, gs.p2.y - PADDLE_SPEED);
-      if (keys['ArrowDown']) gs.p2.y = Math.min(FIELD_H - 40, gs.p2.y + PADDLE_SPEED);
-    }
+    if (keys['w'] || keys['W']) gs.p1.y = Math.max(40, gs.p1.y - PADDLE_SPEED);
+    if (keys['s'] || keys['S']) gs.p1.y = Math.min(FIELD_H - 40, gs.p1.y + PADDLE_SPEED);
+    if (keys['ArrowUp']) gs.p2.y = Math.max(40, gs.p2.y - PADDLE_SPEED);
+    if (keys['ArrowDown']) gs.p2.y = Math.min(FIELD_H - 40, gs.p2.y + PADDLE_SPEED);
 
     gs.ball.x += gs.ball.vx;
     gs.ball.y += gs.ball.vy;
@@ -246,11 +234,11 @@ export default function Pong3DPage() {
         gs.ball = { x: FIELD_W / 2, y: FIELD_H / 2, vx: resetSpeed.vx, vy: resetSpeed.vy };
       }
     }
-  }, [mode, difficulty, getBallSpeed]);
+  }, [getBallSpeed]);
 
   useEffect(() => {
     if (mode === 'online' || gameOver || (mode === 'local' && !localNamesReady)) return;
-    if (!gameStartTime && (mode === 'ai' || (mode === 'local' && localNamesReady))) {
+    if (!gameStartTime && mode === 'local' && localNamesReady) {
       setGameStartTime(Date.now());
     }
     localLastFrameTsRef.current = null;
@@ -313,12 +301,11 @@ export default function Pong3DPage() {
       try {
         await createLocalMatch({
           game_type: 'pong',
-          game_mode: mode === 'ai' ? 'pve' : 'pvp',
+          game_mode: 'pvp',
           winner,
           duration_seconds: durationSeconds,
           player1_score: score.p1,
           player2_score: score.p2,
-          ai_difficulty: mode === 'ai' ? difficulty : undefined,
           metadata: {
             mode,
             final_score: score,
@@ -334,7 +321,7 @@ export default function Pong3DPage() {
       } catch { /* ignore */ }
     };
     saveMatch();
-  }, [gameOver, mode, gameStartTime, score, difficulty, localPlayerNames]);
+  }, [gameOver, mode, gameStartTime, score, localPlayerNames]);
 
   const gameSendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
 
@@ -711,17 +698,12 @@ export default function Pong3DPage() {
       ? (localPlayerNames.p1.trim() || t('pong.player1'))
       : t('pong.you');
   const p2Label = opponentName || t('pong.opponent');
-  const aiDifficultyLabel = t(`play.diff_${difficulty}`);
   const modeLabel = mode === 'online'
     ? t('pong.mode_online')
-    : mode === 'ai'
-      ? t('pong.mode_ai', { difficulty: aiDifficultyLabel })
-      : t('pong.mode_local');
+    : t('pong.mode_local');
   const p2DisplayLabel = mode === 'online'
     ? p2Label
-    : mode === 'ai'
-      ? t('pong.ai_bot')
-      : (localPlayerNames.p2.trim() || t('pong.player2'));
+    : (localPlayerNames.p2.trim() || t('pong.player2'));
   const onlinePhaseLabel = onlinePhase === 'matchmaking'
     ? t('pong.searching')
     : onlinePhase === 'waiting'
@@ -905,20 +887,6 @@ export default function Pong3DPage() {
                 {playerWon ? t('pong.local_player_wins', { name: localPlayerNames.p1.trim() || t('pong.player1') }) : t('pong.local_player_wins', { name: localPlayerNames.p2.trim() || t('pong.player2') })}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
-              <div className="flex gap-3 mt-2">
-                <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>{t('pong.play_again')}</button>
-                <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>{t('pong.back_to_games')}</button>
-              </div>
-            </div>
-          )}
-
-          {mode === 'ai' && gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
-              <h2 className="text-5xl font-extrabold" style={{ color: playerWon ? '#3B82F6' : '#EF4444' }}>
-                {playerWon ? t('pong.you_win') : t('pong.ai_wins')}
-              </h2>
-              <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{score.p1} — {score.p2}</p>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.difficulty', { level: difficulty.charAt(0).toUpperCase() + difficulty.slice(1) })}</p>
               <div className="flex gap-3 mt-2">
                 <button onClick={resetGame} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)' }}>{t('pong.play_again')}</button>
                 <button onClick={() => navigate('/games/playpage')} className="px-6 py-2 rounded-lg font-medium" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>{t('pong.back_to_games')}</button>

@@ -27,7 +27,6 @@ class MatchOutcome(models.TextChoices):
 
 class GameMode(models.TextChoices):
     PVP = "pvp", "Player vs Player"
-    PVA = "pva", "Player vs AI"
 
 
 class Match(models.Model):
@@ -97,14 +96,6 @@ class Match(models.Model):
     player1_score = models.IntegerField(default=0)
     player2_score = models.IntegerField(default=0)
 
-    # AI metadata
-    ai_difficulty = models.CharField(
-        max_length=20,
-        blank=True,
-        default="",
-        help_text="AI difficulty if this was a PvE game.",
-    )
-
     # Metadata populated from the engine at game end
     metadata = models.JSONField(
         default=dict,
@@ -145,8 +136,7 @@ class MatchPlayer(models.Model):
     """
     Records a single player's participation in a match.
 
-    There are typically 2 MatchPlayer rows per match (or 1 for PvE
-    — the AI is **not** recorded as a MatchPlayer).
+    There are typically 2 MatchPlayer rows per match.
     """
 
     id = models.UUIDField(

@@ -64,12 +64,6 @@ class GameSession:
         Pong or TicTacToe.
     engine : Any
         The game engine instance.
-    ai : Any | None
-        AI opponent instance (None for PvP).
-    ai_slot : int | None
-        Which slot the AI occupies (1 or 2).
-    ai_difficulty : str | None
-        Difficulty label.
     players : dict[int, PlayerSlot]
         Slot to player info.
     status : SessionStatus
@@ -83,9 +77,6 @@ class GameSession:
     game_id: str
     game_type: GameType
     engine: Any
-    ai: Any = None
-    ai_slot: int | None = None
-    ai_difficulty: str | None = None
     players: dict[int, PlayerSlot] = field(default_factory=dict)
     ready_slots: set = field(default_factory=set)
     both_connected_sent: bool = False
@@ -107,7 +98,7 @@ class GameSession:
     last_processed_input_sequences: dict[int, int] = field(default_factory=dict)
     # For remote PvP sessions, only identities selected by matchmaking or a
     # validated invitation may occupy player slots.  An empty set is reserved
-    # for explicitly-created local/AI sessions.
+    # for explicitly-created local sessions.
     authorized_player_ids: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
@@ -120,8 +111,7 @@ class GameSession:
 
     @property
     def is_full(self) -> bool:
-        required = 1 if self.ai is not None else 2
-        return self.player_count >= required
+        return self.player_count >= 2
 
     def get_player_slot(self, user_id: int | str | uuid.UUID) -> Optional[int]:
         for slot, player in self.players.items():
@@ -130,7 +120,7 @@ class GameSession:
         return None
 
     def is_player_authorized(self, user_id: int | str | uuid.UUID) -> bool:
-        return self.ai is not None or str(user_id) in self.authorized_player_ids
+        return str(user_id) in self.authorized_player_ids
 
     def get_opponent_slot(self, slot: int) -> int:
         return 2 if slot == 1 else 1
@@ -203,5 +193,4 @@ class GameSession:
                 }
                 for slot, player in self.players.items()
             },
-            "ai_difficulty": self.ai_difficulty,
         }

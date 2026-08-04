@@ -1,14 +1,9 @@
 import { useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import PongGameView, {
-  type PongDifficulty,
-  type PongMode,
-} from './PongGameView';
+import PongGameView, { type PongMode } from './PongGameView';
 import { usePongLocalGame } from './usePongLocalGame';
 import { usePongOnlineGame } from './usePongOnlineGame';
 import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
-
-const DIFFICULTIES: PongDifficulty[] = ['easy', 'medium', 'hard'];
 
 export default function PongPage() {
   const navigate = useNavigate();
@@ -17,9 +12,8 @@ export default function PongPage() {
     searchParams.get('mode'),
     searchParams.has('game_id'),
   );
-  const difficulty = resolveDifficulty(searchParams.get('difficulty'));
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const localGame = usePongLocalGame({ canvasRef, mode, difficulty });
+  const localGame = usePongLocalGame({ canvasRef, mode });
   const onlineGame = usePongOnlineGame({
     canvasRef,
     keysRef: localGame.keysRef,
@@ -33,7 +27,6 @@ export default function PongPage() {
       <PongGameView
         canvasRef={canvasRef}
         mode={mode}
-        difficulty={difficulty}
         onlinePhase={onlineGame.onlinePhase}
         score={localGame.score}
         onlineScore={onlineGame.onlineScore}
@@ -71,13 +64,5 @@ export default function PongPage() {
 
 function resolveMode(rawMode: string | null, hasGameId: boolean): PongMode {
   if (hasGameId || rawMode === 'online') return 'online';
-  if (rawMode === 'ai') return 'ai';
   return 'local';
-}
-
-function resolveDifficulty(rawDifficulty: string | null): PongDifficulty {
-  if (DIFFICULTIES.includes(rawDifficulty as PongDifficulty)) {
-    return rawDifficulty as PongDifficulty;
-  }
-  return 'medium';
 }

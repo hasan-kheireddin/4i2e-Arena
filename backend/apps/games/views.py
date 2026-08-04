@@ -70,8 +70,7 @@ def _get_match_query_params(request):
     params["result"] = params.get("result") or params.get("outcome")
 
     if "mode" not in params and "game_mode" in params:
-        legacy_mode = params["game_mode"]
-        params["mode"] = "pva" if legacy_mode == "pve" else legacy_mode
+        params["mode"] = params["game_mode"]
 
     return params
 
@@ -107,7 +106,7 @@ def _apply_match_filters(queryset, params, user=None):
 
     Supported filters:
       - ``game_type``    — "pong" or "tictactoe"
-      - ``mode``         — "pvp", "pva", or "local"
+      - ``mode``         — "pvp" or "local"
       - ``search``       — partial name search (case-insensitive)
       - ``finish_reason`` — "score", "draw", "forfeit", etc.
       - ``from_date``    — matches finished after this ISO date
@@ -119,20 +118,12 @@ def _apply_match_filters(queryset, params, user=None):
 
     mode = params.get("mode")
     if mode == "local":
-        queryset = queryset.filter(
-            game_session_id__startswith="local-",
-        ).filter(
-            Q(ai_difficulty="") | Q(ai_difficulty__isnull=True),
-        )
+        queryset = queryset.filter(game_session_id__startswith="local-")
     elif mode == "pvp":
         queryset = queryset.filter(
             game_mode="pvp",
         ).exclude(
             game_session_id__startswith="local-",
-        )
-    elif mode == "pva":
-        queryset = queryset.filter(
-            Q(game_mode__in=["pva", "pve"]) | ~Q(ai_difficulty=""),
         )
 
     finish_reason = params.get("finish_reason")
@@ -155,16 +146,14 @@ def _apply_match_filters(queryset, params, user=None):
             ).filter(
                 Q(has_matching_opponent=True)
                 | Q(metadata__local_players__player1_name__icontains=search)
-                | Q(metadata__local_players__player2_name__icontains=search)
-                | Q(ai_difficulty__icontains=search),
+                | Q(metadata__local_players__player2_name__icontains=search),
             )
         else:
             queryset = queryset.filter(
                 Q(players__user__username__icontains=search)
                 | Q(players__user__display_name__icontains=search)
                 | Q(metadata__local_players__player1_name__icontains=search)
-                | Q(metadata__local_players__player2_name__icontains=search)
-                | Q(ai_difficulty__icontains=search),
+                | Q(metadata__local_players__player2_name__icontains=search),
             )
 
     from_date = params.get("from_date")
@@ -204,7 +193,6 @@ def _apply_public_pvp_scope(queryset, user_id=None):
         queryset
         .filter(game_mode=GameMode.PVP)
         .exclude(game_session_id__startswith="local-")
-        .filter(Q(ai_difficulty="") | Q(ai_difficulty__isnull=True))
     )
     if user_id is not None:
         public_opponent = MatchPlayer.objects.filter(
@@ -220,7 +208,7 @@ class MatchListView(generics.ListAPIView):
 
     Query parameters:
       - ``game_type`` — filter by game type
-      - ``game_mode`` — filter by mode (pvp / pve)
+      - ``game_mode`` — filter by mode
       - ``finish_reason`` — filter by finish reason
       - ``from_date`` / ``to_date`` — date range
       - ``page`` / ``page_size`` — pagination
@@ -292,7 +280,7 @@ class UserMatchHistoryView(generics.ListAPIView):
     """
     List another user's match history (public view).
 
-    Only shows PvP matches (excludes PvE).
+    Only shows PvP matches.
     """
 
     serializer_class = MatchListSerializer
@@ -370,10 +358,7 @@ class MatchSummaryView(APIView):
 
         # --- By game mode ---
         by_game_mode = {}
-        for gm, gm_filter in (
-            ("pvp", Q(match__game_mode="pvp")),
-            ("pva", Q(match__game_mode__in=["pva", "pve"])),
-        ):
+        for gm, gm_filter in (("pvp", Q(match__game_mode="pvp")),):
             gm_qs = participations.filter(gm_filter)
             gm_total = gm_qs.count()
             if gm_total > 0:
@@ -458,7 +443,7 @@ class UserStatsView(APIView):
 
     Query parameters:
       - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
-      - ``mode`` — optional: ``"pvp"``, ``"pva"``, or ``"local"``
+      - ``mode`` — optional: ``"pvp"`` or ``"local"``
 
     Results are cached for 5 minutes and invalidated automatically
     when a new match is recorded.
@@ -484,7 +469,7 @@ class PublicUserStatsView(APIView):
 
     Query parameters:
       - ``game_type`` — optional: ``"pong"`` or ``"tictactoe"``
-      - ``mode`` — optional: ``"pvp"``, ``"pva"``, or ``"local"``
+      - ``mode`` — optional: ``"pvp"`` or ``"local"``
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -556,7 +541,7 @@ class CreateLocalMatchView(APIView):
     """
     Create a match record for a local (frontend-only) game.
 
-    Used when playing locally or vs AI without WebSocket connection.
+    Used when playing locally without a WebSocket connection.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -568,15 +553,9 @@ class CreateLocalMatchView(APIView):
         user = request.user
 
         game_type = data["game_type"]
-        game_mode_input = data.get("game_mode", GameMode.PVP)
-        game_mode_str = (
-            GameMode.PVA
-            if game_mode_input in (GameMode.PVA, "pve")
-            else GameMode.PVP
-        )
+        game_mode_str = GameMode.PVP
         winner = data.get("winner")
         duration_seconds = data["duration_seconds"]
-        ai_difficulty = data.get("ai_difficulty", "")
         player1_score = data["player1_score"]
         player2_score = data["player2_score"]
 
@@ -587,21 +566,11 @@ class CreateLocalMatchView(APIView):
         winner_user = None
         player_outcome = MatchOutcome.DRAW
 
-        if game_mode_str == GameMode.PVA:
-            # Player is always slot 1 (X), AI is slot 2 (O)
-            if winner == "X":
-                winner_user = user
-                player_outcome = MatchOutcome.WIN
-            elif winner == "O":
-                player_outcome = MatchOutcome.LOSS
-        else:
-            # Local PvP: both slots are human, winner is determined
-            if winner == "X":
-                winner_user = user
-                player_outcome = MatchOutcome.WIN
-            elif winner == "O":
-                # In local PvP, we can't track second player
-                player_outcome = MatchOutcome.LOSS
+        if winner == "X":
+            winner_user = user
+            player_outcome = MatchOutcome.WIN
+        elif winner == "O":
+            player_outcome = MatchOutcome.LOSS
 
         # Create match
         now = timezone.now()
@@ -621,7 +590,6 @@ class CreateLocalMatchView(APIView):
             duration_seconds=round(duration_seconds, 2),
             player1_score=player1_score,
             player2_score=player2_score,
-            ai_difficulty=ai_difficulty,
             metadata=metadata,
         )
 

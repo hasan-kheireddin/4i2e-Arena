@@ -6,8 +6,7 @@ import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay from '../components/Chat/FloatingEmote';
 import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 
-export type PongMode = 'local' | 'online' | 'ai';
-export type PongDifficulty = 'easy' | 'medium' | 'hard';
+export type PongMode = 'local' | 'online';
 export type PongOnlinePhase = 'idle' | 'matchmaking' | 'waiting' | 'playing' | 'over';
 
 interface Score {
@@ -29,7 +28,6 @@ interface SpectatorCount {
 export interface PongGameViewProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   mode: PongMode;
-  difficulty: PongDifficulty;
   onlinePhase: PongOnlinePhase;
   score: Score;
   onlineScore: Score;
@@ -78,13 +76,9 @@ function getOnlinePhaseLabel(
 
 function getModeLabel(
   mode: PongMode,
-  difficulty: PongDifficulty,
   t: TFunction,
 ): string {
   if (mode === 'online') return t('pong.mode_online');
-  if (mode === 'ai') {
-    return t('pong.mode_ai', { difficulty: t(`play.diff_${difficulty}`) });
-  }
   return t('pong.mode_local');
 }
 
@@ -119,9 +113,6 @@ function getDisplayLabels(
       p2: props.opponentName || t('pong.opponent'),
     };
   }
-  if (props.mode === 'ai') {
-    return { p1: t('pong.you'), p2: t('pong.ai_bot') };
-  }
   return { p1: playerOne, p2: playerTwo };
 }
 
@@ -146,7 +137,7 @@ function PongHud({ props }: { props: PongGameViewProps }) {
           {getHudStatusLabel(props, t)}
         </span>
         <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-          {getModeLabel(props.mode, props.difficulty, t)}
+          {getModeLabel(props.mode, t)}
         </span>
         {props.mode === 'online' && (
           <span className="text-[10px] font-medium flex items-center gap-1.5"
@@ -319,21 +310,6 @@ function GameOverOverlay({ props }: { props: PongGameViewProps }) {
   }
 
   if (!props.gameOver) return null;
-  if (props.mode === 'ai') {
-    return (
-      <GameOverPanel
-        title={playerWon ? t('pong.you_win') : t('pong.ai_wins')}
-        winner={playerWon}
-        score={props.score}
-        detail={t('pong.difficulty', {
-          level: props.difficulty.charAt(0).toUpperCase() + props.difficulty.slice(1),
-        })}
-        onPlayAgain={props.onResetGame}
-        onBack={props.onBackToGames}
-      />
-    );
-  }
-
   const winnerName = playerWon
     ? props.localPlayerNames.p1.trim() || t('pong.player1')
     : props.localPlayerNames.p2.trim() || t('pong.player2');

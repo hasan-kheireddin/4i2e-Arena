@@ -26,7 +26,7 @@ class Command(BaseCommand):
                 "name": defn.name,
                 "description": defn.description,
                 "category": defn.category,
-                "tier": defn.tier,
+                "tier": defn.rarity,
                 "icon": defn.icon,
                 "xp_reward": defn.xp_reward,
                 "threshold": defn.threshold,
