@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { verifyEmail, resendOTP } from "../services/auth";
 import type { ApiError } from "../services/api";
+import { Link } from "react-router-dom";
 
 export default function VerifyEmailPage() {
   const { t } = useTranslation();
@@ -103,6 +104,20 @@ export default function VerifyEmailPage() {
       style={{ backgroundColor: "var(--color-bg)" }}
     >
       <div className="max-w-md w-full px-6">
+
+
+      {/* Back Home */}
+    <div className="mb-6">
+      <Link
+        to="/register"
+        className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
+        style={{ color: "var(--color-text-muted)" }}
+      >
+        ← {t("Back to Register Page", "Back to Register Page")}
+      </Link>
+    </div>
+
+
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
