@@ -208,19 +208,6 @@ function OnlineWaitingOverlay({ props }: { props: PongGameViewProps }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5"
       style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
-      <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-        {t('pong.vs_opponent', { name: props.opponentName })}
-      </p>
-      <div className="flex gap-8 text-sm">
-        <span style={{ color: props.iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-          {props.iReady ? t('pong.you_ready') : t('pong.you_not_ready')}
-        </span>
-        <span style={{ color: props.opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-          {props.opponentReady
-            ? t('pong.opponent_ready', { name: props.opponentName })
-            : t('pong.opponent_not_ready', { name: props.opponentName })}
-        </span>
-      </div>
       {props.iReady ? (
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 rounded-full border-4 animate-spin"

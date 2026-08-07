@@ -838,17 +838,7 @@ export default function Pong3DPage() {
 
           {mode === 'online' && onlinePhase === 'waiting' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
-              <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                {t('pong.vs_opponent', { name: opponentName })}
-              </p>
-              <div className="flex gap-8 text-sm">
-                <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                  {iReady ? t('pong.you_ready') : t('pong.you_not_ready')}
-                </span>
-                <span style={{ color: opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                  {opponentReady ? t('pong.opponent_ready', { name: opponentName }) : t('pong.opponent_not_ready', { name: opponentName })}
-                </span>
-              </div>
+              
               {!iReady ? (
                 <button onClick={handleReady} className="px-10 py-3 rounded-lg font-bold text-white text-lg" style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}>
                   {t('pong.ready')}
