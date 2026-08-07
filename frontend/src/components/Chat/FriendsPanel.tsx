@@ -55,11 +55,20 @@ export default function FriendsPanel({
   const accepted = friendships.filter((f) => f.status === "accepted");
   const pending = friendships.filter((f) => f.status === "pending");
 
+  const dedupeByUser = (list: FriendshipRecord[]) => {
+    const seen = new Set<string>();
+    return list.filter((f) => {
+      if (seen.has(f.other_user_id)) return false;
+      seen.add(f.other_user_id);
+      return true;
+    });
+  };
+
   const friendList = tab === "online"
-    ? accepted.filter((f) => onlineUserIds.has(f.other_user_id))
+    ? dedupeByUser(accepted.filter((f) => onlineUserIds.has(f.other_user_id)))
     : tab === "pending"
-      ? pending
-      : accepted;
+      ? dedupeByUser(pending)
+      : dedupeByUser(accepted);
 
   const handleSendRequest = async (userId: string) => {
     try {

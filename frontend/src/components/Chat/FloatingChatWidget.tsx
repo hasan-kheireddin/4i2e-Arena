@@ -298,13 +298,7 @@ export default function FloatingChatWidget() {
     (f) => f.status === "pending" && f.direction === "received"
   ).length;
 
-  const dmChannels = channels.filter((c) => {
-    if (c.channel_type !== "dm") return false;
-    const partnerId = c.dm_partner?.id;
-    if (!partnerId) return true;
-    if (friendUserIds.has(partnerId)) return true;
-    return (messages[c.id]?.length ?? 0) > 0;
-  });
+  const dmChannels = channels.filter((c) => c.channel_type === "dm");
   const publicChannels = channels.filter((c) => c.channel_type !== "dm");
   const totalUnread = channels.reduce((sum, ch) => sum + (ch.notifications_muted ? 0 : ch.unread_count), 0);
 

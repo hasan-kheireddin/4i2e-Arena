@@ -257,13 +257,7 @@ export default function ChatPage() {
     setShowInvitePicker(true);
   };
 
-  const dmChannels = channels.filter((c) => {
-    if (c.channel_type !== "dm") return false;
-    const partnerId = c.dm_partner?.id;
-    if (!partnerId) return true;
-    if (friendUserIds.has(partnerId)) return true;
-    return (messages[c.id]?.length ?? 0) > 0;
-  });
+  const dmChannels = channels.filter((c) => c.channel_type === "dm");
   const publicChannels = channels.filter((c) => c.channel_type !== "dm");
 
   const activeTitle = activeChannelData?.channel_type === "dm" && activeChannelData?.dm_partner

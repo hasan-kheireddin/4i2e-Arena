@@ -13,7 +13,7 @@ from .models import Channel, ChannelMembership, Message, Block, Friendship
 
 
 def get_or_create_dm_channel_sync(user1_id, user2_id):
-    user1_id, user2_id = sorted([user1_id, user2_id])
+    user1_id, user2_id = sorted([str(user1_id), str(user2_id)])
     with transaction.atomic():
         existing = Channel.objects.filter(
             channel_type=Channel.CHANNEL_DM,
