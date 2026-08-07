@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useGameSocket } from "../hooks/useGameSocket";
+import { useNotificationCenter } from "../context/NotificationCenterContext";
 import Toast from "./Toast";
 
 type AchievementPayload = {
@@ -17,6 +19,8 @@ type NotificationItem = {
 export default function GamificationNotifications() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { addNotification } = useNotificationCenter();
   const [queue, setQueue] = useState<NotificationItem[]>([]);
   const [activeToast, setActiveToast] = useState<NotificationItem | null>(null);
 
@@ -41,13 +45,12 @@ export default function GamificationNotifications() {
         const achievement = (data.achievement as AchievementPayload | undefined) ?? {};
         const name = achievement.name || t("notifications.achievement_fallback_name");
         const xpReward = Number(achievement.xp_reward ?? 0);
-        enqueue({
-          kind: "achievement",
-          message: t("notifications.achievement_unlocked", {
-            name,
-            xp: xpReward,
-          }),
+        const message = t("notifications.achievement_unlocked", {
+          name,
+          xp: xpReward,
         });
+        enqueue({ kind: "achievement", message });
+        addNotification({ kind: "achievement", title: message, onClick: () => navigate("/achievements") });
         return;
       }
 
@@ -75,7 +78,7 @@ export default function GamificationNotifications() {
           });
         }
       }
-    }, [enqueue, t]),
+    }, [enqueue, t, addNotification, navigate]),
   });
 
   if (!activeToast) return null;

@@ -8,6 +8,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/ui/Avatar";
 import { BrandLogo } from "@/components/BrandLogo";
+import { NotificationBell } from "@/components/NotificationBell";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
@@ -82,6 +83,7 @@ export function Navbar() {
                 {label}
               </NavLink>
             ))}
+            <NotificationBell />
           </nav>
         </div>
 
@@ -159,6 +161,9 @@ export function Navbar() {
                 {label}
               </NavLink>
             ))}
+            <div className="px-3 py-1">
+              <NotificationBell />
+            </div>
           </nav>
         </div>
       )}

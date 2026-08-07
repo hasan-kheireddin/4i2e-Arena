@@ -11,7 +11,7 @@ export interface DmPartner {
 export interface Channel {
   id: string;
   name: string;
-  channel_type: "public" | "private" | "protected" | "dm" | "game";
+  channel_type: "dm";
   owner: string | null;
   created_at: string;
   member_count: number;
@@ -44,17 +44,6 @@ export interface Message {
   created_at: string;
 }
 
-export interface Member {
-  id: string;
-  user: string;
-  username: string;
-  display_name: string;
-  avatar_url: string;
-  role: "owner" | "admin" | "member";
-  muted_until: string | null;
-  joined_at: string;
-}
-
 export interface BlockRecord {
   id: string;
   blocker: string;
@@ -65,29 +54,23 @@ export interface BlockRecord {
   created_at: string;
 }
 
+export interface SearchUser {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+}
+
+export async function searchUsers(query: string): Promise<SearchUser[]> {
+  return apiFetch<SearchUser[]>(`/api/accounts/users/search/?q=${encodeURIComponent(query)}`);
+}
+
 export async function fetchChannels(): Promise<Channel[]> {
   return apiFetch<Channel[]>("/api/chat/channels/");
 }
 
 export async function fetchMessages(channelId: string): Promise<Message[]> {
   return apiFetch<Message[]>(`/api/chat/channels/${channelId}/messages/`);
-}
-
-export async function createChannel(data: {
-  name: string;
-  channel_type: string;
-  password?: string;
-}): Promise<Channel> {
-  return apiFetch<Channel>("/api/chat/channels/", {
-    method: "POST",
-    body: data,
-  });
-}
-
-export async function deleteChannel(channelId: string): Promise<void> {
-  return apiFetch<void>(`/api/chat/channels/${channelId}/`, {
-    method: "DELETE",
-  });
 }
 
 export async function getOrCreateDM(targetUserId: string): Promise<Channel> {
@@ -103,50 +86,12 @@ export async function markChannelRead(channelId: string): Promise<{ read_until: 
   });
 }
 
-export async function leaveChannel(channelId: string): Promise<void> {
-  return apiFetch<void>(`/api/chat/channels/${channelId}/members/leave/`, {
-    method: "POST",
-  });
-}
-
-export async function fetchMembers(channelId: string): Promise<Member[]> {
-  return apiFetch<Member[]>(`/api/chat/channels/${channelId}/members/`);
-}
-
-export async function kickMember(channelId: string, membershipId: string): Promise<void> {
-  return apiFetch<void>(`/api/chat/channels/${channelId}/members/${membershipId}/`, {
-    method: "DELETE",
-  });
-}
-
-export async function muteMember(
-  channelId: string,
-  membershipId: string,
-  durationMinutes: number,
-): Promise<Member> {
-  return apiFetch<Member>(
-    `/api/chat/channels/${channelId}/members/${membershipId}/mute/`,
-    { method: "POST", body: { duration: durationMinutes } },
-  );
-}
-
 export async function toggleNotificationMute(
   channelId: string,
 ): Promise<{ notifications_muted: boolean; membership_id: string }> {
   return apiFetch<{ notifications_muted: boolean; membership_id: string }>(
     `/api/chat/channels/${channelId}/members/toggle_notification_mute/`,
     { method: "POST" },
-  );
-}
-
-export async function changeMemberRole(
-  channelId: string,
-  membershipId: string,
-  role: "member" | "admin",
-): Promise<Member> {
-  return apiFetch<Member>(
-    `/api/chat/channels/${channelId}/members/${membershipId}/change_role/`,
-    { method: "POST", body: { role } },
   );
 }
 

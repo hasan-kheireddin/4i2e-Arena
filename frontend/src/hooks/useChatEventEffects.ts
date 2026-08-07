@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Channel } from "../services/chat";
 import type { GameInvite, FriendRequestEvent, ChatMessage } from "../components/Chat/useChatSocket";
+import { useNotificationCenter } from "../context/NotificationCenterContext";
 
 interface ChatEventEffectsProps {
   gameInvite: GameInvite | null;
@@ -32,6 +33,7 @@ interface ChatEventEffectsProps {
 
 export function useChatEventEffects(props: ChatEventEffectsProps) {
   const navigate = useNavigate();
+  const { addNotification } = useNotificationCenter();
   const [friendNotif, setFriendNotif] = useState<FriendRequestEvent | null>(null);
 
   useEffect(() => {
@@ -40,7 +42,9 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
     props.clearFriendRequest();
     props.setActiveView?.("friends");
     const name = props.wsFriendRequest.from_display_name || props.wsFriendRequest.from_username;
-    props.showToast({ message: `${name} sent you a friend request`, icon: "friend", onClick: props.navigateToProfile ? () => props.navigateToProfile!(props.wsFriendRequest!.from_user_id) : undefined });
+    const onClick = props.navigateToProfile ? () => props.navigateToProfile!(props.wsFriendRequest!.from_user_id) : undefined;
+    props.showToast({ message: `${name} sent you a friend request`, icon: "friend", onClick });
+    addNotification({ kind: "friend", title: `${name} sent you a friend request`, avatar: props.wsFriendRequest.from_avatar, onClick });
     props.setFriendships((prev: any[]) => {
       if (prev.some((f: any) => f.other_user_id === props.wsFriendRequest!.from_user_id)) return prev;
       return [...prev, {
@@ -63,7 +67,10 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
     const muteCh = props.channels?.find((c) => c.id === invite.channel_id);
     if (muteCh?.notifications_muted) return;
     const label = invite.game_type === "pong" ? "Pong" : invite.game_type === "pong3d" ? "3D Pong" : invite.game_type === "tictactoe" ? "Tic Tac Toe" : invite.game_type;
-    props.showToast({ message: `${invite.from_username} invited you to play ${label}!`, icon: "game", onClick: props.navigateToChat && invite.channel_id ? () => props.navigateToChat!(invite.channel_id) : undefined });
+    const onClick = props.navigateToChat && invite.channel_id ? () => props.navigateToChat!(invite.channel_id) : undefined;
+    const message = `${invite.from_username} invited you to play ${label}!`;
+    props.showToast({ message, icon: "game", onClick });
+    addNotification({ kind: "invite", title: message, onClick });
   }, [props.gameInvite?.game_id, props.showToast]);
 
   useEffect(() => {
@@ -117,12 +124,15 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
       const preview = msg.message_type === "emote"
         ? "sent an emote"
         : msg.content.length > 60 ? msg.content.slice(0, 60) + "…" : msg.content;
+      const title = `${msg.sender_username || "Someone"}: ${preview}`;
+      const onClick = navigateToChat ? () => navigateToChat(msg.channel_id) : undefined;
       showToast({
-        message: `${msg.sender_username || "Someone"}: ${preview}`,
+        message: title,
         tone: "message",
         avatar: msg.sender_avatar || undefined,
-        onClick: navigateToChat ? () => navigateToChat(msg.channel_id) : undefined,
+        onClick,
       });
+      addNotification({ kind: "message", title, avatar: msg.sender_avatar || undefined, onClick });
     };
   }
 

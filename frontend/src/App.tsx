@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { FriendshipProvider } from "./context/FriendshipContext";
 import { BlockProvider } from "./context/BlockContext";
 import { ToastProvider } from "./context/ToastContext";
+import { NotificationCenterProvider } from "./context/NotificationCenterContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -38,6 +39,7 @@ function App() {
         <FriendshipProvider>
         <BlockProvider>
         <ToastProvider>
+        <NotificationCenterProvider>
         <DarkModeToggle />
         <GamificationNotifications />
         <Routes>
@@ -200,6 +202,7 @@ function App() {
           {/* ========== 404 CATCH-ALL ========== */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </NotificationCenterProvider>
       </ToastProvider>
       </BlockProvider>
       </FriendshipProvider>

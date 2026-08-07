@@ -15,7 +15,7 @@ from apps.games.consumers import BaseConsumer
 from apps.games.session import GameType, create_session_async, generate_game_id
 from apps.games.pong_engine import PongEngine
 from apps.games.tictactoe_engine import TicTacToeEngine
-from .models import Channel, ChannelMembership, Message, Block
+from .models import Channel, ChannelMembership, Message, Block, get_or_create_dm_channel as _get_or_create_dm_channel_sync
 
 logger = logging.getLogger("chat.consumer")
 
@@ -152,15 +152,6 @@ def get_membership(channel_id, user_id):
 
 
 @database_sync_to_async
-def add_member(channel_id, user_id, role="member"):
-    return ChannelMembership.objects.get_or_create(
-        channel_id=channel_id,
-        user_id=user_id,
-        defaults={"role": role},
-    )
-
-
-@database_sync_to_async
 def is_blocked(blocker_id, blocked_id):
     return Block.objects.filter(blocker_id=blocker_id, blocked_id=blocked_id).exists()
 
@@ -180,28 +171,20 @@ def get_dm_other_user(channel_id, current_user_id):
     ).exclude(user_id=current_user_id).values_list("user_id", flat=True).first()
 
 
-@database_sync_to_async
-def get_or_create_dm_channel(user1_id, user2_id):
-    existing = Channel.objects.filter(
-        channel_type=Channel.CHANNEL_DM,
-        memberships__user_id=user1_id,
-    ).filter(memberships__user_id=user2_id).first()
-    if existing:
-        return existing
-    channel = Channel.objects.create(
-        channel_type=Channel.CHANNEL_DM,
-        name="",
-    )
-    ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
-    ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
-    return channel
+get_or_create_dm_channel = database_sync_to_async(_get_or_create_dm_channel_sync)
 
 
 class ChatConsumer(BaseConsumer):
     require_auth = True
 
-    async def on_connect(self) -> None:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Must exist before on_connect runs: disconnect() always calls
+        # on_disconnect(), even when the connection was rejected (bad/expired
+        # auth) before on_connect() ever got a chance to set this up.
         self._channel_groups: set[str] = set()
+
+    async def on_connect(self) -> None:
         self._action_timestamps: collections.deque[float] = collections.deque()
         channels = await get_user_channels(self.user.pk)
         for ch in channels:
@@ -361,6 +344,7 @@ class ChatConsumer(BaseConsumer):
             "game_type": game_type,
         }
         await self.channel_layer.group_send(group, event)
+        await self.channel_layer.group_send(f"user_{target_user.id}", event)
         await self.channel_layer.group_send(f"user_{target_user.id}", {
             "type": "chat.game_invite",
             "from_user_id": str(self.user.pk),
@@ -466,7 +450,7 @@ class ChatConsumer(BaseConsumer):
                 Message.MESSAGE_SYSTEM,
             )
             if msg_id:
-                await self.channel_layer.group_send(group, {
+                system_event = {
                     "type": "chat.message",
                     "id": msg_id, "channel_id": channel_id,
                     "sender": None, "sender_username": None,
@@ -474,7 +458,9 @@ class ChatConsumer(BaseConsumer):
                     "content": f"{self.user.username} accepted the game invite!",
                     "emote_id": "",
                     "created_at": timezone.now().isoformat(),
-                })
+                }
+                await self.channel_layer.group_send(group, system_event)
+                await self.channel_layer.group_send(f"user_{invite['from_user_id']}", system_event)
             await self.channel_layer.group_send(group, {
                 "type": "chat.game_invite_accepted",
                 "game_id": game_id,
@@ -493,7 +479,7 @@ class ChatConsumer(BaseConsumer):
                 Message.MESSAGE_SYSTEM,
             )
             if msg_id:
-                await self.channel_layer.group_send(group, {
+                system_event = {
                     "type": "chat.message",
                     "id": msg_id, "channel_id": channel_id,
                     "sender": None, "sender_username": None,
@@ -501,7 +487,9 @@ class ChatConsumer(BaseConsumer):
                     "content": f"{self.user.username} declined the game invite.",
                     "emote_id": "",
                     "created_at": timezone.now().isoformat(),
-                })
+                }
+                await self.channel_layer.group_send(group, system_event)
+                await self.channel_layer.group_send(f"user_{invite['from_user_id']}", system_event)
             await self.channel_layer.group_send(group, {
                 "type": "chat.game_invite_declined",
                 "game_id": game_id,
@@ -529,6 +517,7 @@ class ChatConsumer(BaseConsumer):
             await self.send_error("forbidden", "Not a member of this channel")
             return
         ctype = await get_channel_type(channel_id)
+        other_id = None
         if ctype == Channel.CHANNEL_DM:
             other_id = await get_dm_other_user(channel_id, self.user.pk)
             if other_id and (await is_blocked(self.user.pk, other_id) or await is_blocked(other_id, self.user.pk)):
@@ -551,6 +540,12 @@ class ChatConsumer(BaseConsumer):
             "created_at": msg.created_at.isoformat(),
         }
         await self.channel_layer.group_send(f"chat_{channel_id}", event)
+        if other_id:
+            # Also deliver to the recipient's personal group: their socket may not
+            # yet be joined to chat_{channel_id} (e.g. a brand-new conversation).
+            # The frontend dedupes by message id, so this is safe even when the
+            # recipient IS already in the channel group.
+            await self.channel_layer.group_send(f"user_{other_id}", event)
 
     async def _handle_send_emote(self, content: dict[str, Any]) -> None:
         emote_raw = content.get("emote_id", "")
@@ -569,6 +564,7 @@ class ChatConsumer(BaseConsumer):
                 await self.send_error("forbidden", "Not a member of this channel")
                 return
             ctype = await get_channel_type(channel_id)
+            other_id = None
             if ctype == Channel.CHANNEL_DM:
                 other_id = await get_dm_other_user(channel_id, self.user.pk)
                 if other_id and (await is_blocked(self.user.pk, other_id) or await is_blocked(other_id, self.user.pk)):
@@ -588,6 +584,8 @@ class ChatConsumer(BaseConsumer):
                 "created_at": msg.created_at.isoformat(),
             }
             await self.channel_layer.group_send(f"chat_{channel_id}", event)
+            if other_id:
+                await self.channel_layer.group_send(f"user_{other_id}", event)
         elif target_user_id:
             if await is_blocked(self.user.pk, target_user_id) or await is_blocked(target_user_id, self.user.pk):
                 await self.send_error("blocked", "Cannot send message to this user")
@@ -624,13 +622,8 @@ class ChatConsumer(BaseConsumer):
         if not channel_id:
             return
         if not await is_member(channel_id, self.user.pk):
-            if await get_channel_type(channel_id) != Channel.CHANNEL_PUBLIC:
-                await self.send_error(
-                    "forbidden",
-                    "Join the channel through its authenticated API flow first",
-                )
-                return
-            await add_member(channel_id, self.user.pk)
+            await self.send_error("forbidden", "Not a member of this channel")
+            return
         group = f"chat_{channel_id}"
         if group not in self._channel_groups:
             await self.join_group(group)

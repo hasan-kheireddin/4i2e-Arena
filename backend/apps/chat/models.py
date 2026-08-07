@@ -5,23 +5,15 @@ from django.utils import timezone
 
 
 class Channel(models.Model):
-    CHANNEL_PUBLIC = "public"
-    CHANNEL_PRIVATE = "private"
-    CHANNEL_PROTECTED = "protected"
     CHANNEL_DM = "dm"
-    CHANNEL_GAME = "game"
 
     CHANNEL_TYPES = [
-        (CHANNEL_PUBLIC, "Public"),
-        (CHANNEL_PRIVATE, "Private"),
-        (CHANNEL_PROTECTED, "Protected"),
         (CHANNEL_DM, "Direct Message"),
-        (CHANNEL_GAME, "Game"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50, blank=True, default="")
-    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPES, default=CHANNEL_PUBLIC)
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPES, default=CHANNEL_DM)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -30,6 +22,10 @@ class Channel(models.Model):
         related_name="owned_channels",
     )
     password_hash = models.CharField(max_length=128, blank=True, default="")
+    # Canonical "min_user_id:max_user_id" key for DM channels only. Enforces at the
+    # database level that two users can never end up with two separate DM channels,
+    # even under concurrent get_or_create races (see get_or_create_dm_channel below).
+    dm_key = models.CharField(max_length=80, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -40,6 +36,31 @@ class Channel(models.Model):
 
     def __str__(self):
         return self.name or f"{self.get_channel_type_display()} ({self.id})"
+
+
+def dm_key_for(user1_id, user2_id) -> str:
+    return ":".join(sorted([str(user1_id), str(user2_id)]))
+
+
+def get_or_create_dm_channel(user1_id, user2_id) -> "Channel":
+    """Race-free get-or-create for the DM channel between two users.
+
+    Relies on Channel.dm_key's unique constraint: if two requests race to create
+    the same pair's channel, the DB rejects the second insert and Django's
+    get_or_create() transparently re-fetches the winner instead of erroring.
+    """
+    from django.db import transaction
+
+    key = dm_key_for(user1_id, user2_id)
+    with transaction.atomic():
+        channel, created = Channel.objects.get_or_create(
+            dm_key=key,
+            defaults={"channel_type": Channel.CHANNEL_DM, "name": ""},
+        )
+        if created:
+            ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
+            ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
+    return channel
 
 
 class ChannelMembership(models.Model):

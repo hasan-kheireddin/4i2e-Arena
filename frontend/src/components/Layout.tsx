@@ -18,6 +18,12 @@ export default function Layout({ children }: LayoutProps) {
     });
   }, [location.pathname, location.search]);
 
+  // The full chat page already provides everything the floating widget does
+  // (and its own chat socket) - mounting both at once would open two
+  // independent websocket connections with divergent state, which is what
+  // caused chat notifications to fire inconsistently.
+  const showFloatingWidget = !location.pathname.startsWith("/chat");
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
       <Navbar />
@@ -26,7 +32,7 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </div>
       </main>
-      <FloatingChatWidget />
+      {showFloatingWidget && <FloatingChatWidget />}
     </div>
   );
 }

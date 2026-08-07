@@ -10,21 +10,15 @@ import ChatWindow from "./ChatWindow";
 import FriendsPanel from "./FriendsPanel";
 import {
   fetchChannels,
-  createChannel,
-  deleteChannel,
-  fetchMembers,
-  kickMember,
-  muteMember,
-  changeMemberRole,
   sendFriendRequest,
   acceptFriendRequest,
   removeFriend,
   getOrCreateDM,
   markChannelRead,
-  leaveChannel,
   toggleNotificationMute,
+  searchUsers,
   type Channel,
-  type Member,
+  type SearchUser,
 } from "../../services/chat";
 import { useAuth } from "../../context/AuthContext";
 
@@ -34,16 +28,14 @@ export default function FloatingChatWidget() {
   const [open, setOpen] = useState(false);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannel, setActiveChannel] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newType, setNewType] = useState<"public" | "private">("public");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [searching, setSearching] = useState(false);
 
   // Settings panel state
   const [showSettings, setShowSettings] = useState(false);
-  const [members, setMembers] = useState<Member[]>([]);
   const { friendships, setFriendships, refresh: refreshFriendships } = useFriendships();
   const { blocks, blockedUserIds, blockedByUserIds, block: doBlock, unblock: doUnblock } = useBlocks();
-  const [kickConfirm, setKickConfirm] = useState<Member | null>(null);
   const [inviteTarget, setInviteTarget] = useState<string | null>(null);
   const [showInvitePicker, setShowInvitePicker] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "friends">("friends");
@@ -133,15 +125,10 @@ export default function FloatingChatWidget() {
   }, [activeChannel, requestHistory, reconnectCount]);
 
   useEffect(() => {
-    if (!activeChannel || !showSettings) return;
-    fetchMembers(activeChannel).then(setMembers).catch(() => {});
-  }, [activeChannel, showSettings]);
-
-  useEffect(() => {
     refreshFriendships();
   }, [reconnectCount]);
 
-  // If the kicked user had this channel active, switch away
+  // If the active channel is no longer reachable, switch away
   useEffect(() => {
     if (activeChannel && !connectedChannels.includes(activeChannel)) {
       const firstConnected = channels.find((c) => connectedChannels.includes(c.id));
@@ -192,48 +179,26 @@ export default function FloatingChatWidget() {
     }
   }, [messages, activeChannel]);
 
-  const activeChannelData = channels.find((c) => c.id === activeChannel);
-
-  const handleCreateChannel = async () => {
-    if (!newName.trim()) return;
-    try {
-      const ch = await createChannel({ name: newName.trim(), channel_type: newType });
-      setChannels((prev) => [...prev, ch]);
-      handleSelectChannel(ch.id);
-      setShowCreate(false);
-      setNewName("");
-    } catch {}
-  };
-
-  const handleDeleteChannel = async () => {
-    if (!activeChannel) return;
-    try {
-      await deleteChannel(activeChannel);
-      setChannels((prev) => prev.filter((c) => c.id !== activeChannel));
-      setActiveChannel(null);
-      setShowSettings(false);
-    } catch {}
-  };
-
-  const handleKickConfirm = async () => {
-    if (!activeChannel || !kickConfirm) return;
-    try {
-      await kickMember(activeChannel, kickConfirm.id);
-      setMembers((prev) => prev.filter((m) => m.id !== kickConfirm.id));
-      setKickConfirm(null);
-    } catch (err) {
-      console.error("Kick failed:", err);
-      alert("Kick failed: " + ((err as any)?.detail || (err as any)?.message || "Unknown error"));
+  // Search for a user to start (or resume) a conversation with.
+  useEffect(() => {
+    if (!open || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
     }
-  };
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await searchUsers(searchQuery.trim());
+        setSearchResults(results || []);
+      } catch {
+        setSearchResults([]);
+      }
+      setSearching(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, open]);
 
-  const handleMute = async (membershipId: string, duration: number) => {
-    if (!activeChannel) return;
-    try {
-      const updated = await muteMember(activeChannel, membershipId, duration);
-      setMembers((prev) => prev.map((m) => (m.id === membershipId ? updated : m)));
-    } catch {}
-  };
+  const activeChannelData = channels.find((c) => c.id === activeChannel);
 
   const handleSelfMute = async (channelId: string) => {
     try {
@@ -241,14 +206,6 @@ export default function FloatingChatWidget() {
       setChannels((prev) => prev.map((c) =>
         c.id === channelId ? { ...c, notifications_muted: result.notifications_muted } : c
       ));
-    } catch {}
-  };
-
-  const handleChangeRole = async (membershipId: string, role: "member" | "admin") => {
-    if (!activeChannel) return;
-    try {
-      const updated = await changeMemberRole(activeChannel, membershipId, role);
-      setMembers((prev) => prev.map((m) => (m.id === membershipId ? updated : m)));
     } catch {}
   };
 
@@ -285,8 +242,6 @@ export default function FloatingChatWidget() {
     refreshFriendships();
   };
 
-  const isOwner = activeChannelData?.owner === user?.id;
-
   const friendUserIds = new Set(friendships.filter((f) => f.status === "accepted").map((f) => f.other_user_id));
   const pendingSentIds = new Set(friendships.filter((f) => f.status === "pending" && f.direction === "sent").map((f) => f.other_user_id));
   const pendingReceivedIds = new Set(friendships.filter((f) => f.status === "pending" && f.direction === "received").map((f) => f.other_user_id));
@@ -295,13 +250,11 @@ export default function FloatingChatWidget() {
     (f) => f.status === "pending" && f.direction === "received"
   ).length;
 
-  const dmChannels = channels.filter((c) => c.channel_type === "dm");
-  const publicChannels = channels.filter((c) => c.channel_type !== "dm");
   const totalUnread = channels.reduce((sum, ch) => sum + (ch.notifications_muted ? 0 : ch.unread_count), 0);
 
-  const activeTitle = activeChannelData?.channel_type === "dm" && activeChannelData?.dm_partner
+  const activeTitle = activeChannelData?.dm_partner
     ? activeChannelData.dm_partner.display_name || activeChannelData.dm_partner.username
-    : activeChannelData?.name || "Chat";
+    : "Chat";
 
   const sidebar = (
     <div className="w-44 flex flex-col flex-shrink-0" style={{ borderRight: "1px solid var(--color-border)" }}>
@@ -328,108 +281,93 @@ export default function FloatingChatWidget() {
         )}
       </button>
 
+      {/* Search for a user to chat with */}
+      <div className="px-2 pt-2 pb-1">
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search for a user..."
+          className="w-full rounded px-2 py-1 text-[10px] outline-none"
+          style={{ backgroundColor: "var(--color-bg-input)", border: "1px solid var(--color-border)", color: "var(--color-text-primary)" }}
+        />
+      </div>
+
       <div className="flex-1 overflow-y-auto">
-        {/* DMs section */}
-        <div className="px-3 pt-2 pb-0.5">
-          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>Direct Messages</span>
-        </div>
-        <div className="px-1.5 pb-1 space-y-0.5">
-          {dmChannels.length === 0 && (
-            <p className="text-[10px] px-2 py-1" style={{ color: "var(--color-text-muted)" }}>No DMs</p>
-          )}
-          {dmChannels.map((ch) => {
-            const partner = ch.dm_partner;
-            const isBlocked = partner ? (blockedUserIds.has(partner.id) || blockedByUserIds.has(partner.id)) : false;
-            const isOnline = partner ? onlineUserIds.has(partner.id) && !isBlocked : false;
-            const isActive = activeChannel === ch.id;
-              return (
+        {searchQuery.trim().length >= 2 ? (
+          <div className="px-1.5 pb-1 space-y-0.5">
+            {searching && (
+              <div className="flex justify-center py-3">
+                <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }} />
+              </div>
+            )}
+            {!searching && searchResults.length === 0 && (
+              <p className="text-[10px] px-2 py-1" style={{ color: "var(--color-text-muted)" }}>No users found</p>
+            )}
+            {searchResults.map((u) => (
+              <div key={u.id} className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs" style={{ color: "var(--color-text-primary)" }}>
                 <div
-                  key={ch.id}
-                  onClick={() => handleSelectChannel(ch.id)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors cursor-pointer"
-                  style={{
-                    backgroundColor: isActive ? "var(--color-bg-input)" : "transparent",
-                    color: "var(--color-text-primary)",
-                  }}
+                  className="flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer"
+                  onClick={() => navigate(`/profile/${u.id}`)}
+                  title="View profile"
                 >
-                <div className="relative flex-shrink-0">
-                  {partner?.avatar_url ? (
-                    <img src={partner.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
                       style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
-                      {(partner?.display_name || partner?.username || "?")[0].toUpperCase()}
+                      {u.username[0]?.toUpperCase()}
                     </div>
                   )}
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 ${isOnline ? "bg-green-500" : "bg-gray-500"}`}
-                    style={{ borderColor: "var(--color-bg-card)" }} />
+                  <span className="flex-1 truncate">{u.display_name || u.username}</span>
                 </div>
-                <span className="flex-1 text-left truncate font-medium">
-                  {partner?.display_name || partner?.username || "Unknown"}
-                </span>
-                {ch.unread_count > 0 && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full text-white font-bold flex-shrink-0"
-                    style={{ backgroundColor: "#EF4444" }}>{ch.unread_count}</span>
-                )}
-                <button onClick={(e) => { e.stopPropagation(); handleSelfMute(ch.id); }}
-                  className="flex-shrink-0 p-0.5 rounded hover:opacity-80"
-                  title={ch.notifications_muted ? "Unmute" : "Mute"}>
-                  {ch.notifications_muted ? (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                      <line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" />
-                    </svg>
-                  ) : (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-                    </svg>
-                  )}
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* Channels section */}
-          {publicChannels.length > 0 && (
-            <>
-              <div className="flex items-center justify-between px-2 pt-3 pb-0.5">
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>Channels</span>
                 <button
-                  onClick={() => setShowCreate(!showCreate)}
-                  className="w-4 h-4 flex items-center justify-center rounded text-[9px] font-bold"
-                  style={{ backgroundColor: "var(--color-primary)", color: "white" }}
-                >+</button>
+                  onClick={() => { setSearchQuery(""); handleOpenDM(u.id); }}
+                  className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] text-white"
+                  style={{ backgroundColor: "#3B82F6" }}
+                  title="Message"
+                >💬</button>
               </div>
-              {showCreate && (
-                <div className="p-1.5 space-y-1 mb-1 rounded" style={{ backgroundColor: "var(--color-bg-input)" }}>
-                  <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Name"
-                    className="w-full rounded px-1.5 py-1 text-[10px] outline-none"
-                    style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)", color: "var(--color-text-primary)" }} />
-                  <select value={newType} onChange={(e) => setNewType(e.target.value as "public" | "private")}
-                    className="w-full rounded px-1.5 py-1 text-[10px] outline-none"
-                    style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)", color: "var(--color-text-primary)" }}>
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
-                  </select>
-                  <button onClick={handleCreateChannel} disabled={!newName.trim()}
-                    className="w-full py-1 rounded text-[10px] font-medium text-white disabled:opacity-40"
-                    style={{ backgroundColor: "var(--color-primary)" }}>Create</button>
-                </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="px-3 pt-1 pb-0.5">
+              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>All Messages</span>
+            </div>
+            <div className="px-1.5 pb-1 space-y-0.5">
+              {channels.length === 0 && (
+                <p className="text-[10px] px-2 py-1" style={{ color: "var(--color-text-muted)" }}>No messages yet</p>
               )}
-              {publicChannels.map((ch) => {
+              {channels.map((ch) => {
+                const partner = ch.dm_partner;
+                const isBlocked = partner ? (blockedUserIds.has(partner.id) || blockedByUserIds.has(partner.id)) : false;
+                const isOnline = partner ? onlineUserIds.has(partner.id) && !isBlocked : false;
                 const isActive = activeChannel === ch.id;
                 return (
                   <div
                     key={ch.id}
                     onClick={() => handleSelectChannel(ch.id)}
-                    className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors cursor-pointer"
                     style={{
                       backgroundColor: isActive ? "var(--color-bg-input)" : "transparent",
                       color: "var(--color-text-primary)",
                     }}
                   >
-                    <span className="flex-1 text-left truncate"># {ch.name}</span>
+                    <div className="relative flex-shrink-0">
+                      {partner?.avatar_url ? (
+                        <img src={partner.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+                          style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
+                          {(partner?.display_name || partner?.username || "?")[0].toUpperCase()}
+                        </div>
+                      )}
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 ${isOnline ? "bg-green-500" : "bg-gray-500"}`}
+                        style={{ borderColor: "var(--color-bg-card)" }} />
+                    </div>
+                    <span className="flex-1 text-left truncate font-medium">
+                      {partner?.display_name || partner?.username || "Unknown"}
+                    </span>
                     {ch.unread_count > 0 && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full text-white font-bold flex-shrink-0"
                         style={{ backgroundColor: "#EF4444" }}>{ch.unread_count}</span>
@@ -452,101 +390,14 @@ export default function FloatingChatWidget() {
                   </div>
                 );
               })}
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="px-3 py-1.5 border-t text-[10px]" style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}>
         WS: {status}
       </div>
-    </div>
-  );
-
-  const settingsPanel = (
-    <div className="flex-1 flex flex-col min-w-0">
-      <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "var(--color-border)" }}>
-        <h3 className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
-          {activeChannelData?.name || "Channel"} — Members
-        </h3>
-        <button
-          onClick={() => setShowSettings(false)}
-          className="text-xs px-2 py-1 rounded"
-          style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}
-        >Back</button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {members.map((m) => (
-          <div key={m.id} className="flex items-center justify-between px-2 py-1.5 rounded text-xs" style={{ backgroundColor: "var(--color-bg-input)" }}>
-            <div className="flex items-center gap-2 min-w-0 cursor-pointer" onClick={() => navigate(`/profile/${m.user}`)}>
-              {m.avatar_url ? (
-                <img src={m.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: "var(--color-primary)", color: "white" }}>{m.username[0]?.toUpperCase()}</div>
-              )}
-              <span className="truncate" style={{ color: "var(--color-text-primary)" }}>{m.display_name || m.username}</span>
-              {m.role === "owner" && (
-                <>
-                  <span className="text-[9px] px-1 rounded" style={{ backgroundColor: "#FCD34D20", color: "#FCD34D" }}>OWNER</span>
-                  <span className="text-[9px] px-1 rounded" style={{ backgroundColor: "#60A5FA20", color: "#60A5FA" }}>ADMIN</span>
-                </>
-              )}
-              {m.role === "admin" && <span className="text-[9px] px-1 rounded" style={{ backgroundColor: "#60A5FA20", color: "#60A5FA" }}>ADMIN</span>}
-              {m.muted_until && <span className="text-[9px] px-1 rounded" style={{ backgroundColor: "#EF444420", color: "#EF4444" }}>MUTED</span>}
-            </div>
-            {m.user !== user?.id && isOwner && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {m.role !== "owner" && (
-                  <>
-                    {m.role === "admin" ? (
-                      <button onClick={() => handleChangeRole(m.id, "member")} className="px-1.5 py-0.5 rounded text-[9px] text-white" style={{ backgroundColor: "#F59E0B" }}>Demote</button>
-                    ) : (
-                      <button onClick={() => handleChangeRole(m.id, "admin")} className="px-1.5 py-0.5 rounded text-[9px] text-white" style={{ backgroundColor: "#3B82F6" }}>Admin</button>
-                    )}
-                    <button onClick={() => handleMute(m.id, m.muted_until ? 0 : 5)}
-                      className="px-1.5 py-0.5 rounded text-[9px] text-white"
-                      style={{ backgroundColor: "#6B7280" }}
-                      title={m.muted_until ? "Unmute" : "Mute"}>
-                      {m.muted_until ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-                      ) : (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                      )}
-                    </button>
-                    <button onClick={() => setKickConfirm(m)}
-                      className="px-1.5 py-0.5 rounded text-[9px] text-white"
-                      style={{ backgroundColor: "#DC2626" }}>Kick</button>
-                  </>
-                )}
-              </div>
-            )}
-            {m.user !== user?.id && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {friendUserIds.has(m.user) && <span className="text-[9px] text-green-500">●</span>}
-                <button
-                  onClick={() => handleOpenDM(m.user)}
-                  className="px-1.5 py-0.5 rounded text-[9px] text-white"
-                  style={{ backgroundColor: "#3B82F6" }}
-                  title="Send Message"
-                >💬</button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      {isOwner ? (
-        <div className="px-3 py-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-          <button onClick={handleDeleteChannel}
-            className="w-full py-1.5 rounded text-xs font-medium text-white"
-            style={{ backgroundColor: "#DC2626" }}>Delete Channel</button>
-        </div>
-      ) : activeChannelData?.channel_type === "public" ? (
-        <div className="px-3 py-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-          <button onClick={async () => { if (!activeChannel) return; try { await leaveChannel(activeChannel); setChannels((prev) => prev.filter((c) => c.id !== activeChannel)); setActiveChannel(null); setShowSettings(false); } catch {} }}
-            className="w-full py-1.5 rounded text-xs font-medium"
-            style={{ backgroundColor: "#F59E0B", color: "white" }}>Leave Channel</button>
-        </div>
-      ) : null}
     </div>
   );
 
@@ -563,28 +414,6 @@ export default function FloatingChatWidget() {
             style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            {kickConfirm && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                <div className="rounded-xl p-4 mx-4 shadow-2xl" style={{ backgroundColor: "var(--color-bg-card)" }}>
-                  <p className="text-sm mb-3" style={{ color: "var(--color-text-primary)" }}>
-                    Are you sure you want to kick <strong>{kickConfirm.display_name || kickConfirm.username}</strong>?
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={() => setKickConfirm(null)}
-                      className="px-3 py-1.5 rounded text-xs"
-                      style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}
-                    >Cancel</button>
-                    <button
-                      onClick={handleKickConfirm}
-                      className="px-3 py-1.5 rounded text-xs text-white"
-                      style={{ backgroundColor: "#DC2626" }}
-                    >Kick</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {showInvitePicker && (
               <InviteGamePicker
                 onSelect={(gameType) => {
@@ -595,10 +424,6 @@ export default function FloatingChatWidget() {
                 onCancel={() => { setShowInvitePicker(false); setInviteTarget(null); }}
               />
             )}
-
-
-
-
 
             {sidebar}
 
@@ -611,7 +436,7 @@ export default function FloatingChatWidget() {
                   onOpenDM={handleOpenDM}
                 />
               </div>
-            ) : showSettings && activeChannelData?.channel_type === "dm" ? (
+            ) : showSettings ? (
               <div className="flex-1 flex flex-col min-w-0">
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "var(--color-border)" }}>
                   <h3 className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>DM Settings</h3>
@@ -655,8 +480,6 @@ export default function FloatingChatWidget() {
                   )}
                 </div>
               </div>
-            ) : showSettings ? (
-              settingsPanel
             ) : (
               <div className="flex-1 flex flex-col min-w-0" onClick={handleMarkRead}>
                 {activeChannel ? (
@@ -669,11 +492,8 @@ export default function FloatingChatWidget() {
                     currentUserId={user?.id || null}
                     typingUsers={activeChannel ? typingUsers[activeChannel] : undefined}
                     title={activeTitle}
-                    onTitleClick={activeChannelData?.channel_type === "dm" && activeChannelData?.dm_partner?.id ? () => navigate(`/profile/${activeChannelData!.dm_partner!.id}`) : undefined}
-                    onSettingsClick={() => {
-                      fetchMembers(activeChannel).then(setMembers).catch(() => {});
-                      setShowSettings(true);
-                    }}
+                    onTitleClick={activeChannelData?.dm_partner?.id ? () => navigate(`/profile/${activeChannelData!.dm_partner!.id}`) : undefined}
+                    onSettingsClick={() => setShowSettings(true)}
                     blockedUserIds={blockedUserIds}
                     dmPartnerId={activeChannelData?.dm_partner?.id || null}
                     onBlockUser={(uid) => handleBlock(uid)}
@@ -687,12 +507,12 @@ export default function FloatingChatWidget() {
                     pendingSentIds={pendingSentIds}
                     pendingReceivedIds={pendingReceivedIds}
                     onFriendAction={handleFriendAction}
-                    dmPartnerReadUntil={activeChannelData?.channel_type === "dm" ? activeChannelData?.dm_partner?.read_until || null : null}
+                    dmPartnerReadUntil={activeChannelData?.dm_partner?.read_until || null}
                     sendGameInviteResponse={sendGameInviteResponse}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
-                    <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>No channels available</p>
+                    <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>No messages yet</p>
                   </div>
                 )}
               </div>

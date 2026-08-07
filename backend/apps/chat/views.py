@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, mixins, status, permissions
 from rest_framework.decorators import action
@@ -9,26 +8,9 @@ from rest_framework.response import Response
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
-from .models import Channel, ChannelMembership, Message, Block, Friendship
-
-
-def get_or_create_dm_channel_sync(user1_id, user2_id):
-    existing = Channel.objects.filter(
-        channel_type=Channel.CHANNEL_DM,
-        memberships__user_id=user1_id,
-    ).filter(memberships__user_id=user2_id).first()
-    if existing:
-        return existing
-    channel = Channel.objects.create(
-        channel_type=Channel.CHANNEL_DM,
-        name="",
-    )
-    ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
-    ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
-    return channel
+from .models import Channel, ChannelMembership, Message, Block, Friendship, get_or_create_dm_channel
 from .serializers import (
     ChannelSerializer,
-    ChannelCreateSerializer,
     ChannelMembershipSerializer,
     MessageSerializer,
     BlockSerializer,
@@ -37,36 +19,15 @@ from .serializers import (
 from django.utils import timezone
 
 
-class ChannelViewSet(mixins.CreateModelMixin,
-                     mixins.ListModelMixin,
+class ChannelViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
-                     mixins.DestroyModelMixin,
                      viewsets.GenericViewSet):
     queryset = Channel.objects.all()
+    serializer_class = ChannelSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_serializer_class(self):
-        if self.action == "create":
-            return ChannelCreateSerializer
-        return ChannelSerializer
-
     def get_queryset(self):
-        if self.action == "join":
-            return Channel.objects.filter(
-                channel_type__in=(Channel.CHANNEL_PUBLIC, Channel.CHANNEL_PROTECTED),
-            )
-        return Channel.objects.filter(
-            models.Q(channel_type=Channel.CHANNEL_PUBLIC) |
-            models.Q(memberships__user=self.request.user)
-        ).distinct()
-
-    def perform_create(self, serializer):
-        channel = serializer.save(owner=self.request.user)
-        ChannelMembership.objects.create(
-            channel=channel,
-            user=self.request.user,
-            role="owner",
-        )
+        return Channel.objects.filter(memberships__user=self.request.user).distinct()
 
     @action(detail=False, methods=["post"])
     def dm(self, request):
@@ -83,19 +44,7 @@ class ChannelViewSet(mixins.CreateModelMixin,
             | models.Q(blocker=target, blocked=request.user)
         ).exists():
             return Response({"detail": "Cannot message this user."}, status=status.HTTP_403_FORBIDDEN)
-        channel = get_or_create_dm_channel_sync(request.user.id, target.id)
-        return Response(ChannelSerializer(channel, context={"request": request}).data)
-
-    @action(detail=True, methods=["post"])
-    def join(self, request, pk=None):
-        channel = self.get_object()
-        if channel.channel_type in (Channel.CHANNEL_DM, Channel.CHANNEL_PRIVATE):
-            return Response({"detail": "This channel requires an invitation."}, status=status.HTTP_403_FORBIDDEN)
-        if channel.channel_type == Channel.CHANNEL_PROTECTED:
-            password = request.data.get("password", "")
-            if not password or not check_password(password, channel.password_hash):
-                return Response({"detail": "Invalid channel password."}, status=status.HTTP_403_FORBIDDEN)
-        ChannelMembership.objects.get_or_create(channel=channel, user=request.user)
+        channel = get_or_create_dm_channel(request.user.id, target.id)
         return Response(ChannelSerializer(channel, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -222,6 +171,8 @@ class MembershipViewSet(mixins.ListModelMixin,
         ).first()
         if not membership:
             return Response({"detail": "You are not a member."}, status=status.HTTP_404_NOT_FOUND)
+        if membership.channel.channel_type == Channel.CHANNEL_DM:
+            return Response({"detail": "Direct messages cannot be left."}, status=status.HTTP_400_BAD_REQUEST)
         if membership.role == "owner":
             return Response({"detail": "Owners cannot leave; delete the channel instead."}, status=status.HTTP_400_BAD_REQUEST)
 
