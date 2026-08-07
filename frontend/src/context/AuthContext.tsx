@@ -11,7 +11,7 @@ import {
   getProfile,
   logout as apiLogout,
 } from "../services/auth";
-import { clearTokens } from "../services/api";
+import { clearTokens, hasPotentialSession } from "../services/api";
 
 export type { User };
 
@@ -37,6 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function restore() {
+      if (!hasPotentialSession()) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
       try {
         const profile = await getProfile();
         if (!cancelled) setUser(profile);

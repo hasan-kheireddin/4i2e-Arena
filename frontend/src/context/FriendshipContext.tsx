@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { fetchFriendships, type FriendshipRecord } from "../services/chat";
+import { useAuth } from "./AuthContext";
 
 interface FriendshipContextType {
   friendships: FriendshipRecord[];
@@ -7,12 +8,14 @@ interface FriendshipContextType {
   addFriendship: (f: FriendshipRecord) => void;
   updateFriendship: (id: string, updates: Partial<FriendshipRecord>) => void;
   removeFriendship: (id: string) => void;
+  deduplicate: () => void;
   refresh: () => void;
 }
 
 const FriendshipContext = createContext<FriendshipContextType | null>(null);
 
 export function FriendshipProvider({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
   const [friendships, setFriendships] = useState<FriendshipRecord[]>([]);
 
   const refresh = useCallback(async () => {
@@ -29,8 +32,10 @@ export function FriendshipProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (loading) return;
+    if (user) void refresh();
+    else setFriendships([]);
+  }, [loading, refresh, user]);
 
   const addFriendship = useCallback((f: FriendshipRecord) => {
     setFriendships((prev) => {

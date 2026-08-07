@@ -28,8 +28,6 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
   };
 
   const isGameInvite = (msg.message_type === "system" || msg.message_type === "game_invite") && !!msg.game_id;
-  const gameTypeLabel = msg.game_type === "pong" ? "Pong" : msg.game_type === "pong3d" ? "3D Pong" : msg.game_type === "tictactoe" ? "Tic Tac Toe" : msg.game_type || "Game";
-
   const [expired, setExpired] = useState(false);
   const [countdown, setCountdown] = useState(30);
   useEffect(() => {

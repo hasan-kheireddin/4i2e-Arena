@@ -17,7 +17,7 @@ import {
   updateProfile,
 } from '../services/auth';
 import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from '../i18n/language';
-import type { ApiError } from '../services/api';
+import { getApiErrorMessage } from '../services/api';
 
 type SettingsTab = 'profile' | 'security' | 'appearance';
 
@@ -112,8 +112,7 @@ export default function SettingsPage() {
       const status = await twoFAStatus();
       setTwoFAInfo(status);
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setTwoFAError(apiErr.detail ?? t('settings.security.load_status_failed'));
+      setTwoFAError(getApiErrorMessage(err, t('settings.security.load_status_failed')));
     } finally {
       setTwoFALoading(false);
     }
@@ -138,7 +137,8 @@ export default function SettingsPage() {
   };
 
   const handleDisable2FA = async () => {
-    if (![6, 8, 12].includes(disableCode.length)) {
+    const normalizedCode = disableCode.replace(/[\s-]/g, '').toUpperCase();
+    if (![6, 8, 12].includes(normalizedCode.length)) {
       setTwoFAError(t('settings.security.enter_disable_code'));
       return;
     }
@@ -148,7 +148,7 @@ export default function SettingsPage() {
     setDisableSuccess(null);
 
     try {
-      await twoFADisable(disableCode);
+      await twoFADisable(normalizedCode);
       setTwoFAInfo({
         is_2fa_enabled: false,
         confirmed: false,
@@ -162,8 +162,7 @@ export default function SettingsPage() {
         setUser({ ...user, is_2fa_enabled: false });
       }
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setTwoFAError(apiErr.detail ?? t('settings.security.disable_failed'));
+      setTwoFAError(getApiErrorMessage(err, t('settings.security.disable_failed')));
     } finally {
       setDisableLoading(false);
     }
@@ -182,8 +181,7 @@ export default function SettingsPage() {
       setRecoveryAuthCode('');
       await refreshTwoFAState();
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setTwoFAError(apiErr.detail ?? t('settings.security.load_status_failed'));
+      setTwoFAError(getApiErrorMessage(err, t('settings.security.load_status_failed')));
     } finally {
       setRecoveryLoading(false);
     }
@@ -193,16 +191,6 @@ export default function SettingsPage() {
     setSignOutLoading(true);
     await logout();
     navigate('/login');
-  };
-
-  const getApiErrorMessage = (err: ApiError, fallback: string) => {
-    if (err.detail) return err.detail;
-    if (err.fieldErrors) {
-      for (const messages of Object.values(err.fieldErrors)) {
-        if (messages.length > 0) return messages[0];
-      }
-    }
-    return fallback;
   };
 
   const handleChangePassword = async () => {
@@ -226,8 +214,7 @@ export default function SettingsPage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setPasswordError(getApiErrorMessage(apiErr, t('settings.security.password_update_failed')));
+      setPasswordError(getApiErrorMessage(err, t('settings.security.password_update_failed')));
     } finally {
       setPasswordLoading(false);
     }
@@ -528,6 +515,9 @@ export default function SettingsPage() {
             placeholder="000000"
             maxLength={12}
           />
+          {twoFAError && (
+            <p role="alert" className="text-sm text-error">{twoFAError}</p>
+          )}
           <div className="flex gap-3">
             <Button onClick={handleDisable2FA} loading={disableLoading} variant="danger">
               {t('settings.security.confirm_disable')}

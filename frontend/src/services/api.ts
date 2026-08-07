@@ -1,5 +1,25 @@
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
+const SESSION_HINT_KEY = "auth_session_expires_at";
+
+function tokenExpiresAt(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: number };
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A non-sensitive hint only; authentication still relies on HttpOnly cookies/JWTs. */
+export function hasPotentialSession(): boolean {
+  const expiresAt = Number(localStorage.getItem(SESSION_HINT_KEY));
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+    localStorage.removeItem(SESSION_HINT_KEY);
+    return false;
+  }
+  return true;
+}
 
 // Token helpers. JWTs are kept in memory only; the backend also sets Secure
 // HttpOnly cookies used across reloads and WebSocket handshakes.
@@ -16,6 +36,8 @@ export function setTokens(access: string, refresh: string): void {
   refreshToken = refresh;
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
+  const expiresAt = tokenExpiresAt(refresh);
+  if (expiresAt) localStorage.setItem(SESSION_HINT_KEY, String(expiresAt));
 }
 
 export function clearTokens(): void {
@@ -23,6 +45,7 @@ export function clearTokens(): void {
   refreshToken = null;
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
+  localStorage.removeItem(SESSION_HINT_KEY);
 }
 
 export interface ApiError {
@@ -32,6 +55,17 @@ export interface ApiError {
   fieldErrors?: Record<string, string[]>;
   /** HTTP status code */
   status: number;
+}
+
+/** Return the most useful server message, including DRF field errors. */
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  const apiError = error as ApiError | undefined;
+  if (apiError?.detail) return apiError.detail;
+
+  const firstFieldError = apiError?.fieldErrors
+    ? Object.values(apiError.fieldErrors).flat().find(Boolean)
+    : undefined;
+  return firstFieldError ?? fallback;
 }
 
 /**

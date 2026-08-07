@@ -39,7 +39,7 @@ export default function ChatPage() {
 
   const {
     status, messages, connectedChannels, sendMessage, sendEmote, joinChannel, requestHistory, typingUsers, sendTyping,
-    gameInvite, clearGameInvite, gameInviteAccepted, clearGameInviteAccepted, sendGameInvite, sendGameInviteResponse,
+    gameInvite, gameInviteAccepted, clearGameInviteAccepted, sendGameInvite, sendGameInviteResponse,
     onlineUserIds, friendRequest: wsFriendRequest, clearFriendRequest,
     friendAccepted, clearFriendAccepted,
     friendRemoved, clearFriendRemoved,
@@ -252,12 +252,6 @@ export default function ChatPage() {
   const handleInviteGame = (userId: string) => {
     setInviteTarget(userId);
     setShowInvitePicker(true);
-  };
-
-  const handleSendInvite = (gameType: string) => {
-    if (inviteTarget) sendGameInvite(inviteTarget, gameType);
-    setShowInvitePicker(false);
-    setInviteTarget(null);
   };
 
   const dmChannels = channels.filter((c) => c.channel_type === "dm");

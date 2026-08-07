@@ -11,18 +11,15 @@ import {
 } from "../services/analytics";
 import {
   fetchFriendships, sendFriendRequest, acceptFriendRequest, removeFriend,
-  getOrCreateDM, type FriendshipRecord,
+  getOrCreateDM,
 } from "../services/chat";
 import { useChatSocket } from "../components/Chat/useChatSocket";
-import Toast from "../components/Toast";
 import {
   Trophy, Flame, TrendingUp, Sword, Star,
   Clock, Target, Zap, ShieldCheck, UserPlus, UserCheck, MessageCircle, Gamepad2, X,
 } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
-import { apiFetch } from "../services/api";
 import { useFriendships } from "../context/FriendshipContext";
-import { useToast } from "../context/ToastContext";
 import { useBlocks } from "../context/BlockContext";
 import InviteGamePicker from "../components/Chat/InviteGamePicker";
 
@@ -55,15 +52,13 @@ export default function ProfilePage() {
   const [recentUnlocks, setRecentUnlocks] = useState<AchievementUnlock[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const { friendships, setFriendships, refresh: refreshFriendships } = useFriendships();
-  console.log("ProfilePage friendships count:", friendships.length);
 
   const navigate = useNavigate();
 
   const isOwn = !profileUserId || profileUserId === user?.id;
 
-  const { sendGameInvite, gameInvite, clearGameInvite, sendGameInviteResponse, gameInviteAccepted, clearGameInviteAccepted, friendRemoved, clearFriendRemoved } = useChatSocket();
-  const { showToast } = useToast();
-  const { blocks, blockedUserIds, block: doBlock, unblock: doUnblock } = useBlocks();
+  const { sendGameInvite, gameInviteAccepted, clearGameInviteAccepted, friendRemoved, clearFriendRemoved } = useChatSocket();
+  const { blocks, blockedUserIds, unblock: doUnblock } = useBlocks();
   // Re-fetch profile when friendships change (to update friend_count for other users)
   useEffect(() => {
     if (!isOwn && profileUserId) {
@@ -89,18 +84,13 @@ export default function ProfilePage() {
     }
   }, [gameInviteAccepted, clearGameInviteAccepted, navigate]);
   const [showInvitePicker, setShowInvitePicker] = useState(false);
-  const handleSendInvite = (gameType: string) => {
-    if (targetUserId) sendGameInvite(targetUserId, gameType);
-    setShowInvitePicker(false);
-  };
-
 useEffect(() => {
   let cancelled = false;
   async function load() {
     // Fetch friendships independently so other failures can't kill it
     fetchFriendships()
       .then((res) => { if (!cancelled) setFriendships(res as any); })
-      .catch(console.error); // ← temporarily, to see what's actually failing
+      .catch(() => {});
 
     try {
       if (!isOwn && profileUserId) {
@@ -121,7 +111,7 @@ useEffect(() => {
       setRecentUnlocks((unlocksRes as any).slice(0, 4));
       setMatches((matchRes as any).results);
     } catch (e) {
-      console.error(e); // ← temporarily, to see what's actually failing
+      // Individual panels keep their empty state when a request fails.
     } finally {
       if (!cancelled) setLoading(false);
     }
@@ -168,7 +158,6 @@ useEffect(() => {
   const friendDirection = friendRel?.direction;
 
   const handleFriendAction = async () => {
-    console.log("handleFriendAction called, status:", friendStatus, "target:", targetUserId);
     if (!targetUserId) return;
     try {
       if (friendStatus === "accepted" && friendRel) {
