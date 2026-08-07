@@ -1,3 +1,16 @@
+"""
+It contains the following models:
+- User: Custom user model with UUID primary key, email, display name, XP, level
+- PendingRegistration: Temporary storage for registration attempts until email verification
+- TOTPDevice: Stores TOTP secret and recovery codes for 2FA
+- EmailVerificationToken: Single-use token for email verification and password reset
+
+with relations:
+PendingRegistration -> User (one-to-one after verification)
+TOTPDevice -> User (one-to-one)
+EmailVerificationToken -> User (many-to-one)
+"""
+
 import random
 import uuid
 from django.contrib.auth.hashers import make_password
@@ -15,9 +28,8 @@ class User(AbstractUser):
     """Custom user model for the ft_transcendence platform."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True)  # enforce unique emails
+    email = models.EmailField(unique=True)
     display_name = models.CharField(unique=True, max_length=50, blank=True, default="")
-    avatar_url = models.URLField(max_length=500, blank=True, default="") # usage where
     preferred_language = models.CharField(
         max_length=5,
         choices=[
@@ -31,12 +43,7 @@ class User(AbstractUser):
     xp = models.PositiveIntegerField(default=0, db_index=True)
     level = models.PositiveIntegerField(default=1, db_index=True)
     is_2fa_enabled = models.BooleanField(default=False)
-    last_activity = models.DateTimeField(default=timezone.now, db_index=True)# usage where
-
-    # Use email as the login field alongside username # understand this part
-    USERNAME_FIELD = "username"
-    REQUIRED_FIELDS = ["email"]
-
+    # Override the default username field to enforce case-insensitive uniqueness used at level of the database constraints.
     class Meta:
         db_table = "users"
         verbose_name = "User"
@@ -58,7 +65,7 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
-
+    # Override the save method to normalize email and auto-populate display_name if missing.
     def save(self, *args, **kwargs):
         """Normalize email and auto-populate display_name if missing."""
         if self.email:

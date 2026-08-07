@@ -1,5 +1,6 @@
 """
-Email sending helpers for account verification and password reset.
+It contain two helpers for sending OTP emails for account verification
+and rest password link with token
 """
 from __future__ import annotations
 

@@ -1,3 +1,7 @@
+"""
+It contain 2 functions used to set JWT authentication in browser cookies when login and refresh or access
+and delete when logout from the website for authentication(security purposes).
+"""
 from __future__ import annotations
 
 from datetime import timedelta

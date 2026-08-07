@@ -333,7 +333,6 @@ class PongConsumer(BaseConsumer):
             "emote_id": emote_id,
             "slot": self._slot,
             "sender_username": self.user.username,
-            "sender_avatar": self.user.avatar_url or "",
         })
         await self.channel_layer.group_send(session.group_name, emote_payload)
 

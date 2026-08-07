@@ -74,7 +74,6 @@ class ChannelSerializer(serializers.ModelSerializer):
             "id": str(other.user.id),
             "username": other.user.username,
             "display_name": other.user.display_name,
-            "avatar_url": other.user.avatar_url or "",
             "read_until": other.read_until.isoformat() if other.read_until else None,
         }
 
@@ -128,24 +127,22 @@ class ChannelCreateSerializer(serializers.ModelSerializer):
 class ChannelMembershipSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     display_name = serializers.CharField(source="user.display_name", read_only=True)
-    avatar_url = serializers.URLField(source="user.avatar_url", read_only=True)
 
     class Meta:
         model = ChannelMembership
         fields = [
-            "id", "user", "username", "display_name", "avatar_url",
+            "id", "user", "username", "display_name",
             "role", "muted_until", "joined_at",
         ]
 
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source="sender.username", read_only=True)
-    sender_avatar = serializers.URLField(source="sender.avatar_url", read_only=True)
 
     class Meta:
         model = Message
         fields = [
-            "id", "channel", "sender", "sender_username", "sender_avatar",
+            "id", "channel", "sender", "sender_username",
             "message_type", "content", "emote_id", "created_at",
         ]
         read_only_fields = ["id", "sender", "created_at"]
@@ -162,14 +159,13 @@ class FriendshipSerializer(serializers.ModelSerializer):
     other_user_id = serializers.SerializerMethodField()
     other_username = serializers.SerializerMethodField()
     other_display_name = serializers.SerializerMethodField()
-    other_avatar = serializers.SerializerMethodField()
     direction = serializers.SerializerMethodField()
 
     class Meta:
         model = Friendship
         fields = [
             "id", "from_user", "to_user", "other_user_id", "other_username",
-            "other_display_name", "other_avatar", "status", "direction",
+            "other_display_name", "status", "direction",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "from_user", "created_at", "updated_at"]
@@ -195,13 +191,6 @@ class FriendshipSerializer(serializers.ModelSerializer):
             return obj.to_user.display_name
         return obj.from_user.display_name
 
-    def get_other_avatar(self, obj):
-        request = self.context.get("request")
-        user = request.user if request else None
-        if user == obj.from_user:
-            return obj.to_user.avatar_url or ""
-        return obj.from_user.avatar_url or ""
-
     def get_direction(self, obj):
         request = self.context.get("request")
         user = request.user if request else None
@@ -213,13 +202,12 @@ class FriendshipSerializer(serializers.ModelSerializer):
 class BlockSerializer(serializers.ModelSerializer):
     blocked_username = serializers.CharField(source="blocked.username", read_only=True)
     blocked_display_name = serializers.CharField(source="blocked.display_name", read_only=True)
-    blocked_avatar = serializers.URLField(source="blocked.avatar_url", read_only=True)
     blocker = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Block
         fields = [
             "id", "blocker", "blocked", "blocked_username", "blocked_display_name",
-            "blocked_avatar", "created_at",
+            "created_at",
         ]
         read_only_fields = ["id", "blocker", "created_at"]

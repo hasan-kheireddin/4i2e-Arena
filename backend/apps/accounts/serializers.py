@@ -29,12 +29,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "display_name",
-            "avatar_url",
             "preferred_language",
             "xp",
             "level",
             "is_2fa_enabled",
-            "last_activity",
             "date_joined",
             "friend_count",
             "blocked_by_target",
@@ -63,7 +61,7 @@ class RegisterSerializer(serializers.Serializer):
     Validates a new user registration payload.
 
     Fields:
-      - username     : 8-30 chars, alphanumeric + _ -, starts with letter
+      - username     : 3-30 chars, lowercase alphanumeric + _ -, starts with a letter
       - email        : valid, unique email
       - password     : 10+ chars, upper + lower + digit + special char
       - password2    : must match password
@@ -164,7 +162,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "display_name",
-            "avatar_url",
             "preferred_language",
         ]
 

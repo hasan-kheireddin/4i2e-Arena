@@ -1,3 +1,7 @@
+"""
+It is used to validate from backend the username uniquness and lowercase chars,
+ email lower case chars, and password strength.
+"""
 import re
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -15,7 +19,11 @@ def validate_username_unique(value):
 
 def validate_email_unique(value):
     """Ensure email is not already taken (case-insensitive)."""
-    value = value.strip().lower()
+    value = value.strip()
+    if value != value.lower():
+        raise serializers.ValidationError(
+            "Email address must not contain uppercase letters."
+        )
     if User.objects.filter(email__iexact=value).exists():
         raise serializers.ValidationError("A user with this email already exists.")
     return value
@@ -24,23 +32,23 @@ def validate_email_unique(value):
 def validate_username_format(value):
     """
     Enforce username format rules:
-      - 8–30 characters
-      - Alphanumeric, underscores, and hyphens only
-      - Must start with a letter
+      - 3–30 characters
+      - Lowercase letters, numbers, underscores, and hyphens only
+      - Must start with a lowercase letter
     """
     value = value.strip()
-    if len(value) < 8:
+    if len(value) < 3:
         raise serializers.ValidationError(
-            "Username must be at least 8 characters long."
+            "Username must be at least 3 characters long."
         )
     if len(value) > 30:
         raise serializers.ValidationError(
             "Username must be at most 30 characters long."
         )
-    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", value):
+    if not re.fullmatch(r"[a-z][a-z0-9_-]*", value):
         raise serializers.ValidationError(
-            "Username must start with a letter and contain only "
-            "letters, numbers, underscores, and hyphens."
+            "Username must start with a lowercase letter and contain only "
+            "lowercase letters, numbers, underscores, and hyphens."
         )
     return value
 

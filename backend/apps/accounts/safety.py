@@ -1,3 +1,8 @@
+"""
+It is used as protective layer around redis/django cache system.
+It uses a decorator, decorator used to run a function and if the function fails,
+it prevent breaking the application by exception.
+"""
 from __future__ import annotations
 
 import logging

@@ -167,17 +167,12 @@ class MatchPlayerSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(
         source="user.display_name", read_only=True,
     )
-    avatar_url = serializers.URLField(
-        source="user.avatar_url", read_only=True,
-    )
-
     class Meta:
         model = MatchPlayer
         fields = [
             "user_id",
             "username",
             "display_name",
-            "avatar_url",
             "slot",
             "outcome",
             "score",

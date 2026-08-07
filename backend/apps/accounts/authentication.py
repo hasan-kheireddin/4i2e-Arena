@@ -1,3 +1,7 @@
+"""
+It contain most important function, it is called for every API request that uses this authentication class,
+It asks does the request contain a valid credentials?if so, which user is making the request?
+"""
 from __future__ import annotations
 
 from django.conf import settings

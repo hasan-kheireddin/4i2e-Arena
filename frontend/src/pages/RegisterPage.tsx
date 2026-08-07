@@ -51,19 +51,22 @@ export default function RegisterPage() {
     if (!formData.username) {
       newErrors.username = t("errors.username_required", "Username is required");
       valid = false;
-    } else if (formData.username.length < 8) {
-      newErrors.username = t("errors.username_min_length", "Username must be at least 8 characters");
+    } else if (formData.username.length < 3) {
+      newErrors.username = t("errors.username_min_length", "Username must be at least 3 characters");
       valid = false;
     } else if (formData.username.length > 30) {
       newErrors.username = t("errors.username_max_length");
       valid = false;
-    } else if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(formData.username)) {
+    } else if (!/^[a-z][a-z0-9_-]*$/.test(formData.username)) {
       newErrors.username = t("errors.username_format");
       valid = false;
     }
 
     if (!formData.email) {
       newErrors.email = t("errors.email_required", "Email is required");
+      valid = false;
+    } else if (formData.email !== formData.email.toLowerCase()) {
+      newErrors.email = t("errors.email_lowercase", "Email address must not contain uppercase letters");
       valid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = t("errors.email_invalid", "Email is invalid");
@@ -320,7 +323,7 @@ function FormContent({
           error={errors.username}
           hint={
             formData.username && !errors.username
-              ? t("register.username_hint", "8-30 characters, letters and numbers only")
+              ? t("register.username_hint", "3-30 characters, lowercase letters and numbers only")
               : undefined
           }
           autoComplete="username"

@@ -118,10 +118,6 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
-        # Update last activity
-        user.last_activity = timezone.now()
-        user.save(update_fields=["last_activity"])
-
         # If 2FA is enabled, require the authenticator-app verification step.
         if user.is_2fa_enabled:
             has_confirmed_device = TOTPDevice.objects.filter(
@@ -275,7 +271,7 @@ class PublicProfileView(generics.RetrieveAPIView):
 class ProfileUpdateView(generics.UpdateAPIView):
     """
     Update the authenticated user's profile.
-    Accepts: display_name, avatar_url, preferred_language.
+    Accepts: display_name, preferred_language.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -420,7 +416,10 @@ class PasswordResetRequestView(APIView):
             send_password_reset_email(
                 user,
                 token.code,
-                frontend_url=settings.FRONTEND_URL,
+                # Use the same public origin through which this browser reached
+                # the application. This keeps links usable from other devices
+                # on the LAN instead of falling back to localhost.
+                frontend_url=request.build_absolute_uri("/").rstrip("/"),
             )
         except User.DoesNotExist:
             pass  # Don't reveal whether the email exists

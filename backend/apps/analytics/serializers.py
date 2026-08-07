@@ -115,7 +115,6 @@ class LeaderboardEntrySerializer(serializers.ModelSerializer):
             "id",
             "username",
             "display_name",
-            "avatar_url",
             "xp",
             "level",
             "rank",

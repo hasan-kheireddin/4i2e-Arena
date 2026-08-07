@@ -1,3 +1,6 @@
+"""
+It is used to validate the format of the input token 
+"""
 from rest_framework import serializers
 
 

@@ -354,7 +354,6 @@ class ChatConsumer(BaseConsumer):
             "channel_id": str(dm.id),
             "sender": str(self.user.pk),
             "sender_username": self.user.username,
-            "sender_avatar": self.user.avatar_url or "",
             "message_type": "game_invite",
             "content": f"{self.user.username} invited you to play {game_type}",
             "created_at": msg.created_at.isoformat(),
@@ -470,7 +469,7 @@ class ChatConsumer(BaseConsumer):
                 await self.channel_layer.group_send(group, {
                     "type": "chat.message",
                     "id": msg_id, "channel_id": channel_id,
-                    "sender": None, "sender_username": None, "sender_avatar": "",
+                    "sender": None, "sender_username": None,
                     "message_type": "system",
                     "content": f"{self.user.username} accepted the game invite!",
                     "emote_id": "",
@@ -497,7 +496,7 @@ class ChatConsumer(BaseConsumer):
                 await self.channel_layer.group_send(group, {
                     "type": "chat.message",
                     "id": msg_id, "channel_id": channel_id,
-                    "sender": None, "sender_username": None, "sender_avatar": "",
+                    "sender": None, "sender_username": None,
                     "message_type": "system",
                     "content": f"{self.user.username} declined the game invite.",
                     "emote_id": "",
@@ -547,7 +546,6 @@ class ChatConsumer(BaseConsumer):
             "channel_id": channel_id,
             "sender": str(self.user.pk),
             "sender_username": self.user.username,
-            "sender_avatar": self.user.avatar_url or "",
             "message_type": "text",
             "content": text,
             "created_at": msg.created_at.isoformat(),
@@ -585,7 +583,6 @@ class ChatConsumer(BaseConsumer):
                 "channel_id": channel_id,
                 "sender": str(self.user.pk),
                 "sender_username": self.user.username,
-                "sender_avatar": self.user.avatar_url or "",
                 "message_type": "emote",
                 "emote_id": emote_id,
                 "created_at": msg.created_at.isoformat(),
@@ -615,7 +612,6 @@ class ChatConsumer(BaseConsumer):
                 "channel_id": str(dm.id),
                 "sender": str(self.user.pk),
                 "sender_username": self.user.username,
-                "sender_avatar": self.user.avatar_url or "",
                 "message_type": "emote",
                 "emote_id": emote_id,
                 "created_at": msg.created_at.isoformat(),
@@ -678,7 +674,6 @@ class ChatConsumer(BaseConsumer):
                     "channel_id": channel_id,
                     "sender": str(m.sender_id) if m.sender else None,
                     "sender_username": m.sender.username if m.sender else None,
-                    "sender_avatar": m.sender.avatar_url if m.sender else "",
                     "message_type": m.message_type,
                     "content": m.content,
                     "emote_id": m.emote_id,
@@ -786,7 +781,6 @@ class ChatConsumer(BaseConsumer):
                 "from_user_id": event.get("from_user_id"),
                 "from_username": event.get("from_username"),
                 "from_display_name": event.get("from_display_name"),
-                "from_avatar": event.get("from_avatar"),
             })
 
     async def chat_read_receipt(self, event: dict[str, Any]) -> None:
