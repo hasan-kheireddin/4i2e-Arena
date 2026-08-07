@@ -14,7 +14,7 @@ interface BlockContextType {
 const BlockContext = createContext<BlockContextType | null>(null);
 
 export function BlockProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [blocks, setBlocks] = useState<BlockRecord[]>([]);
 
   const refresh = useCallback(async () => {
@@ -25,8 +25,10 @@ export function BlockProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (loading) return;
+    if (user) void refresh();
+    else setBlocks([]);
+  }, [loading, refresh, user]);
 
   const block = useCallback(async (userId: string) => {
     try {

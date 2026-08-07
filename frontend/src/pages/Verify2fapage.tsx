@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import verifyDark from "../images/loginimgDark.png";
 import { clearPendingTwoFA, getPendingTwoFA, storePendingTwoFA, twoFAVerify } from "../services/auth";
-import type { ApiError } from "../services/api";
+import { getApiErrorMessage } from "../services/api";
 
 export default function Verify2FAPage() {
   const { setUser } = useAuth();
@@ -99,8 +99,7 @@ export default function Verify2FAPage() {
       setUser(res.user);
       navigate("/home");
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      setError(apiErr.detail ?? t("errors.invalid_code"));
+      setError(getApiErrorMessage(err, t("errors.invalid_code")));
       setCode(["", "", "", "", "", ""]);
       setRecoveryCode("");
       inputRefs.current[0]?.focus();

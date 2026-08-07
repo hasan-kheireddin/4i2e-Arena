@@ -313,13 +313,6 @@ class TwoFactorVerifyView(APIView):
         temp_token = serializer.validated_data["temp_token"]
         code = serializer.validated_data["code"]
 
-        session_user_id = request.session.get("2fa_user_id")
-        if not session_user_id:
-            return Response(
-                {"detail": "2FA session expired. Please log in again."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         # Resolve user from temp token
         token_context = _user_from_temp_token(temp_token)
         if token_context is None:
@@ -329,13 +322,6 @@ class TwoFactorVerifyView(APIView):
             )
 
         user, token_jti = token_context
-        if str(user.pk) != str(session_user_id):
-            request.session.pop("2fa_user_id", None)
-            return Response(
-                {"detail": "2FA session mismatch. Please log in again."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
         rate_key = _attempt_cache_key("login", user.pk)
         if _is_rate_limited(rate_key):
             return Response(
@@ -386,7 +372,6 @@ class TwoFactorVerifyView(APIView):
             user_agent=get_user_agent(request),
         )
 
-        request.session.pop("2fa_user_id", None)
         response = Response(
             {"user": profile, "tokens": tokens},
             status=status.HTTP_200_OK,
@@ -438,7 +423,8 @@ class TwoFactorDisableView(APIView):
 
         # Remove device and clear flag
         _clear_failed_attempts(rate_key)
-        device.delete()
+        verified_device, _ = verified
+        verified_device.delete()
         user.is_2fa_enabled = False
         user.save(update_fields=["is_2fa_enabled"])
 

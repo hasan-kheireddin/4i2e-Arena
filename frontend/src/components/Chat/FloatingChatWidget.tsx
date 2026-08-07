@@ -62,7 +62,6 @@ export default function FloatingChatWidget() {
     requestHistory,
     typingUsers,
     gameInvite,
-    clearGameInvite,
     gameInviteAccepted,
     clearGameInviteAccepted,
     sendGameInvite,
@@ -80,7 +79,7 @@ export default function FloatingChatWidget() {
     reconnectCount,
   } = useChatSocket();
 
-  const friendNotif = useChatEventEffects({
+  useChatEventEffects({
     gameInvite, gameInviteAccepted, clearGameInviteAccepted,
     friendAccepted, clearFriendAccepted,
     friendRemoved, clearFriendRemoved,
@@ -274,14 +273,6 @@ export default function FloatingChatWidget() {
   const handleInviteGame = (userId: string) => {
     setInviteTarget(userId);
     setShowInvitePicker(true);
-  };
-
-  const handleSendInvite = (gameType: string) => {
-    if (inviteTarget) {
-      sendGameInvite(inviteTarget, gameType);
-    }
-    setShowInvitePicker(false);
-    setInviteTarget(null);
   };
 
   const handleBlock = async (userId: string) => {
