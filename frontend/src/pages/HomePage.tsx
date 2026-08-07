@@ -90,8 +90,11 @@ export default function HomePage() {
   const streak     = stats?.streaks.current.count ?? 0;
   const myUsername = normalizeUsername(user?.username);
   const myDisplayName = pickDisplayName(user?.display_name, user?.username, t("home.anonymous_player"));
-  const myEntry    = leaderboard.find((e) => normalizeUsername(e.username) === myUsername);
-  const myRank     = myEntry ? `#${myEntry.rank}` : "#–";
+  // Use the dedicated rank endpoint (xp/me/) rather than searching the top-5
+  // leaderboard slice — that slice won't contain the user's entry unless
+  // they happen to already be in the top 5, which made this show "#–" for
+  // most users.
+  const myRank     = xpDetail?.rank ? `#${xpDetail.rank}` : "#–";
 
   if (loading) {
     return (

@@ -12,7 +12,6 @@
     "no_account": "Vous n'avez pas de compte ?",
     "sign_up": "S'inscrire",
     "or": "ou",
-    "42": "Se connecter avec 42",
     "forgot": "Mot de passe oublié ?",
     "back_home": "Retour à l'accueil",
     "hero_image_alt": "Illustration d'une arène sportive"
@@ -711,14 +710,7 @@
     "rights_request": "Demander des informations sur les données que nous conservons",
     "rights_contact": "Contacter Fire Arena pour les questions liées à la confidentialité",
     "rights_deletion": "Suppression de compte : La suppression de compte n'est actuellement pas disponible via l'auto-service de la plateforme. Veuillez nous contacter pour demander la suppression de votre compte et de ses données associées.",
-    
-    "third_party_title": "Connexion Tiers (42 School)",
-    "third_party_text": "Vous pouvez vous connecter avec votre compte 42. Quand vous le faites :",
-    "third_party_authorize": "Vous autorisez Fire Arena à accéder à votre profil 42",
-    "third_party_receive": "Fire Arena reçoit les informations de base du profil et du compte nécessaires à l'authentification",
-    "third_party_secure": "Votre identifiant et mot de passe 42 ne sont jamais partagés avec ou stockés par Fire Arena",
-    "third_party_note": "Pour des questions sur les pratiques de confidentialité de 42, veuillez consulter sa politique de confidentialité.",
-    
+
     "changes_title": "Modifications de Cette Politique",
     "changes_text": "Fire Arena peut mettre à jour cette Politique de Confidentialité de temps en temps. Lorsque nous apportons des modifications importantes, nous vous en informerons en mettant à jour la date \"Dernière mise à jour\" en haut de cette page.",
     "changes_note": "Votre utilisation continue de Fire Arena après les modifications signifie que vous acceptez la politique mise à jour.",

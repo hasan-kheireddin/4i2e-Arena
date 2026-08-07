@@ -214,24 +214,6 @@ export default function PrivacyPolicyPage() {
           </p>
         </section>
 
-        {/* Third-Party Login */}
-        <section className="mb-10">
-          <h2 className="text-2xl font-bold mb-4">{t('privacy_policy.third_party_title')}</h2>
-          <p style={{ color: 'var(--color-text-secondary)' }} className="mb-3">
-            {t('privacy_policy.third_party_text')}
-          </p>
-          <ul style={{ color: 'var(--color-text-secondary)' }} className="list-disc list-inside space-y-2 ml-2">
-            <li>{t('privacy_policy.third_party_authorize')}</li>
-            <li>{t('privacy_policy.third_party_receive')}</li>
-            <li>
-              <strong>{t('privacy_policy.third_party_secure')}</strong>
-            </li>
-          </ul>
-          <p style={{ color: 'var(--color-text-secondary)' }} className="mt-4">
-            {t('privacy_policy.third_party_note')}
-          </p>
-        </section>
-
         {/* Changes to Policy */}
         <section className="mb-10">
           <h2 className="text-2xl font-bold mb-4">{t('privacy_policy.changes_title')}</h2>

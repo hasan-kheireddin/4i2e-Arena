@@ -4,20 +4,24 @@
 # REST API endpoints for the achievement, XP/leaderboard, and activity
 # tracking systems:
 #
-#   GET  /api/analytics/achievements/            → Full catalogue with user status
-#   GET  /api/analytics/achievements/unlocked/   → User's unlocked achievements
-#   GET  /api/analytics/achievements/progress/   → User's progress toward all
-#   GET  /api/analytics/achievements/stats/      → Summary statistics
-#   GET  /api/analytics/achievements/<id>/       → Single achievement detail
-#   GET  /api/analytics/leaderboard/             → Global leaderboard
-#   GET  /api/analytics/xp/me/                   → My XP & level details
-#   GET  /api/analytics/xp/levels/               → Level progression table
+#   GET  /api/analytics/achievements/                    → Full catalogue with user status
+#   GET  /api/analytics/achievements/unlocked/           → User's unlocked achievements
+#   GET  /api/analytics/achievements/unlocked/user/<id>/ → Another user's unlocked achievements
+#   GET  /api/analytics/achievements/progress/           → User's progress toward all
+#   GET  /api/analytics/achievements/stats/              → Summary statistics
+#   GET  /api/analytics/achievements/stats/user/<id>/    → Another user's summary statistics
+#   GET  /api/analytics/achievements/<id>/                → Single achievement detail
+#   GET  /api/analytics/leaderboard/                     → Global leaderboard
+#   GET  /api/analytics/xp/me/                           → My XP & level details
+#   GET  /api/analytics/xp/user/<id>/                    → Another user's XP & level details
+#   GET  /api/analytics/xp/levels/                       → Level progression table
 #
 #   POST /api/analytics/activity/track/          → Frontend page-view tracking
 # =============================================================================
 
 from __future__ import annotations
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from django.db.models import (
     Case,
     Count,
@@ -57,6 +61,14 @@ from .xp_service import get_xp_for_level, get_xp_to_next_level, MAX_LEVEL
 
 User = get_user_model()
 CATALOG_KEYS = tuple(ACHIEVEMENT_MAP.keys())
+
+
+def _resolve_target_user(request, user_id=None):
+    """Return the user whose data should be returned: the given ``user_id``
+    (public view) or the requesting user when none is given (``/me/`` routes)."""
+    if user_id is None:
+        return request.user
+    return get_object_or_404(User, pk=user_id, is_active=True)
 
 class AchievementListView(generics.ListAPIView):
     """
@@ -139,16 +151,17 @@ class AchievementListView(generics.ListAPIView):
         return qs.order_by("category", "ordering_priority", "name")
 
 class AchievementUnlockedListView(generics.ListAPIView):
-    """List achievements unlocked by the requesting user."""
+    """List achievements unlocked by the requesting user (or ``user_id``, for public profiles)."""
 
     serializer_class = AchievementUnlockSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        user = _resolve_target_user(self.request, self.kwargs.get("user_id"))
         return (
             AchievementUnlock.objects
             .filter(
-                user=self.request.user,
+                user=user,
                 achievement__key__in=CATALOG_KEYS,
             )
             .select_related("achievement")
@@ -175,12 +188,13 @@ class AchievementProgressListView(generics.ListAPIView):
 
 
 class AchievementStatsView(APIView):
-    """Compute and return achievement summary statistics for the user."""
+    """Compute and return achievement summary statistics for the user
+    (or ``user_id``, for public profiles)."""
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
+    def get(self, request, user_id=None):
+        user = _resolve_target_user(request, user_id)
 
         # Total visible achievements (exclude internal/hidden)
         total = Achievement.objects.filter(
@@ -344,14 +358,15 @@ class LeaderboardView(generics.ListAPIView):
 
 class UserXPDetailView(APIView):
     """
-    Return detailed XP and level information for the requesting user,
-    including their rank on the leaderboard.
+    Return detailed XP and level information for the requesting user
+    (or ``user_id``, for public profiles), including their rank on the
+    leaderboard.
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
+    def get(self, request, user_id=None):
+        user = _resolve_target_user(request, user_id)
 
         # Calculate rank (number of active users with more XP + 1)
         rank = (

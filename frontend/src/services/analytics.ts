@@ -106,6 +106,11 @@ export function getUnlockedAchievements(): Promise<AchievementUnlock[]> {
   return apiFetch<AchievementUnlock[]>(`${A}/achievements/unlocked/`);
 }
 
+/** GET /api/analytics/achievements/unlocked/user/<uuid>/ */
+export function getUserUnlockedAchievements(userId: string): Promise<AchievementUnlock[]> {
+  return apiFetch<AchievementUnlock[]>(`${A}/achievements/unlocked/user/${userId}/`);
+}
+
 /** GET /api/analytics/achievements/progress/ */
 export function getAchievementProgress(): Promise<AchievementProgress[]> {
   return apiFetch<AchievementProgress[]>(`${A}/achievements/progress/`);
@@ -116,11 +121,21 @@ export function getAchievementStats(): Promise<AchievementStats> {
   return apiFetch<AchievementStats>(`${A}/achievements/stats/`);
 }
 
+/** GET /api/analytics/achievements/stats/user/<uuid>/ */
+export function getUserAchievementStats(userId: string): Promise<AchievementStats> {
+  return apiFetch<AchievementStats>(`${A}/achievements/stats/user/${userId}/`);
+}
+
 // ── XP & Leaderboard API ─────────────────────────────────────────────────────
 
 /** GET /api/analytics/xp/me/ */
 export function getMyXP(): Promise<UserXPDetail> {
   return apiFetch<UserXPDetail>(`${A}/xp/me/`);
+}
+
+/** GET /api/analytics/xp/user/<uuid>/ */
+export function getUserXP(userId: string): Promise<UserXPDetail> {
+  return apiFetch<UserXPDetail>(`${A}/xp/user/${userId}/`);
 }
 
 /** GET /api/analytics/leaderboard/ */

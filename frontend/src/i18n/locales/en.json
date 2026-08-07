@@ -710,14 +710,7 @@
     "rights_request": "Request information about what data we hold",
     "rights_contact": "Contact Fire Arena for privacy-related questions",
     "rights_deletion": "Account deletion: Account deletion is not currently available through the platform self-service. Please contact us to request deletion of your account and associated data.",
-    
-    "third_party_title": "Third-Party Login (42 School)",
-    "third_party_text": "You may log in using your 42 account. When you do:",
-    "third_party_authorize": "You authorize Fire Arena to access your 42 profile",
-    "third_party_receive": "Fire Arena receives basic profile and account information needed for authentication",
-    "third_party_secure": "Your 42 account login and password are never shared with or stored by Fire Arena",
-    "third_party_note": "For questions about 42's data practices, please refer to their privacy policy.",
-    
+
     "changes_title": "Changes to This Policy",
     "changes_text": "Fire Arena may update this Privacy Policy from time to time. When we make material changes, we will notify you by updating the \"Last Updated\" date at the top of this page.",
     "changes_note": "Your continued use of Fire Arena after changes means you accept the updated policy.",

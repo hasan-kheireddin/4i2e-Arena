@@ -12,7 +12,6 @@
     "no_account": "Noch kein Konto?",
     "sign_up": "Registrieren",
     "or": "oder",
-    "42": "Mit 42 anmelden",
     "forgot": "Passwort vergessen?",
     "back_home": "Zurück zur Startseite",
     "hero_image_alt": "Illustration einer Sportarena"
@@ -712,14 +711,7 @@
     "rights_request": "Informationen darüber anzufordern, welche Daten wir speichern",
     "rights_contact": "Fire Arena bei datenschutzbezogenen Fragen zu kontaktieren",
     "rights_deletion": "Kontolöschung: Kontolöschung ist derzeit nicht über den Selbstbedienungsbereich der Plattform verfügbar. Bitte kontaktieren Sie uns, um die Löschung Ihres Kontos und der zugehörigen Daten anzufordern.",
-    
-    "third_party_title": "Anmeldung durch Dritte (42 School)",
-    "third_party_text": "Sie können sich mit Ihrem 42-Konto anmelden. Wenn Sie dies tun:",
-    "third_party_authorize": "Sie autorisieren Fire Arena, auf Ihr 42-Profil zuzugreifen",
-    "third_party_receive": "Fire Arena erhält grundlegende Profil- und Kontoinformationen, die für die Authentifizierung erforderlich sind",
-    "third_party_secure": "Ihre 42-Kontoanmeldung und Ihr Passwort werden niemals mit Fire Arena geteilt oder von Fire Arena gespeichert",
-    "third_party_note": "Fragen zu den Datenschutzpraktiken von 42 finden Sie in der Datenschutzrichtlinie von 42.",
-    
+
     "changes_title": "Änderungen dieser Richtlinie",
     "changes_text": "Fire Arena kann diese Datenschutzrichtlinie von Zeit zu Zeit aktualisieren. Wenn wir erhebliche Änderungen vornehmen, werden wir Sie benachrichtigen, indem wir das Datum \"Zuletzt aktualisiert\" oben auf dieser Seite aktualisieren.",
     "changes_note": "Ihre weitere Nutzung von Fire Arena nach Änderungen bedeutet, dass Sie die aktualisierte Richtlinie akzeptieren.",

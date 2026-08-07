@@ -4,9 +4,10 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { getUserProfile, type User } from "../services/auth";
-import { getMyStats, getMyMatches, type UserStats, type Match } from "../services/games";
+import { getMyStats, getUserStats, getMyMatches, getUserMatches, type UserStats, type Match } from "../services/games";
 import {
-  getMyXP, getAchievementStats, getUnlockedAchievements,
+  getMyXP, getUserXP, getAchievementStats, getUserAchievementStats,
+  getUnlockedAchievements, getUserUnlockedAchievements,
   type UserXPDetail, type AchievementStats, type AchievementUnlock,
 } from "../services/analytics";
 import {
@@ -98,11 +99,11 @@ useEffect(() => {
         if (!cancelled) setProfileUser(u);
       }
       const [statsRes, xpRes, achRes, unlocksRes, matchRes] = await Promise.all([
-        getMyStats(undefined, "pvp"),
-        getMyXP(),
-        getAchievementStats(),
-        getUnlockedAchievements(),
-        getMyMatches({ mode: "pvp", page_size: 8 }),
+        isOwn ? getMyStats(undefined, "pvp") : getUserStats(targetUserId!, undefined, "pvp"),
+        isOwn ? getMyXP() : getUserXP(targetUserId!),
+        isOwn ? getAchievementStats() : getUserAchievementStats(targetUserId!),
+        isOwn ? getUnlockedAchievements() : getUserUnlockedAchievements(targetUserId!),
+        isOwn ? getMyMatches({ mode: "pvp", page_size: 8 }) : getUserMatches(targetUserId!, { page_size: 8 }),
       ]);
       if (cancelled) return;
       setStats(statsRes as any);

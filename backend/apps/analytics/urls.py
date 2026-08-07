@@ -28,6 +28,11 @@ urlpatterns = [
         name="achievement-unlocked-list",
     ),
     path(
+        "achievements/unlocked/user/<uuid:user_id>/",
+        AchievementUnlockedListView.as_view(),
+        name="achievement-unlocked-list-user",
+    ),
+    path(
         "achievements/progress/",
         AchievementProgressListView.as_view(),
         name="achievement-progress-list",
@@ -36,6 +41,11 @@ urlpatterns = [
         "achievements/stats/",
         AchievementStatsView.as_view(),
         name="achievement-stats",
+    ),
+    path(
+        "achievements/stats/user/<uuid:user_id>/",
+        AchievementStatsView.as_view(),
+        name="achievement-stats-user",
     ),
     path(
         "achievements/<uuid:pk>/",
@@ -60,6 +70,11 @@ urlpatterns = [
         "xp/me/",
         UserXPDetailView.as_view(),
         name="user-xp-detail",
+    ),
+    path(
+        "xp/user/<uuid:user_id>/",
+        UserXPDetailView.as_view(),
+        name="user-xp-detail-user",
     ),
     path(
         "xp/levels/",
