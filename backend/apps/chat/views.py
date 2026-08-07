@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
@@ -13,19 +13,21 @@ from .models import Channel, ChannelMembership, Message, Block, Friendship
 
 
 def get_or_create_dm_channel_sync(user1_id, user2_id):
-    existing = Channel.objects.filter(
-        channel_type=Channel.CHANNEL_DM,
-        memberships__user_id=user1_id,
-    ).filter(memberships__user_id=user2_id).first()
-    if existing:
-        return existing
-    channel = Channel.objects.create(
-        channel_type=Channel.CHANNEL_DM,
-        name="",
-    )
-    ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
-    ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
-    return channel
+    user1_id, user2_id = sorted([user1_id, user2_id])
+    with transaction.atomic():
+        existing = Channel.objects.filter(
+            channel_type=Channel.CHANNEL_DM,
+            memberships__user_id=user1_id,
+        ).filter(memberships__user_id=user2_id).first()
+        if existing:
+            return existing
+        channel = Channel.objects.create(
+            channel_type=Channel.CHANNEL_DM,
+            name="",
+        )
+        ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
+        ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
+        return channel
 from .serializers import (
     ChannelSerializer,
     ChannelCreateSerializer,
@@ -419,12 +421,13 @@ class FriendshipViewSet(mixins.ListModelMixin,
         ).exists():
             from rest_framework.exceptions import ValidationError
             raise ValidationError("Cannot send friend request. User is blocked.")
-        if Friendship.objects.filter(
-            models.Q(from_user=self.request.user, to_user=to_user) |
-            models.Q(from_user=to_user, to_user=self.request.user)
-        ).exists():
-            raise ValidationError("Friendship already exists between these users.")
-        friendship = serializer.save(from_user=self.request.user, status=Friendship.PENDING)
+        with transaction.atomic():
+            if Friendship.objects.select_for_update().filter(
+                models.Q(from_user=self.request.user, to_user=to_user) |
+                models.Q(from_user=to_user, to_user=self.request.user)
+            ).exists():
+                raise ValidationError("Friendship already exists between these users.")
+            friendship = serializer.save(from_user=self.request.user, status=Friendship.PENDING)
         try:
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(

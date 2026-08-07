@@ -8,7 +8,7 @@ import {
 
 interface FriendsPanelProps {
   friendships: FriendshipRecord[];
-  onFriendshipsChange: (f: FriendshipRecord[]) => void;
+  onFriendshipsChange: (f: FriendshipRecord[] | ((prev: FriendshipRecord[]) => FriendshipRecord[])) => void;
   onlineUserIds: Set<string>;
   onOpenDM: (userId: string) => void;
 }
@@ -64,7 +64,10 @@ export default function FriendsPanel({
   const handleSendRequest = async (userId: string) => {
     try {
       const created = await sendFriendRequest(userId);
-      onFriendshipsChange([...friendships, created as any]);
+      onFriendshipsChange((prev: any[]) => {
+        if (prev.some((f: any) => f.other_user_id === (created as any).other_user_id)) return prev;
+        return [...prev, created as any];
+      });
       setSearchResults((prev) => prev.filter((u) => u.id !== userId));
     } catch {}
   };

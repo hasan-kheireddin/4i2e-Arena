@@ -182,26 +182,32 @@ def get_dm_other_user(channel_id, current_user_id):
 
 @database_sync_to_async
 def get_or_create_dm_channel(user1_id, user2_id):
-    existing = Channel.objects.filter(
-        channel_type=Channel.CHANNEL_DM,
-        memberships__user_id=user1_id,
-    ).filter(memberships__user_id=user2_id).first()
-    if existing:
-        return existing
-    channel = Channel.objects.create(
-        channel_type=Channel.CHANNEL_DM,
-        name="",
-    )
-    ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
-    ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
-    return channel
+    from django.db import transaction
+    user1_id, user2_id = sorted([user1_id, user2_id])
+    with transaction.atomic():
+        existing = Channel.objects.filter(
+            channel_type=Channel.CHANNEL_DM,
+            memberships__user_id=user1_id,
+        ).filter(memberships__user_id=user2_id).first()
+        if existing:
+            return existing
+        channel = Channel.objects.create(
+            channel_type=Channel.CHANNEL_DM,
+            name="",
+        )
+        ChannelMembership.objects.create(channel=channel, user_id=user1_id, role="member")
+        ChannelMembership.objects.create(channel=channel, user_id=user2_id, role="member")
+        return channel
 
 
 class ChatConsumer(BaseConsumer):
     require_auth = True
 
-    async def on_connect(self) -> None:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._channel_groups: set[str] = set()
+
+    async def on_connect(self) -> None:
         self._action_timestamps: collections.deque[float] = collections.deque()
         channels = await get_user_channels(self.user.pk)
         for ch in channels:

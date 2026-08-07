@@ -265,7 +265,10 @@ export default function FloatingChatWidget() {
         if (f) { await removeFriend(f.id); setFriendships((prev) => prev.filter((fr) => fr.id !== f.id)); }
       } else {
         const created = await sendFriendRequest(targetUserId);
-        setFriendships((prev) => [...prev, created as any]);
+        setFriendships((prev) => {
+          if (prev.some((fr) => fr.other_user_id === (created as any).other_user_id)) return prev;
+          return [...prev, created as any];
+        });
       }
     } catch {}
   };
@@ -295,7 +298,13 @@ export default function FloatingChatWidget() {
     (f) => f.status === "pending" && f.direction === "received"
   ).length;
 
-  const dmChannels = channels.filter((c) => c.channel_type === "dm");
+  const dmChannels = channels.filter((c) => {
+    if (c.channel_type !== "dm") return false;
+    const partnerId = c.dm_partner?.id;
+    if (!partnerId) return true;
+    if (friendUserIds.has(partnerId)) return true;
+    return (messages[c.id]?.length ?? 0) > 0;
+  });
   const publicChannels = channels.filter((c) => c.channel_type !== "dm");
   const totalUnread = channels.reduce((sum, ch) => sum + (ch.notifications_muted ? 0 : ch.unread_count), 0);
 
