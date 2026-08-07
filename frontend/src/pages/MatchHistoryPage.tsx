@@ -285,7 +285,10 @@ export default function MatchHistoryPage() {
 
           <div
             className="rounded-lg px-3"
-            style={{ backgroundColor: 'var(--color-bg-input)', border: '1px solid var(--color-border)' }}
+            style={{
+              backgroundColor: 'var(--color-bg-input)',
+              border: '1px solid var(--color-border)',
+            }}
           >
             <select
               value={ordering}
@@ -293,10 +296,21 @@ export default function MatchHistoryPage() {
               className="h-full min-h-[42px] bg-transparent text-sm outline-none"
               style={{ color: 'var(--color-text-primary)' }}
             >
-              <option value="-date">{t('match_history.sort_newest')}</option>
-              <option value="date">{t('match_history.sort_oldest')}</option>
-              <option value="-score">{t('match_history.sort_score_high')}</option>
-              <option value="score">{t('match_history.sort_score_low')}</option>
+              <option value="-date" style={{ color: 'black', backgroundColor: 'white' }}>
+                {t('match_history.sort_newest')}
+              </option>
+
+              <option value="date" style={{ color: 'black', backgroundColor: 'white' }}>
+                {t('match_history.sort_oldest')}
+              </option>
+
+              <option value="-score" style={{ color: 'black', backgroundColor: 'white' }}>
+                {t('match_history.sort_score_high')}
+              </option>
+
+              <option value="score" style={{ color: 'black', backgroundColor: 'white' }}>
+                {t('match_history.sort_score_low')}
+              </option>
             </select>
           </div>
         </div>

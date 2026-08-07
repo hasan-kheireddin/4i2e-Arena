@@ -20,7 +20,6 @@ export function Navbar() {
     { label: t("sidebar.leaderboard"),      to: "/leaderboard",    icon: <BarChart3 className="w-4 h-4" /> },
     { label: t("sidebar.match_history"),    to: "/history",        icon: <History   className="w-4 h-4" /> },
     { label: t("navbar.achievements"),      to: "/achievements",   icon: <Award     className="w-4 h-4" /> },
-    { label: t("sidebar.settings"),         to: "/settings",       icon: <Settings  className="w-4 h-4" /> },
   ];
   const { user, logout } = useAuth();
   const navigate = useNavigate();
