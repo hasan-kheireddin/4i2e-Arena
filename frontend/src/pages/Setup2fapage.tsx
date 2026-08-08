@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import Toast from "../components/Toast";
+import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, twoFASetup, twoFAConfirm } from "../services/auth";
 import type { ApiError } from "../services/api";
@@ -16,7 +16,7 @@ export default function Setup2FAPage() {
   const [error, setError] = useState("");
   const [copyError, setCopyError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  const { showToast } = useToast();
   const [setupLoading, setSetupLoading] = useState(true);
 
   // Data from backend
@@ -67,7 +67,7 @@ export default function Setup2FAPage() {
           throw new Error("execCommand-copy-failed");
         }
       }
-      setShowToast(true);
+      showToast({ title: t("2fa.copied", "Copied to clipboard!"), variant: "success", duration: 2000 });
     } catch {
       setCopyError(t("2fa.copy_failed"));
     }
@@ -107,14 +107,6 @@ export default function Setup2FAPage() {
       className="h-screen w-screen flex items-center justify-center overflow-y-auto p-6"
       style={{ backgroundColor: "var(--color-bg)" }}
     >
-      {/* Toast notification */}
-      {showToast && (
-        <Toast
-          message={t("2fa.copied", "Copied to clipboard!")}
-          onClose={() => setShowToast(false)}
-        />
-      )}
-
       <div className="max-w-lg w-full">
         {setupLoading ? (
           <div className="flex flex-col items-center justify-center py-20">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { EMOTES } from "../../assets/emotes/emotes";
 import { playEmoteSound } from "../../assets/emotes/sound";
+import { IconCheck, IconCheckDouble, IconGamepad } from "./ChatIcons";
 import type { ChatMessage } from "./useChatSocket";
 
 interface ChatBubbleProps {
@@ -10,6 +11,31 @@ interface ChatBubbleProps {
   readUntilTimestamp?: string | null;
   dmPartnerReadUntil?: string | null;
   sendGameInviteResponse?: (channelId: string, gameType: string, gameId: string, accept: boolean) => void;
+}
+
+/** Own bubbles ride the brand gradient; incoming ones use a theme-aware tint. */
+const OWN_BUBBLE: React.CSSProperties = {
+  backgroundImage: "var(--gradient-brand)",
+  color: "#ffffff",
+};
+
+const PEER_BUBBLE: React.CSSProperties = {
+  backgroundColor: "rgb(var(--color-text-rgb) / 0.06)",
+  border: "1px solid var(--color-border)",
+  color: "var(--color-text-primary)",
+};
+
+function ReadReceipt({ createdAt, readUntil }: { createdAt: string; readUntil?: string | null }) {
+  const seen = !!readUntil && new Date(createdAt) <= new Date(readUntil);
+  return (
+    <span
+      className="mt-0.5 mr-1 flex items-center"
+      style={{ color: seen ? "var(--color-success)" : "var(--color-text-muted)" }}
+      title={seen ? "Seen" : "Sent"}
+    >
+      {seen ? <IconCheckDouble size={13} /> : <IconCheck size={13} />}
+    </span>
+  );
 }
 
 export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUntil, sendGameInviteResponse }: ChatBubbleProps) {
@@ -59,42 +85,37 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
         <div
           className="max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed break-words flex flex-wrap items-center gap-x-2 gap-y-1"
           style={{
-            backgroundColor: isOwn ? "var(--color-primary)" : "#2B2D31",
+            ...(isOwn ? OWN_BUBBLE : PEER_BUBBLE),
             borderTopLeftRadius: isOwn ? "1rem" : "0.25rem",
             borderTopRightRadius: isOwn ? "0.25rem" : "1rem",
           }}
         >
-          <span style={{ color: "var(--color-text-primary)", fontWeight: 500, whiteSpace: "normal" }}>
-            🎮 {msg.content}
+          <span className="flex items-center gap-1.5" style={{ fontWeight: 500, whiteSpace: "normal" }}>
+            <IconGamepad size={15} />
+            {msg.content}
           </span>
           {!isOwn && !inviteResponded && !expired && sendGameInviteResponse && (
             <>
               <button onClick={handleAccept}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: "#22C55E" }}>Accept</button>
+                style={{ backgroundColor: "var(--color-success)" }}>Accept</button>
               <button onClick={handleDecline}
-                className="px-2.5 py-1 rounded-lg text-xs font-semibold hover:opacity-90"
-                style={{ backgroundColor: "#EF4444", color: "#ffffff" }}>Decline</button>
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
+                style={{ backgroundColor: "var(--color-danger)" }}>Decline</button>
             </>
           )}
           {!isOwn && inviteResponded && (
-            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Response sent</span>
+            <span className="text-xs opacity-70">Response sent</span>
           )}
           {!isOwn && expired && !inviteResponded && (
-            <span className="text-xs" style={{ color: "#EF4444" }}>Expired</span>
+            <span className="text-xs font-semibold" style={{ color: isOwn ? "#ffffff" : "var(--color-danger)" }}>Expired</span>
           )}
           {!inviteResponded && !expired && (
-            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Expires in {countdown}s</span>
+            <span className="text-xs opacity-70">Expires in {countdown}s</span>
           )}
-          {isOwn && expired && (
-            <span className="text-xs" style={{ color: "#EF4444" }}>Expired</span>
-          )}
+          {isOwn && expired && <span className="text-xs opacity-80">Expired</span>}
         </div>
-        {isOwn && (
-          <span className="text-[10px] mt-0.5 mr-1" style={{ color: dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "#22C55E" : "#6B7280" }}>
-            {dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "✓✓" : "✓"}
-          </span>
-        )}
+        {isOwn && <ReadReceipt createdAt={msg.created_at} readUntil={dmPartnerReadUntil} />}
       </div>
     );
   }
@@ -106,8 +127,8 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
           onClick={handleEmoteClick}
           className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl cursor-pointer transition-transform hover:scale-110 active:scale-95"
           style={{
-            backgroundColor: isOwn ? "var(--color-primary)" : "var(--color-bg-card)",
-            border: `1px solid ${emoteDef.color}40`,
+            backgroundColor: isOwn ? "rgb(var(--color-primary-rgb) / 0.16)" : "rgb(var(--color-text-rgb) / 0.06)",
+            border: `1px solid ${emoteDef.color}55`,
           }}
         >
           {emoteDef.webp ? (
@@ -125,11 +146,7 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
             </span>
           )}
         </div>
-        {isOwn && (
-          <span className="text-[10px] mt-0.5 mr-1" style={{ color: dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "#22C55E" : "#6B7280" }}>
-            {dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "✓✓" : "✓"}
-          </span>
-        )}
+        {isOwn && <ReadReceipt createdAt={msg.created_at} readUntil={dmPartnerReadUntil} />}
       </div>
     );
   }
@@ -137,7 +154,10 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
   if (msg.message_type === "system") {
     return (
       <div className="flex justify-center mb-2">
-        <span className="text-xs italic px-3 py-1 rounded-full" style={{ color: "#EF4444", backgroundColor: "var(--color-bg-input)" }}>
+        <span
+          className="text-[11px] italic px-3 py-1 rounded-full"
+          style={{ color: "var(--color-text-muted)", backgroundColor: "var(--color-bg-input)" }}
+        >
           {msg.content}
         </span>
       </div>
@@ -149,7 +169,7 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
       <div
         className="max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed break-words"
         style={{
-          backgroundColor: isOwn ? "var(--color-primary)" : "#2B2D31",
+          ...(isOwn ? OWN_BUBBLE : PEER_BUBBLE),
           borderTopLeftRadius: isOwn ? "1rem" : "0.25rem",
           borderTopRightRadius: isOwn ? "0.25rem" : "1rem",
           overflowWrap: "break-word",
@@ -165,13 +185,9 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
             {msg.sender_username}
           </p>
         )}
-        <p style={{ color: "var(--color-text-primary)", overflowWrap: "break-word", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{msg.content}</p>
+        <p style={{ overflowWrap: "break-word", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{msg.content}</p>
       </div>
-      {isOwn && (
-        <span className="text-[10px] mt-0.5 mr-1" style={{ color: dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "#22C55E" : "#6B7280" }}>
-          {dmPartnerReadUntil && new Date(msg.created_at) <= new Date(dmPartnerReadUntil) ? "✓✓" : "✓"}
-        </span>
-      )}
+      {isOwn && <ReadReceipt createdAt={msg.created_at} readUntil={dmPartnerReadUntil} />}
     </div>
   );
 }

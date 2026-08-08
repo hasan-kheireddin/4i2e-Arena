@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
 import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay from '../components/Chat/FloatingEmote';
-import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 
 export type PongMode = 'local' | 'online';
 export type PongOnlinePhase = 'idle' | 'matchmaking' | 'waiting' | 'playing' | 'over';
@@ -463,7 +462,6 @@ function PongControls({ props }: { props: PongGameViewProps }) {
           </button>
         )}
       </div>
-      <FloatingChatWidget />
     </div>
   );
 }

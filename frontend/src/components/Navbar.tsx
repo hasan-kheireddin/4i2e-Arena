@@ -83,12 +83,13 @@ export function Navbar() {
                 {label}
               </NavLink>
             ))}
-            <NotificationBell />
           </nav>
         </div>
 
         {/* ── Right Zone ── */}
         <div className="flex items-center gap-2 shrink-0">
+
+          <NotificationBell />
 
           {/* User Menu */}
           <div ref={menuRef} className="relative">
@@ -161,9 +162,6 @@ export function Navbar() {
                 {label}
               </NavLink>
             ))}
-            <div className="px-3 py-1">
-              <NotificationBell />
-            </div>
           </nav>
         </div>
       )}

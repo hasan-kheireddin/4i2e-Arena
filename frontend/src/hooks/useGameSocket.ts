@@ -19,6 +19,14 @@ interface UseGameSocketOptions {
 
 const BASE_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 5000;
+/** Server code for "another connection took this player's slot". */
+const TAKEOVER_CLOSE_CODE = 4001;
+/** One comeback is allowed after a takeover; a second means two live tabs. */
+const MAX_TAKEOVER_RETRIES = 1;
+/** A connection that held this long counts as healthy, so it earns a fresh retry. */
+const STABLE_CONNECTION_MS = 30_000;
+/** Server code for "token rejected" — reconnect, but mint a fresh token first. */
+const AUTH_CLOSE_CODE = 4401;
 const LATENCY_PROBE_INTERVAL_MS = 5000;
 const TOKEN_REFRESH_SKEW_SECONDS = 15;
 
@@ -71,6 +79,8 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
   const reconnectTimer = useRef<number | null>(null);
   const latencyProbeTimer = useRef<number | null>(null);
   const reconnectAttempts = useRef(0);
+  const takeoverRetries = useRef(0);
+  const lastOpenAt = useRef(0);
   const closedIntentionally = useRef(false);
   const optsRef = useRef(opts);
   const latencyRef = useRef<WsLatency>({ rttMs: null, clockOffsetMs: null });
@@ -90,6 +100,8 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
     let cancelled = false;
     closedIntentionally.current = false;
     reconnectAttempts.current = 0;
+    takeoverRetries.current = 0;
+    lastOpenAt.current = 0;
 
     const clearReconnectTimer = () => {
       if (reconnectTimer.current !== null) {
@@ -116,11 +128,17 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
     };
 
     const closeSocket = () => {
-      if (ws.current) {
-        const current = ws.current;
-        ws.current = null;
-        current.close();
+      const current = ws.current;
+      if (!current) return;
+      ws.current = null;
+      if (current.readyState === WebSocket.CONNECTING) {
+        // Chromium logs "closed before the connection is established" if we
+        // close mid-handshake, so let it finish and shut it down on open. The
+        // handlers below already ignore sockets that are no longer ws.current.
+        current.addEventListener('open', () => current.close(), { once: true });
+        return;
       }
+      current.close();
     };
 
     const getSocketUrl = async (forceRefresh = false) => {
@@ -185,6 +203,7 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
         if (cancelled || ws.current !== socket) return;
         opened = true;
         reconnectAttempts.current = 0;
+        lastOpenAt.current = Date.now();
         setStatus('open');
         optsRef.current.onOpen?.();
         if (optsRef.current.enableLatencyProbe) {
@@ -246,7 +265,23 @@ export function useGameSocket(path: string | null, opts: UseGameSocketOptions) {
           setStatus('closed');
           return;
         }
-        scheduleReconnect(event.code === 4401 || !opened);
+        // The server hands a player's slot to the newest connection and closes
+        // the old one. Retry once so a single stray takeover resumes play a
+        // second later; retrying every time would just steal the slot back and
+        // leave two tabs kicking each other forever.
+        if (event.code === TAKEOVER_CLOSE_CODE) {
+          const heldFor = lastOpenAt.current ? Date.now() - lastOpenAt.current : 0;
+          if (heldFor >= STABLE_CONNECTION_MS) takeoverRetries.current = 0;
+          if (takeoverRetries.current < MAX_TAKEOVER_RETRIES) {
+            takeoverRetries.current += 1;
+            scheduleReconnect();
+            return;
+          }
+          closedIntentionally.current = true;
+          setStatus('closed');
+          return;
+        }
+        scheduleReconnect(event.code === AUTH_CLOSE_CODE || !opened);
       };
     };
 

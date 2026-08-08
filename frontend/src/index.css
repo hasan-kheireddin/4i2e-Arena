@@ -359,6 +359,88 @@ button::-moz-focus-inner {
   }
 }
 
+/* ── Toasts ───────────────────────────────────────────────────────── */
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.toast-enter {
+  animation: toastIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast-leave {
+  animation: toastOut 0.18s ease-in both;
+}
+
+.toast-progress {
+  animation-name: toastProgress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter,
+  .toast-leave {
+    animation: none;
+  }
+}
+
+/* ── Chat surfaces ────────────────────────────────────────────────── */
+
+/* Both chat shells are height-constrained so their composer can never be
+   pushed out of view. `dvh` keeps mobile browser chrome from cropping the
+   send button; the `vh` value is the fallback for browsers without it.   */
+.chat-panel-height {
+  height: min(calc(100vh - 7.5rem), 560px);
+  max-height: calc(100vh - 6rem);
+}
+
+.chat-page-height {
+  height: calc(100vh - 10rem);
+  min-height: 24rem;
+  max-height: 46rem;
+}
+
+@supports (height: 100dvh) {
+  .chat-panel-height {
+    height: min(calc(100dvh - 7.5rem), 560px);
+    max-height: calc(100dvh - 6rem);
+  }
+
+  .chat-page-height {
+    height: calc(100dvh - 10rem);
+  }
+}
+
 @keyframes float-up {
   0% {
     opacity: 1;

@@ -1,108 +1,148 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import ChatAvatar from "./Chat/ChatAvatar";
+import {
+  IconCheck,
+  IconChat,
+  IconClose,
+  IconGamepad,
+  IconUserCheck,
+  IconUserPlus,
+} from "./Chat/ChatIcons";
+import { IconBolt, IconInfo, IconLevelUp, IconTrophy } from "./notifications/NotificationIcons";
 
-type ToastIcon = "success" | "achievement" | "game" | "friend" | "xp";
+export type ToastVariant =
+  | "success"
+  | "info"
+  | "friend"
+  | "friend_accepted"
+  | "invite"
+  | "achievement"
+  | "level"
+  | "xp"
+  | "message";
 
-interface ToastProps {
-  message: string;
-  onClose: () => void;
-  onClick?: () => void;
-  duration?: number;
-  position?: "bottom-end" | "center";
-  tone?: "success" | "achievement" | "message";
-  icon?: ToastIcon;
+export interface ToastData {
+  title: string;
+  description?: string;
+  variant?: ToastVariant;
   avatar?: string;
+  duration?: number;
+  onClick?: () => void;
 }
 
-const ICONS: Record<ToastIcon, React.ReactNode> = {
-  success: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-    </svg>
-  ),
-  xp: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
-  ),
-  achievement: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="rgba(250,204,21,0.3)" stroke="rgba(250,204,21,0.9)" />
-    </svg>
-  ),
-  game: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <circle cx="6" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="18" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="10" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="14" r="1.5" fill="currentColor" />
-    </svg>
-  ),
-  friend: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  ),
+interface VariantStyle {
+  icon: React.ReactNode;
+  color: string;
+  rgb: string;
+}
+
+const VARIANT: Record<ToastVariant, VariantStyle> = {
+  success:         { icon: <IconCheck size={18} />,      color: "var(--color-success)", rgb: "var(--color-success-rgb)" },
+  info:            { icon: <IconInfo size={18} />,       color: "var(--color-info)",    rgb: "var(--color-info-rgb)" },
+  friend:          { icon: <IconUserPlus size={18} />,   color: "var(--color-info)",    rgb: "var(--color-info-rgb)" },
+  friend_accepted: { icon: <IconUserCheck size={18} />,  color: "var(--color-success)", rgb: "var(--color-success-rgb)" },
+  invite:          { icon: <IconGamepad size={18} />,    color: "var(--color-primary)", rgb: "var(--color-primary-rgb)" },
+  achievement:     { icon: <IconTrophy size={18} />,     color: "var(--color-warning)", rgb: "var(--color-warning-rgb)" },
+  level:           { icon: <IconLevelUp size={18} />,    color: "var(--color-primary)", rgb: "var(--color-primary-rgb)" },
+  xp:              { icon: <IconBolt size={18} />,       color: "var(--color-info)",    rgb: "var(--color-info-rgb)" },
+  message:         { icon: <IconChat size={18} />,       color: "var(--color-primary)", rgb: "var(--color-primary-rgb)" },
 };
 
-export default function Toast({
-  message,
-  onClose,
-  onClick,
-  duration = 2000,
-  position = "bottom-end",
-  tone = "success",
-  icon,
-  avatar,
-}: ToastProps) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, duration);
-    return () => clearTimeout(timer);
-  }, [onClose, duration]);
+interface ToastProps extends ToastData {
+  onClose: () => void;
+}
 
-  const isCenter = position === "center";
-  const backgroundColor = tone === "achievement"
-    ? "rgba(17,24,39,0.95)"
-    : tone === "message"
-    ? "rgba(30,30,35,0.95)"
-    : "var(--color-success)";
+/**
+ * A surface-coloured card with a variant-tinted icon chip and a countdown rail —
+ * legible on either theme and quiet enough to stack.
+ */
+export default function Toast({
+  title,
+  description,
+  variant = "info",
+  avatar,
+  duration = 4000,
+  onClick,
+  onClose,
+}: ToastProps) {
+  const style = VARIANT[variant];
+  const [leaving, setLeaving] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const closedRef = useRef(false);
+
+  const dismiss = () => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    setLeaving(true);
+    setTimeout(onClose, 180);
+  };
+
+  useEffect(() => {
+    if (paused) return;
+    const timer = setTimeout(dismiss, duration);
+    return () => clearTimeout(timer);
+    // Re-arming on unpause deliberately restarts the remaining time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duration, paused]);
 
   return (
     <div
-      className="fixed z-50 animate-slideUp"
-      style={isCenter
-        ? { inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
-        : { bottom: "5rem", insetInlineEnd: "1.5rem" }}
+      className={leaving ? "toast-leave" : "toast-enter"}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
       <div
-        onClick={onClick}
-        className="px-4 py-3 rounded-lg shadow-lg flex items-center gap-3"
+        onClick={onClick ? () => { onClick(); dismiss(); } : undefined}
+        role={onClick ? "button" : "status"}
+        className="relative w-[min(calc(100vw-2rem),22rem)] rounded-2xl overflow-hidden flex items-start gap-3 p-3 pr-9"
         style={{
-          backgroundColor,
-          color: "#ffffff",
-          cursor: onClick ? "pointer" : undefined,
-          border: tone === "achievement" ? "1px solid rgba(250,204,21,0.75)" : "none",
-          boxShadow: tone === "achievement"
-            ? "0 16px 40px rgba(0,0,0,0.45)"
-            : undefined,
+          backgroundColor: "var(--color-bg-elevated)",
+          border: "1px solid var(--color-border)",
+          boxShadow: `0 18px 45px -16px var(--color-shadow), 0 0 0 1px rgb(${style.rgb} / 0.14)`,
+          cursor: onClick ? "pointer" : "default",
         }}
       >
-        {avatar ? (
-          <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-        ) : icon ? (
-          ICONS[icon]
-        ) : tone !== "message" ? (
-          ICONS.success
+        <span
+          className="absolute inset-y-0 left-0 w-[3px]"
+          style={{ backgroundColor: style.color }}
+        />
+
+        {avatar || variant === "message" ? (
+          <ChatAvatar src={avatar} name={title} size={38} />
         ) : (
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ backgroundColor: "var(--color-primary)" }}>
-            {message.charAt(0)?.toUpperCase()}
-          </div>
+          <span
+            className="w-[38px] h-[38px] rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `rgb(${style.rgb} / 0.14)`, color: style.color }}
+          >
+            {style.icon}
+          </span>
         )}
-        <span className="font-medium">{message}</span>
+
+        <div className="flex-1 min-w-0 py-0.5">
+          <p className="text-[13px] font-semibold leading-snug text-primary break-words">{title}</p>
+          {description && (
+            <p className="text-[11.5px] leading-snug mt-0.5 text-muted break-words">{description}</p>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); dismiss(); }}
+          aria-label="Dismiss"
+          className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-surface-hover"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          <IconClose size={13} />
+        </button>
+
+        <span
+          className="absolute bottom-0 left-0 h-[2px] toast-progress"
+          style={{
+            backgroundColor: style.color,
+            animationDuration: `${duration}ms`,
+            animationPlayState: paused ? "paused" : "running",
+          }}
+        />
       </div>
     </div>
   );

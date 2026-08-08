@@ -1,67 +1,62 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useGameSocket } from "../hooks/useGameSocket";
 import { useNotificationCenter } from "../context/NotificationCenterContext";
-import Toast from "./Toast";
+import { useToast } from "../context/ToastContext";
 
 type AchievementPayload = {
+  id?: string | number;
   name?: string;
+  description?: string;
   xp_reward?: number;
 };
 
-type NotificationItem = {
-  message: string;
-  kind: "achievement" | "xp" | "level";
-};
-
+/**
+ * Listens on the gamification socket and turns rewards into toasts plus durable
+ * notification-centre entries. Renders nothing itself.
+ */
 export default function GamificationNotifications() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { addNotification } = useNotificationCenter();
-  const [queue, setQueue] = useState<NotificationItem[]>([]);
-  const [activeToast, setActiveToast] = useState<NotificationItem | null>(null);
-
-  const enqueue = useCallback((item: NotificationItem) => {
-    setQueue((prev) => [...prev, item]);
-  }, []);
-
-  useEffect(() => {
-    if (activeToast || queue.length === 0) return;
-    setActiveToast(queue[0]);
-    setQueue((prev) => prev.slice(1));
-  }, [activeToast, queue]);
+  const { showToast } = useToast();
 
   useGameSocket(isAuthenticated ? "/ws/notifications/" : null, {
     onMessage: useCallback((data: Record<string, unknown>) => {
       const type = typeof data.type === "string" ? data.type : "";
-      if (type === "connected") {
-        return;
-      }
 
       if (type === "achievement_unlocked") {
         const achievement = (data.achievement as AchievementPayload | undefined) ?? {};
         const name = achievement.name || t("notifications.achievement_fallback_name");
         const xpReward = Number(achievement.xp_reward ?? 0);
-        const message = t("notifications.achievement_unlocked", {
-          name,
-          xp: xpReward,
+        showToast({
+          title: `Achievement unlocked — ${name}`,
+          description: xpReward > 0 ? `+${xpReward} XP earned` : undefined,
+          variant: "achievement",
+          duration: 5000,
+          onClick: () => navigate("/achievements"),
         });
-        enqueue({ kind: "achievement", message });
-        addNotification({ kind: "achievement", title: message, onClick: () => navigate("/achievements") });
+        addNotification({
+          kind: "achievement",
+          title: `You unlocked ${name}.`,
+          body: xpReward > 0 ? `+${xpReward} XP` : undefined,
+          link: "/achievements",
+          dedupeKey: `achievement-${achievement.id ?? name}`,
+        });
         return;
       }
 
       if (type === "xp_gained") {
         const xpGained = Number(data.xp_gained ?? 0);
         if (xpGained > 0) {
-          enqueue({
-            kind: "xp",
-            message: t("notifications.xp_gained", {
-              xp: xpGained,
-            }),
+          // Frequent and low-stakes: a toast is enough, no permanent entry.
+          showToast({
+            title: t("notifications.xp_gained", { xp: xpGained }),
+            variant: "xp",
+            duration: 2800,
           });
         }
         return;
@@ -70,27 +65,23 @@ export default function GamificationNotifications() {
       if (type === "level_up") {
         const newLevel = Number(data.new_level ?? 0);
         if (newLevel > 0) {
-          enqueue({
+          showToast({
+            title: t("notifications.level_up", { level: newLevel }),
+            description: "Keep playing to climb the leaderboard",
+            variant: "level",
+            duration: 4500,
+            onClick: () => navigate("/leaderboard"),
+          });
+          addNotification({
             kind: "level",
-            message: t("notifications.level_up", {
-              level: newLevel,
-            }),
+            title: `You reached level ${newLevel}.`,
+            link: "/leaderboard",
+            dedupeKey: `level-${newLevel}`,
           });
         }
       }
-    }, [enqueue, t, addNotification, navigate]),
+    }, [t, addNotification, navigate, showToast]),
   });
 
-  if (!activeToast) return null;
-
-  return (
-    <Toast
-      message={activeToast.message}
-      icon={activeToast.kind === "achievement" ? "achievement" : "xp"}
-      onClose={() => setActiveToast(null)}
-      duration={activeToast.kind === "achievement" ? 4500 : 3500}
-      position={activeToast.kind === "achievement" ? "center" : "bottom-end"}
-      tone={activeToast.kind === "achievement" ? "achievement" : "success"}
-    />
-  );
+  return null;
 }

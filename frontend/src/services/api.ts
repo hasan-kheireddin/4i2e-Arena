@@ -145,6 +145,16 @@ export async function refreshAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
+/** Renew slightly early so a request can't land on a just-expired token. */
+const TOKEN_REFRESH_SKEW_MS = 15_000;
+
+function accessTokenIsUsable(): boolean {
+  if (!accessToken) return false;
+  const expiresAt = tokenExpiresAt(accessToken);
+  // A token we can't read an expiry from is left to the server to judge.
+  return expiresAt === null || expiresAt > Date.now() + TOKEN_REFRESH_SKEW_MS;
+}
+
 interface FetchOptions {
   method?: string;
   body?: unknown;
@@ -177,6 +187,13 @@ export async function apiFetch<T = unknown>(
     }
     return headers;
   };
+
+  // Renew an expired/missing token up front. Waiting for the 401 works, but it
+  // logs an error in the console on every call made past the token's lifetime.
+  // Gated on an existing session so the login page never fires a doomed refresh.
+  if (auth && !accessTokenIsUsable() && hasPotentialSession()) {
+    await refreshAccessToken();
+  }
 
   let res = await fetch(path, {
     method,
