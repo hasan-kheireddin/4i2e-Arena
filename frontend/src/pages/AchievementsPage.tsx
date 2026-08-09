@@ -8,6 +8,7 @@ import {
   type Achievement,
   type AchievementStats,
 } from "../services/analytics";
+import AchievementIcon from "../components/AchievementIcon";
 
 type StatusFilter = "all" | "unlocked" | "locked";
 
@@ -17,40 +18,6 @@ const TIER_STYLES: Record<string, { color: string; bg: string; border: string }>
   epic: { color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.35)" },
   legendary: { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.35)" },
 };
-
-function categoryGlyph(category: Achievement["category"]): string {
-  switch (category) {
-    case "pong":
-      return "M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3z";
-    case "tictactoe":
-      return "M7 8h10a2 2 0 012 2v4a2 2 0 01-2 2H7a2 2 0 01-2-2v-4a2 2 0 012-2zm1 2v4m8-4v4m-9 0h10";
-    case "level":
-      return "M12 3l8 4v5c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V7l8-4z";
-    default:
-      return "M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3z";
-  }
-}
-
-function AchievementSvgIcon({
-  color,
-  category,
-}: {
-  color: string;
-  category: Achievement["category"];
-}) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" fill={color} opacity="0.16" />
-      <path
-        d={categoryGlyph(category)}
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /**
  * The API serves achievement names and descriptions in English only, so they
@@ -304,7 +271,7 @@ export default function AchievementsPage() {
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-lg"
                         style={{ backgroundColor: tierStyle.bg, color: tierStyle.color }}
                       >
-                        <AchievementSvgIcon color={tierStyle.color} category={achievement.category} />
+                        <AchievementIcon color={tierStyle.color} category={achievement.category} />
                       </div>
                       <div className="min-w-0">
                         {/* dir="auto" so an untranslated English fallback still

@@ -240,6 +240,8 @@ class AchievementStatsView(APIView):
                 is_hidden=False,
                 key__in=CATALOG_KEYS,
             ).count()
+            if tier_total == 0:
+                continue
             tier_unlocked = unlocked_qs.filter(
                 achievement__tier=tier_value,
             ).count()

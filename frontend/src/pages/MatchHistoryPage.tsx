@@ -372,7 +372,9 @@ export default function MatchHistoryPage() {
                   : localNames.player2
               : null;
             const outcomeBadge: OutcomeBadge = localNames ? (winnerName ? 'win' : 'draw') : outcome;
-            const title = localNames ? `${localNames.player1} vs ${localNames.player2}` : `vs ${opponent}`;
+            const title = localNames
+              ? `${localNames.player1} vs ${localNames.player2}`
+              : t('match_history.vs_title', { opponent });
             const outcomeLabel = localNames
               ? winnerName
                 ? t('match_history.local_winner_text', { name: winnerName })

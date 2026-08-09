@@ -116,17 +116,6 @@ def _is_non_game_session(session: GameSession) -> bool:
     )
 
 
-async def _check_level_achievements_if_needed(
-    user_id: Any,
-    result: dict[str, Any],
-) -> None:
-    if not result["leveled_up"]:
-        return
-
-    from apps.analytics.achievement_service import check_level_achievements
-    await check_level_achievements(user_id, result["new_level"])
-
-
 async def _award_player_game_xp(
     *,
     user_id: Any,
@@ -149,7 +138,6 @@ async def _award_player_game_xp(
         old_level=result["old_level"],
         leveled_up=result["leveled_up"],
     )
-    await _check_level_achievements_if_needed(user_id, result)
     return True
 
 async def award_xp_after_game(session: GameSession) -> dict[Any, int]:
@@ -205,10 +193,6 @@ async def award_xp_for_achievement(user_id: int, xp_reward: int) -> None:
             old_level=result["old_level"],
             leveled_up=result["leveled_up"],
         )
-
-        if result["leveled_up"]:
-            from apps.analytics.achievement_service import check_level_achievements
-            await check_level_achievements(user_id, result["new_level"])
 
 
 def _add_breakdown(

@@ -395,10 +395,6 @@
     "match_breakdown": "Match Breakdown",
     "no_games": "No games played yet",
     "recent_form": "Recent Form",
-    "xp_sources": "XP Sources",
-    "from_games": "From Games",
-    "win_bonus": "Win Bonus",
-    "streak_bonus": "Streak Bonus",
     "recent_matches": "Recent Matches",
     "no_matches": "No matches yet.",
     "recent_pong": "Recent Pong Matches",
@@ -447,8 +443,7 @@
     },
     "category": {
       "pong": "Pong",
-      "tictactoe": "Tic-Tac-Toe",
-      "level": "Player Level"
+      "tictactoe": "Tic-Tac-Toe"
     }
   },
   "lb": {
@@ -607,6 +602,7 @@
     "outcome_win": "Win",
     "outcome_loss": "Loss",
     "outcome_draw": "Draw",
+    "vs_title": "You vs {{opponent}}",
     "local_winner_text": "{{name}} win",
     "mode_2p": "2P",
     "mode_pvp": "PvP",
@@ -808,24 +804,24 @@
   },
   "achievement_catalog": {
     "pong_first_rally": {
-      "name": "First Rally",
-      "description": "Complete your first online Pong match."
+      "name": "Rally Regular",
+      "description": "Complete 5 online Pong matches."
     },
     "pong_getting_warm": {
       "name": "Getting Warm",
-      "description": "Win your first online Pong match."
+      "description": "Win 3 online Pong matches."
     },
     "pong_ace": {
       "name": "Pong Ace",
-      "description": "Win 10 online Pong matches."
+      "description": "Win 25 online Pong matches."
     },
     "pong_master": {
       "name": "Pong Master",
-      "description": "Win 50 online Pong matches."
+      "description": "Win 100 online Pong matches."
     },
     "pong_rally_master": {
       "name": "Rally Master",
-      "description": "Reach a 20-hit rally in online Pong."
+      "description": "Reach a 30-hit rally in online Pong."
     },
     "pong_speed_demon": {
       "name": "Speed Demon",
@@ -833,7 +829,7 @@
     },
     "pong_unstoppable": {
       "name": "Unstoppable",
-      "description": "Win 3 online Pong matches in a row."
+      "description": "Win 5 online Pong matches in a row."
     },
     "pong_precision_player": {
       "name": "Precision Player",
@@ -841,11 +837,11 @@
     },
     "pong_comeback_king": {
       "name": "Comeback King",
-      "description": "Win online Pong after trailing by 3 points."
+      "description": "Win online Pong after trailing by 4 points."
     },
     "pong_defensive_wall": {
       "name": "Defensive Wall",
-      "description": "Return 10 consecutive shots in online Pong."
+      "description": "Return 15 consecutive shots in online Pong."
     },
     "pong_dominator": {
       "name": "Dominator",
@@ -853,27 +849,19 @@
     },
     "pong_veteran": {
       "name": "Pong Veteran",
-      "description": "Play 25 online Pong matches."
+      "description": "Play 50 online Pong matches."
     },
     "pong_grinder": {
       "name": "Pong Grinder",
-      "description": "Play 100 online Pong matches."
-    },
-    "pong_champion": {
-      "name": "Pong Champion",
-      "description": "Reach the online Pong top 10."
-    },
-    "pong_legend": {
-      "name": "Pong Legend",
-      "description": "Reach rank 1 on the online Pong leaderboard."
+      "description": "Play 200 online Pong matches."
     },
     "ttt_first_move": {
-      "name": "First Move",
-      "description": "Complete your first online Tic-Tac-Toe match."
+      "name": "Board Regular",
+      "description": "Complete 5 online Tic-Tac-Toe matches."
     },
     "ttt_first_victory": {
-      "name": "First Victory",
-      "description": "Win your first online Tic-Tac-Toe match."
+      "name": "Proven Winner",
+      "description": "Win 5 online Tic-Tac-Toe matches."
     },
     "ttt_quick_thinker": {
       "name": "Quick Thinker",
@@ -881,11 +869,11 @@
     },
     "ttt_strategist": {
       "name": "Strategist",
-      "description": "Win 3 online Tic-Tac-Toe matches in a row."
+      "description": "Win 5 online Tic-Tac-Toe matches in a row."
     },
     "ttt_mind_reader": {
       "name": "Mind Reader",
-      "description": "Block 5 opponent winning moves online."
+      "description": "Block 15 opponent winning moves online."
     },
     "ttt_perfect_game": {
       "name": "Perfect Game",
@@ -893,39 +881,19 @@
     },
     "ttt_draw_master": {
       "name": "Draw Master",
-      "description": "Draw 5 online Tic-Tac-Toe matches."
+      "description": "Draw 10 online Tic-Tac-Toe matches."
     },
     "ttt_veteran": {
       "name": "Tic-Tac-Toe Veteran",
-      "description": "Play 25 online Tic-Tac-Toe matches."
+      "description": "Play 50 online Tic-Tac-Toe matches."
     },
     "ttt_grinder": {
       "name": "Tic-Tac-Toe Grinder",
-      "description": "Play 100 online Tic-Tac-Toe matches."
+      "description": "Play 200 online Tic-Tac-Toe matches."
     },
     "ttt_unbeatable": {
       "name": "Unbeatable",
       "description": "Win 10 online Tic-Tac-Toe matches in a row."
-    },
-    "level_5": {
-      "name": "Rising Player",
-      "description": "Reach player level 5."
-    },
-    "level_10": {
-      "name": "Seasoned Player",
-      "description": "Reach player level 10."
-    },
-    "level_25": {
-      "name": "Elite Player",
-      "description": "Reach player level 25."
-    },
-    "level_50": {
-      "name": "Arena Master",
-      "description": "Reach player level 50."
-    },
-    "level_100": {
-      "name": "Arena Legend",
-      "description": "Reach player level 100."
     }
   }
 }
