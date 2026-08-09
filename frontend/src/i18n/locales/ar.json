@@ -524,7 +524,7 @@
     "controls_shared": "W / S أو ↑ / ↓"
   },
   "ttt": {
-    "title": "⭕ Tic-Tac-Toe",
+    "title": "Tic-Tac-Toe",
     "subtitle_online": "PvP عبر الإنترنت — لعب جماعي بالتناوب",
     "subtitle_local": "لاعبان محليان — بالتناوب على نفس الشاشة",
     "player1": "اللاعب 1",
@@ -806,5 +806,127 @@
     "contact_title": "التواصل",
     "contact_text": "إذا كانت لديك أسئلة حول شروط الاستخدام، تواصل معنا عبر:",
     "contact_email": "hakcathonthon@gmail.com"
+  },
+  "achievement_catalog": {
+    "pong_first_rally": {
+      "name": "أول تبادل",
+      "description": "أكمل أول مباراة بونج على الإنترنت."
+    },
+    "pong_getting_warm": {
+      "name": "البداية الساخنة",
+      "description": "افز بأول مباراة بونج على الإنترنت."
+    },
+    "pong_ace": {
+      "name": "نجم البونج",
+      "description": "افز بـ10 مباريات بونج على الإنترنت."
+    },
+    "pong_master": {
+      "name": "سيد البونج",
+      "description": "افز بـ50 مباراة بونج على الإنترنت."
+    },
+    "pong_rally_master": {
+      "name": "سيد التبادل",
+      "description": "حقق تبادلاً من 20 ضربة في بونج على الإنترنت."
+    },
+    "pong_speed_demon": {
+      "name": "شيطان السرعة",
+      "description": "سجّل 3 نقاط في أقل من 10 ثوانٍ في بونج على الإنترنت."
+    },
+    "pong_unstoppable": {
+      "name": "لا يُوقف",
+      "description": "افز بـ3 مباريات بونج متتالية على الإنترنت."
+    },
+    "pong_precision_player": {
+      "name": "لاعب الدقة",
+      "description": "افز بمباراة بونج على الإنترنت دون تفويت الكرة."
+    },
+    "pong_comeback_king": {
+      "name": "ملك العودة",
+      "description": "افز بمباراة بونج على الإنترنت بعد تأخرك بـ3 نقاط."
+    },
+    "pong_defensive_wall": {
+      "name": "الجدار الدفاعي",
+      "description": "أعد 10 ضربات متتالية في بونج على الإنترنت."
+    },
+    "pong_dominator": {
+      "name": "المُهيمن",
+      "description": "افز بمباراة بونج على الإنترنت دون أن تتلقى أي نقطة."
+    },
+    "pong_veteran": {
+      "name": "مخضرم البونج",
+      "description": "العب 25 مباراة بونج على الإنترنت."
+    },
+    "pong_grinder": {
+      "name": "مثابر البونج",
+      "description": "العب 100 مباراة بونج على الإنترنت."
+    },
+    "pong_champion": {
+      "name": "بطل البونج",
+      "description": "ادخل قائمة أفضل 10 في بونج على الإنترنت."
+    },
+    "pong_legend": {
+      "name": "أسطورة البونج",
+      "description": "تصدّر المركز الأول في لوحة صدارة بونج على الإنترنت."
+    },
+    "ttt_first_move": {
+      "name": "النقلة الأولى",
+      "description": "أكمل أول مباراة إكس-أو على الإنترنت."
+    },
+    "ttt_first_victory": {
+      "name": "أول انتصار",
+      "description": "افز بأول مباراة إكس-أو على الإنترنت."
+    },
+    "ttt_quick_thinker": {
+      "name": "سريع البديهة",
+      "description": "افز بمباراة إكس-أو على الإنترنت في 5 نقلات."
+    },
+    "ttt_strategist": {
+      "name": "الاستراتيجي",
+      "description": "افز بـ3 مباريات إكس-أو متتالية على الإنترنت."
+    },
+    "ttt_mind_reader": {
+      "name": "قارئ الأفكار",
+      "description": "أوقف 5 نقلات فوز للخصم على الإنترنت."
+    },
+    "ttt_perfect_game": {
+      "name": "مباراة مثالية",
+      "description": "افز بينما يضع الخصم علامتين على الأكثر."
+    },
+    "ttt_draw_master": {
+      "name": "سيد التعادل",
+      "description": "تعادل في 5 مباريات إكس-أو على الإنترنت."
+    },
+    "ttt_veteran": {
+      "name": "مخضرم إكس-أو",
+      "description": "العب 25 مباراة إكس-أو على الإنترنت."
+    },
+    "ttt_grinder": {
+      "name": "مثابر إكس-أو",
+      "description": "العب 100 مباراة إكس-أو على الإنترنت."
+    },
+    "ttt_unbeatable": {
+      "name": "لا يُقهر",
+      "description": "افز بـ10 مباريات إكس-أو متتالية على الإنترنت."
+    },
+    "level_5": {
+      "name": "لاعب صاعد",
+      "description": "بلوغ المستوى 5."
+    },
+    "level_10": {
+      "name": "لاعب متمرّس",
+      "description": "بلوغ المستوى 10."
+    },
+    "level_25": {
+      "name": "لاعب النخبة",
+      "description": "بلوغ المستوى 25."
+    },
+    "level_50": {
+      "name": "سيد الحلبة",
+      "description": "بلوغ المستوى 50."
+    },
+    "level_100": {
+      "name": "أسطورة الحلبة",
+      "description": "بلوغ المستوى 100."
+    }
   }
 }

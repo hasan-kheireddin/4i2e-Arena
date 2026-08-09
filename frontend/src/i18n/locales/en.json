@@ -524,7 +524,7 @@
     "controls_shared": "W / S or ↑ / ↓"
   },
   "ttt": {
-    "title": "⭕ Tic-Tac-Toe",
+    "title": "Tic-Tac-Toe",
     "subtitle_online": "Online PvP — Turn-based multiplayer",
     "subtitle_local": "Local 2-Player — take turns on the same screen",
     "player1": "Player 1",
@@ -805,5 +805,127 @@
     "contact_title": "Contact Us",
     "contact_text": "If you have questions about these Terms of Service, please contact us at:",
     "contact_email": "hakcathonthon@gmail.com"
+  },
+  "achievement_catalog": {
+    "pong_first_rally": {
+      "name": "First Rally",
+      "description": "Complete your first online Pong match."
+    },
+    "pong_getting_warm": {
+      "name": "Getting Warm",
+      "description": "Win your first online Pong match."
+    },
+    "pong_ace": {
+      "name": "Pong Ace",
+      "description": "Win 10 online Pong matches."
+    },
+    "pong_master": {
+      "name": "Pong Master",
+      "description": "Win 50 online Pong matches."
+    },
+    "pong_rally_master": {
+      "name": "Rally Master",
+      "description": "Reach a 20-hit rally in online Pong."
+    },
+    "pong_speed_demon": {
+      "name": "Speed Demon",
+      "description": "Score 3 points in under 10 seconds in online Pong."
+    },
+    "pong_unstoppable": {
+      "name": "Unstoppable",
+      "description": "Win 3 online Pong matches in a row."
+    },
+    "pong_precision_player": {
+      "name": "Precision Player",
+      "description": "Win online Pong without missing the ball."
+    },
+    "pong_comeback_king": {
+      "name": "Comeback King",
+      "description": "Win online Pong after trailing by 3 points."
+    },
+    "pong_defensive_wall": {
+      "name": "Defensive Wall",
+      "description": "Return 10 consecutive shots in online Pong."
+    },
+    "pong_dominator": {
+      "name": "Dominator",
+      "description": "Win an online Pong match with a shutout."
+    },
+    "pong_veteran": {
+      "name": "Pong Veteran",
+      "description": "Play 25 online Pong matches."
+    },
+    "pong_grinder": {
+      "name": "Pong Grinder",
+      "description": "Play 100 online Pong matches."
+    },
+    "pong_champion": {
+      "name": "Pong Champion",
+      "description": "Reach the online Pong top 10."
+    },
+    "pong_legend": {
+      "name": "Pong Legend",
+      "description": "Reach rank 1 on the online Pong leaderboard."
+    },
+    "ttt_first_move": {
+      "name": "First Move",
+      "description": "Complete your first online Tic-Tac-Toe match."
+    },
+    "ttt_first_victory": {
+      "name": "First Victory",
+      "description": "Win your first online Tic-Tac-Toe match."
+    },
+    "ttt_quick_thinker": {
+      "name": "Quick Thinker",
+      "description": "Win online Tic-Tac-Toe in 5 moves."
+    },
+    "ttt_strategist": {
+      "name": "Strategist",
+      "description": "Win 3 online Tic-Tac-Toe matches in a row."
+    },
+    "ttt_mind_reader": {
+      "name": "Mind Reader",
+      "description": "Block 5 opponent winning moves online."
+    },
+    "ttt_perfect_game": {
+      "name": "Perfect Game",
+      "description": "Win while the opponent places at most 2 marks."
+    },
+    "ttt_draw_master": {
+      "name": "Draw Master",
+      "description": "Draw 5 online Tic-Tac-Toe matches."
+    },
+    "ttt_veteran": {
+      "name": "Tic-Tac-Toe Veteran",
+      "description": "Play 25 online Tic-Tac-Toe matches."
+    },
+    "ttt_grinder": {
+      "name": "Tic-Tac-Toe Grinder",
+      "description": "Play 100 online Tic-Tac-Toe matches."
+    },
+    "ttt_unbeatable": {
+      "name": "Unbeatable",
+      "description": "Win 10 online Tic-Tac-Toe matches in a row."
+    },
+    "level_5": {
+      "name": "Rising Player",
+      "description": "Reach player level 5."
+    },
+    "level_10": {
+      "name": "Seasoned Player",
+      "description": "Reach player level 10."
+    },
+    "level_25": {
+      "name": "Elite Player",
+      "description": "Reach player level 25."
+    },
+    "level_50": {
+      "name": "Arena Master",
+      "description": "Reach player level 50."
+    },
+    "level_100": {
+      "name": "Arena Legend",
+      "description": "Reach player level 100."
+    }
   }
 }

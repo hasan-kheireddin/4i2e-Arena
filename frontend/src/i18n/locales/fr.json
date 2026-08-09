@@ -524,7 +524,7 @@
     "controls_shared": "W / S ou ↑ / ↓"
   },
   "ttt": {
-    "title": "⭕ Tic-Tac-Toe",
+    "title": "Tic-Tac-Toe",
     "subtitle_online": "PvP en ligne — Multijoueur à tour de rôle",
     "subtitle_local": "Local 2 joueurs — à tour de rôle sur le même écran",
     "player1": "Joueur 1",
@@ -805,5 +805,127 @@
     "contact_title": "Nous Contacter",
     "contact_text": "Si vous avez des questions sur ces Conditions d'Utilisation, veuillez nous contacter à :",
     "contact_email": "hakcathonthon@gmail.com"
+  },
+  "achievement_catalog": {
+    "pong_first_rally": {
+      "name": "Premier échange",
+      "description": "Terminez votre premier match de Pong en ligne."
+    },
+    "pong_getting_warm": {
+      "name": "Ça chauffe",
+      "description": "Gagnez votre premier match de Pong en ligne."
+    },
+    "pong_ace": {
+      "name": "As du Pong",
+      "description": "Gagnez 10 matchs de Pong en ligne."
+    },
+    "pong_master": {
+      "name": "Maître du Pong",
+      "description": "Gagnez 50 matchs de Pong en ligne."
+    },
+    "pong_rally_master": {
+      "name": "Maître de l'échange",
+      "description": "Atteignez un échange de 20 frappes en Pong en ligne."
+    },
+    "pong_speed_demon": {
+      "name": "Démon de vitesse",
+      "description": "Marquez 3 points en moins de 10 secondes en Pong en ligne."
+    },
+    "pong_unstoppable": {
+      "name": "Inarrêtable",
+      "description": "Gagnez 3 matchs de Pong en ligne d'affilée."
+    },
+    "pong_precision_player": {
+      "name": "Joueur de précision",
+      "description": "Gagnez un match de Pong en ligne sans manquer la balle."
+    },
+    "pong_comeback_king": {
+      "name": "Roi de la remontée",
+      "description": "Gagnez un match de Pong en ligne après avoir été mené de 3 points."
+    },
+    "pong_defensive_wall": {
+      "name": "Mur défensif",
+      "description": "Renvoyez 10 tirs consécutifs en Pong en ligne."
+    },
+    "pong_dominator": {
+      "name": "Dominateur",
+      "description": "Gagnez un match de Pong en ligne sans encaisser de point."
+    },
+    "pong_veteran": {
+      "name": "Vétéran du Pong",
+      "description": "Jouez 25 matchs de Pong en ligne."
+    },
+    "pong_grinder": {
+      "name": "Acharné du Pong",
+      "description": "Jouez 100 matchs de Pong en ligne."
+    },
+    "pong_champion": {
+      "name": "Champion du Pong",
+      "description": "Entrez dans le top 10 du Pong en ligne."
+    },
+    "pong_legend": {
+      "name": "Légende du Pong",
+      "description": "Atteignez la 1re place du classement Pong en ligne."
+    },
+    "ttt_first_move": {
+      "name": "Premier coup",
+      "description": "Terminez votre premier match de Tic-Tac-Toe en ligne."
+    },
+    "ttt_first_victory": {
+      "name": "Première victoire",
+      "description": "Gagnez votre premier match de Tic-Tac-Toe en ligne."
+    },
+    "ttt_quick_thinker": {
+      "name": "Esprit vif",
+      "description": "Gagnez un match de Tic-Tac-Toe en ligne en 5 coups."
+    },
+    "ttt_strategist": {
+      "name": "Stratège",
+      "description": "Gagnez 3 matchs de Tic-Tac-Toe en ligne d'affilée."
+    },
+    "ttt_mind_reader": {
+      "name": "Télépathe",
+      "description": "Bloquez 5 coups gagnants adverses en ligne."
+    },
+    "ttt_perfect_game": {
+      "name": "Partie parfaite",
+      "description": "Gagnez alors que l'adversaire n'a placé que 2 symboles au plus."
+    },
+    "ttt_draw_master": {
+      "name": "Maître du match nul",
+      "description": "Faites 5 matchs nuls de Tic-Tac-Toe en ligne."
+    },
+    "ttt_veteran": {
+      "name": "Vétéran du Tic-Tac-Toe",
+      "description": "Jouez 25 matchs de Tic-Tac-Toe en ligne."
+    },
+    "ttt_grinder": {
+      "name": "Acharné du Tic-Tac-Toe",
+      "description": "Jouez 100 matchs de Tic-Tac-Toe en ligne."
+    },
+    "ttt_unbeatable": {
+      "name": "Imbattable",
+      "description": "Gagnez 10 matchs de Tic-Tac-Toe en ligne d'affilée."
+    },
+    "level_5": {
+      "name": "Joueur en progression",
+      "description": "Atteignez le niveau 5."
+    },
+    "level_10": {
+      "name": "Joueur aguerri",
+      "description": "Atteignez le niveau 10."
+    },
+    "level_25": {
+      "name": "Joueur d'élite",
+      "description": "Atteignez le niveau 25."
+    },
+    "level_50": {
+      "name": "Maître de l'arène",
+      "description": "Atteignez le niveau 50."
+    },
+    "level_100": {
+      "name": "Légende de l'arène",
+      "description": "Atteignez le niveau 100."
+    }
   }
 }

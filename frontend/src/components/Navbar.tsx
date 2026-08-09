@@ -51,7 +51,10 @@ export function Navbar() {
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 h-16 bg-surface border-b backdrop-blur-[12px] backdrop-fallback">
-      <div className="flex items-center justify-between h-full px-4 lg:px-8 max-w-screen-2xl mx-auto">
+      {/* Full-bleed row: the logo and the user zone belong on the window edges,
+          so this row is deliberately not capped to the content max-width the
+          page body uses — a cap parks both of them mid-screen on wide displays. */}
+      <div className="flex items-center justify-between gap-2 h-full w-full px-4 sm:px-6 lg:px-8">
 
         {/* ── Logo ── */}
         <Link to="/home" className="flex items-center gap-2 shrink-0">
@@ -63,8 +66,10 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* ── Desktop Nav Links ── */}
-        <div className="hidden md:flex flex-1 justify-center min-w-0 px-4">
+        {/* ── Desktop Nav Links ──
+            Five nowrap items need ~530px, which a 768px window cannot spare once
+            the logo and user zone are placed, so these only appear from lg up. */}
+        <div className="hidden lg:flex flex-1 justify-center min-w-0 px-4">
           <nav className="flex items-center gap-1">
             {NAV_ITEMS.map(({ label, to, icon }) => (
               <NavLink
@@ -131,7 +136,7 @@ export function Navbar() {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg text-secondary hover:text-primary hover:bg-surface-hover transition-colors"
+            className="lg:hidden p-2 rounded-lg text-secondary hover:text-primary hover:bg-surface-hover transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? t("navbar.close_menu") : t("navbar.open_menu")}
           >
@@ -142,7 +147,7 @@ export function Navbar() {
 
       {/* ── Mobile Nav Menu ── */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-surface">
+        <div className="lg:hidden border-t bg-surface shadow-lg">
           <nav className="px-4 py-3 flex flex-col gap-1">
             {NAV_ITEMS.map(({ label, to, icon }) => (
               <NavLink

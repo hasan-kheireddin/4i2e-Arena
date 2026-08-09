@@ -50,6 +50,7 @@ export function usePongOnlineGame({
   const [opponentReady, setOpponentReady] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
   const [showEmotePalette, setShowEmotePalette] = useState(false);
+  const [spectateLinkCopied, setSpectateLinkCopied] = useState(false);
   const [spectatorCount, setSpectatorCount] = useState({
     total: 0,
     side1: 0,
@@ -330,6 +331,16 @@ export function usePongOnlineGame({
     setShowEmotePalette(false);
   };
 
+  /** Copies a /spectate link pinned to this player's side of the table. */
+  const shareSpectateLink = useCallback(() => {
+    if (!gameId || !mySlot) return;
+    const url = `${window.location.origin}/spectate/${gameId}?side=${mySlot}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setSpectateLinkCopied(true);
+      setTimeout(() => setSpectateLinkCopied(false), 2000);
+    }).catch(() => {});
+  }, [gameId, mySlot]);
+
   return {
     onlinePhase,
     onlineScore,
@@ -350,6 +361,9 @@ export function usePongOnlineGame({
     ready,
     forfeit: () => gameSend({ type: 'forfeit' }),
     sendEmote,
+    toggleEmotePalette: () => setShowEmotePalette((prev) => !prev),
+    spectateLinkCopied,
+    shareSpectateLink,
   };
 }
 

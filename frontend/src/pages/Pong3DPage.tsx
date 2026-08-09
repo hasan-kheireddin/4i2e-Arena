@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Check, Eye, Link2, Smile } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
+import { useAuth } from '../context/AuthContext';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { createLocalMatch } from '../services/games';
 import { getOrCreateDM } from '../services/chat';
@@ -126,6 +128,7 @@ export default function Pong3DPage() {
     };
   }, []);
 
+  const { user } = useAuth();
   const [onlinePhase, setOnlinePhase] = useState<OnlinePhase>('idle');
   const [gameId, setGameId] = useState<string | null>(null);
   const [mySlot, setMySlot] = useState<number | null>(null);
@@ -698,6 +701,8 @@ export default function Pong3DPage() {
       ? (localPlayerNames.p1.trim() || t('pong.player1'))
       : t('pong.you');
   const p2Label = opponentName || t('pong.opponent');
+  /** The signed-in player's own name, for the pre-match ready screen. */
+  const myName = user?.display_name || user?.username || t('pong.you');
   const modeLabel = mode === 'online'
     ? t('pong.mode_online')
     : t('pong.mode_local');
@@ -754,8 +759,9 @@ export default function Pong3DPage() {
             </span>
             <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>3D {modeLabel}</span>
             {mode === 'online' && (
-              <span className="text-[10px] font-medium flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                👁️ <span style={{ color: '#3B82F6' }}>{spectatorCount.side1}</span>
+              <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
+                <Eye className="w-3 h-3" />
+                <span style={{ color: '#3B82F6' }}>{spectatorCount.side1}</span>
                 <span style={{ color: 'var(--color-text-muted)' }}>/</span>
                 <span style={{ color: '#EF4444' }}>{spectatorCount.side2}</span>
               </span>
@@ -838,7 +844,24 @@ export default function Pong3DPage() {
 
           {mode === 'online' && onlinePhase === 'waiting' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
-              
+              <p className="text-xl font-bold text-center px-4" style={{ color: 'var(--color-text-primary)' }}>
+                <span style={{ color: '#3B82F6' }}>{myName}</span>
+                {' '}{t('pong.vs_opponent', { name: p2Label })}
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm">
+                <span style={{ color: iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                  {iReady
+                    ? t('pong.opponent_ready', { name: myName })
+                    : t('pong.opponent_not_ready', { name: myName })}
+                </span>
+                <span style={{ color: opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                  {opponentReady
+                    ? t('pong.opponent_ready', { name: p2Label })
+                    : t('pong.opponent_not_ready', { name: p2Label })}
+                </span>
+              </div>
+
               {!iReady ? (
                 <button onClick={handleReady} className="px-10 py-3 rounded-lg font-bold text-white text-lg" style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}>
                   {t('pong.ready')}
@@ -846,9 +869,11 @@ export default function Pong3DPage() {
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
-                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    {opponentReady ? t('pong.starting') : t('pong.waiting_opponent')}
-                  </p>
+                  {opponentReady && (
+                    <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                      {t('pong.starting')}
+                    </p>
+                  )}
                 </div>
               )}
               <button onClick={handleCancelOnline} className="text-sm px-5 py-2 rounded-lg" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{t('pong.exit')}</button>
@@ -956,18 +981,25 @@ export default function Pong3DPage() {
                   }}
                   title="Share spectate link"
                 >
-                  {copied ? '✓ Copied!' : '🔗 Share'}
+                  <span className="flex items-center gap-1.5">
+                    {copied
+                      ? <><Check className="w-4 h-4" /> Copied!</>
+                      : <><Link2 className="w-4 h-4" /> Share</>}
+                  </span>
                 </button>
                 <button
                   onClick={() => setShowEmotePalette(!showEmotePalette)}
-                  className="px-3 py-1.5 rounded-lg text-lg transition-all duration-200"
+                  className="px-3 py-1.5 rounded-lg flex items-center transition-all duration-200"
                   style={{
                     backgroundColor: showEmotePalette ? 'var(--color-primary)' : 'var(--color-bg-input)',
+                    color: showEmotePalette ? '#fff' : 'var(--color-text-secondary)',
                     border: '1px solid var(--color-border)',
                   }}
+                  aria-pressed={showEmotePalette}
+                  aria-label="Emotes"
                   title="Emotes"
                 >
-                  😂
+                  <Smile className="w-4 h-4" />
                 </button>
                 <button onClick={handleForfeit} className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200" style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}

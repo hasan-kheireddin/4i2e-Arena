@@ -1,15 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Crown, Loader2, Medal } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { getLeaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../services/games';
 
 type LeaderboardGameFilter = 'all' | 'pong' | 'tictactoe';
 
+/** Gold, silver, bronze — the medal colours carry the placing, not the glyph. */
+const PODIUM_COLORS: Record<number, string> = {
+  1: '#fbbf24',
+  2: '#cbd5e1',
+  3: '#d97706',
+};
+
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="text-xl">👑</span>;
-  if (rank === 2) return <span className="text-xl">🥈</span>;
-  if (rank === 3) return <span className="text-xl">🥉</span>;
+  if (rank === 1) {
+    return <Crown className="w-5 h-5" style={{ color: PODIUM_COLORS[1] }} aria-label="1st" />;
+  }
+  if (rank === 2 || rank === 3) {
+    return <Medal className="w-5 h-5" style={{ color: PODIUM_COLORS[rank] }} aria-label={`${rank}${rank === 2 ? 'nd' : 'rd'}`} />;
+  }
   return <span className="text-sm font-mono font-bold w-5 text-center" style={{ color: 'var(--color-text-muted)' }}>{rank}</span>;
 }
 
@@ -118,7 +129,10 @@ export default function LeaderboardPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12"><span className="text-4xl block mb-3">⏳</span><p style={{ color: 'var(--color-text-secondary)' }}>{t('lb.loading')}</p></div>
+        <div className="flex flex-col items-center gap-3 py-12">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary)' }} />
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('lb.loading')}</p>
+        </div>
       ) : (
         <>
           {/* Top 3 Podium */}

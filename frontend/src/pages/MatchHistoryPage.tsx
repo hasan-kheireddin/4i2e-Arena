@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Search } from 'lucide-react';
+import { PongIcon, TicTacToeIcon } from '../components/icons/GameIcons';
 import { useAuth } from '../context/AuthContext';
 import {
   getMyMatches,
@@ -397,13 +398,16 @@ export default function MatchHistoryPage() {
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-base"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     style={{
                       backgroundColor: match.game_type === 'pong' ? 'rgba(168,85,247,0.12)' : 'rgba(6,182,212,0.12)',
                       border: `1px solid ${match.game_type === 'pong' ? 'rgba(168,85,247,0.3)' : 'rgba(6,182,212,0.3)'}`,
+                      color: match.game_type === 'pong' ? '#a855f7' : '#06b6d4',
                     }}
                   >
-                    {match.game_type === 'pong' ? '🏓' : '⭕'}
+                    {match.game_type === 'pong'
+                      ? <PongIcon className="w-5 h-5" />
+                      : <TicTacToeIcon className="w-5 h-5" />}
                   </div>
 
                   <div className="flex-1 min-w-0">

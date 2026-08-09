@@ -52,8 +52,27 @@ function AchievementSvgIcon({
   );
 }
 
+/**
+ * The API serves achievement names and descriptions in English only, so they
+ * would stay English on every language switch. Translate them by their stable
+ * `key`, falling back to the API text for any achievement seeded after the
+ * catalog was last translated.
+ */
+function useAchievementText() {
+  const { t } = useTranslation();
+  return (achievement: Achievement) => ({
+    name: t(`achievement_catalog.${achievement.key}.name`, {
+      defaultValue: achievement.name,
+    }),
+    description: t(`achievement_catalog.${achievement.key}.description`, {
+      defaultValue: achievement.description,
+    }),
+  });
+}
+
 export default function AchievementsPage() {
   const { t, i18n } = useTranslation();
+  const achievementText = useAchievementText();
   const [loading, setLoading] = useState(true);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stats, setStats] = useState<AchievementStats | null>(null);
@@ -232,9 +251,9 @@ export default function AchievementsPage() {
                     <span className="font-semibold" style={{ color: style.color }}>
                       {t(`achievements_page.rarity.${tier}`)}
                     </span>
-                    <span style={{ color: "var(--color-text-muted)" }}>
+                    <bdi style={{ color: "var(--color-text-muted)" }}>
                       {data.unlocked}/{data.total}
-                    </span>
+                    </bdi>
                   </div>
                   <div className="h-2 rounded-full" style={{ backgroundColor: "var(--color-bg-input)" }}>
                     <div
@@ -263,6 +282,7 @@ export default function AchievementsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredAchievements.map((achievement) => {
+              const text = achievementText(achievement);
               const tierStyle = TIER_STYLES[achievement.rarity] ?? TIER_STYLES.common;
               const progress = Math.max(0, Math.min(100, Number(achievement.progress_percentage ?? 0)));
               const unlockedOn = achievement.unlocked_at
@@ -286,9 +306,11 @@ export default function AchievementsPage() {
                       >
                         <AchievementSvgIcon color={tierStyle.color} category={achievement.category} />
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
-                          {achievement.name}
+                      <div className="min-w-0">
+                        {/* dir="auto" so an untranslated English fallback still
+                            reads left-to-right inside the Arabic RTL page. */}
+                        <p dir="auto" className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                          {text.name}
                         </p>
                         <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
                           {t(`achievements_page.category.${achievement.category}`)}
@@ -303,19 +325,19 @@ export default function AchievementsPage() {
                     </span>
                   </div>
 
-                  <p className="mb-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                    {achievement.description}
+                  <p dir="auto" className="mb-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                    {text.description}
                   </p>
 
                   <div className="mb-3">
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span style={{ color: "var(--color-text-muted)" }}>{t("achievements_page.progress")}</span>
-                      <span style={{ color: "var(--color-text-secondary)" }}>
+                      <bdi style={{ color: "var(--color-text-secondary)" }}>
                         {t("achievements_page.progress_value", {
                           current: achievement.progress_current,
                           threshold: achievement.threshold,
                         })}
-                      </span>
+                      </bdi>
                     </div>
                     <div className="h-2 rounded-full" style={{ backgroundColor: "var(--color-bg-input)" }}>
                       <div
@@ -326,9 +348,9 @@ export default function AchievementsPage() {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold" style={{ color: "var(--color-success)" }}>
+                    <bdi className="text-xs font-semibold" style={{ color: "var(--color-success)" }}>
                       +{achievement.xp_reward} XP
-                    </span>
+                    </bdi>
                     <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
                       {achievement.is_unlocked
                         ? t("achievements_page.unlocked_label")
@@ -337,7 +359,7 @@ export default function AchievementsPage() {
                   </div>
 
                   {unlockedOn && (
-                    <p className="mt-2 text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                    <p dir="auto" className="mt-2 text-[11px]" style={{ color: "var(--color-text-muted)" }}>
                       {t("achievements_page.unlocked_on", { date: unlockedOn })}
                     </p>
                   )}
@@ -371,9 +393,11 @@ function SummaryCard({
         <span style={{ color }}>{icon}</span>
         <span>{label}</span>
       </div>
-      <p className="text-xl font-bold" style={{ color: "var(--color-text-primary)" }}>
+      {/* bdi: "3/28" and "#12" are digits and neutrals only, which an RTL page
+          would otherwise reorder into "28/3". */}
+      <bdi className="block text-xl font-bold" style={{ color: "var(--color-text-primary)" }}>
         {value}
-      </p>
+      </bdi>
     </div>
   );
 }

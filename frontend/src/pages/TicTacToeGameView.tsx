@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
+import { useAuth } from '../context/AuthContext';
+import { TicTacToeIcon } from '../components/icons/GameIcons';
 import { cn } from '../lib/utils';
 import {
   getOpponentSymbol,
@@ -66,10 +69,10 @@ function getStatusLabel(
   }
   if (props.gamePaused) return t('ttt.paused');
   if (props.onlinePhase === 'playing') return t('ttt.live');
-  if (props.onlinePhase === 'waiting') return t('ttt.waiting_opponent');
   if (props.onlinePhase === 'searching') return t('ttt.searching');
   if (props.onlinePhase === 'game_over') return t('ttt.game_over');
-  return t('ttt.mode_online');
+  // idle and waiting already own the screen with a full overlay.
+  return '';
 }
 
 function isPrimaryTurn(props: TicTacToeGameViewProps): boolean {
@@ -132,12 +135,17 @@ function PageHeader({ mode }: { mode: Mode }) {
   const { t } = useTranslation();
   return (
     <div className="text-center">
-      <h1 className="text-2xl font-extrabold" style={{ color: 'var(--color-text-primary)' }}>
+      <h1 className="text-2xl font-extrabold flex items-center justify-center gap-2"
+        style={{ color: 'var(--color-text-primary)' }}>
+        <TicTacToeIcon className="w-6 h-6" style={{ color: 'var(--color-primary)' }} />
         {t('ttt.title')}
       </h1>
-      <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-        {mode === 'online' ? t('ttt.subtitle_online') : t('ttt.subtitle_local')}
-      </p>
+      {/* Online mode gets no strapline: the HUD already names both players. */}
+      {mode === 'local' && (
+        <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          {t('ttt.subtitle_local')}
+        </p>
+      )}
     </div>
   );
 }
@@ -147,6 +155,7 @@ function TicTacToeHud({ props }: { props: TicTacToeGameViewProps }) {
   const labels = getLocalLabels(props.localPlayerNames, t);
   const primaryLabel = props.mode === 'online' ? t('ttt.you') : labels.p1;
   const secondaryLabel = props.mode === 'online' ? props.opponentName : labels.p2;
+  const statusLabel = getStatusLabel(props, t);
 
   return (
     <div className="flex items-center justify-between rounded-xl px-4 py-3"
@@ -170,15 +179,14 @@ function TicTacToeHud({ props }: { props: TicTacToeGameViewProps }) {
       </div>
 
       <div className="flex flex-col items-center gap-0.5">
-        <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5"
-          style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ backgroundColor: 'var(--color-success)' }} />
-          {getStatusLabel(props, t)}
-        </span>
-        <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-          {props.mode === 'online' ? t('ttt.mode_online') : t('ttt.mode_local')}
-        </span>
+        {statusLabel && (
+          <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5"
+            style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ backgroundColor: 'var(--color-success)' }} />
+            {statusLabel}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -252,25 +260,41 @@ function LocalNameSetup({ props }: { props: TicTacToeGameViewProps }) {
   );
 }
 
+/**
+ * One row per player. `ttt.opponent_ready_status` / `ttt.opponent_not_ready` are
+ * name-generic ("{{name}} is ready"), so they serve for the local player too
+ * and no new translation keys are needed.
+ */
+function ReadyStatus({ name, ready }: { name: string; ready: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <span style={{ color: ready ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+      {ready
+        ? t('ttt.opponent_ready_status', { name })
+        : t('ttt.opponent_not_ready', { name })}
+    </span>
+  );
+}
+
 function OnlineWaitingOverlay({ props }: { props: TicTacToeGameViewProps }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const myName = user?.display_name || user?.username || t('ttt.you');
+  const opponentName = props.opponentName || t('ttt.opponent');
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 z-10 rounded-xl"
       style={{ backgroundColor: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(8px)' }}>
-      <p className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-        {t('ttt.vs_opponent', { name: props.opponentName })}
+      {/* Interpolating the opponent into `vs {{name}}` keeps word order under the
+          translator's control instead of hard-coding an English "A vs B". */}
+      <p className="text-xl font-bold text-center px-4" style={{ color: 'var(--color-text-primary)' }}>
+        <span style={{ color: '#3B82F6' }}>{myName}</span>
+        {' '}{t('ttt.vs_opponent', { name: opponentName })}
       </p>
 
-      <div className="flex gap-8 text-sm">
-        <span style={{ color: props.iReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-          {props.iReady ? t('ttt.you_ready') : t('ttt.you_not_ready')}
-        </span>
-        <span style={{ color: props.opponentReady ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-          {props.opponentReady
-            ? t('ttt.opponent_ready_status', { name: props.opponentName })
-            : t('ttt.opponent_not_ready', { name: props.opponentName })}
-        </span>
+      <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm">
+        <ReadyStatus name={myName} ready={props.iReady} />
+        <ReadyStatus name={opponentName} ready={props.opponentReady} />
       </div>
 
       {!props.iReady ? (
@@ -285,9 +309,11 @@ function OnlineWaitingOverlay({ props }: { props: TicTacToeGameViewProps }) {
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 rounded-full border-4 animate-spin"
             style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            {props.opponentReady ? t('ttt.starting') : t('ttt.waiting_opponent')}
-          </p>
+          {props.opponentReady && (
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('ttt.starting')}
+            </p>
+          )}
         </div>
       )}
 
@@ -347,12 +373,23 @@ function RealtimeRecoveryOverlay({ props }: { props: TicTacToeGameViewProps }) {
   );
 }
 
+function getCellBorder(isWinCell: boolean, isHovered: boolean): string {
+  if (isWinCell) return '2px solid var(--color-primary)';
+  return `1px solid ${isHovered ? 'var(--color-primary)' : 'var(--color-border)'}`;
+}
+
 function GameBoard({ props }: { props: TicTacToeGameViewProps }) {
+  // Hover lives in state rather than in imperative style writes: a cell that
+  // gets disabled by the click that filled it never receives its mouse-leave,
+  // so a hand-written style would stay stuck on that cell for every later game.
+  const [hoveredCell, setHoveredCell] = useState<number | null>(null);
+
   return (
     <div className="grid grid-cols-3 gap-2 w-full max-w-xs aspect-square">
       {props.displayBoard.map((cell, index) => {
-        const isWinCell = props.displayLine?.includes(index);
+        const isWinCell = Boolean(props.displayLine?.includes(index));
         const isDisabled = isBoardCellDisabled(props, cell);
+        const isHovered = !isDisabled && hoveredCell === index;
 
         return (
           <button
@@ -365,23 +402,13 @@ function GameBoard({ props }: { props: TicTacToeGameViewProps }) {
               isDisabled && 'cursor-default',
             )}
             style={{
-              backgroundColor: 'var(--color-bg-card)',
-              border: isWinCell ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+              backgroundColor: isHovered ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
+              border: getCellBorder(isWinCell, isHovered),
               boxShadow: isWinCell ? '0 0 20px rgba(249,115,22,0.35)' : 'none',
               transform: isWinCell ? 'scale(1.05)' : 'scale(1)',
             }}
-            onMouseEnter={(event) => {
-              if (!isDisabled) {
-                event.currentTarget.style.backgroundColor = 'var(--color-bg-hover)';
-                event.currentTarget.style.borderColor = 'var(--color-primary)';
-              }
-            }}
-            onMouseLeave={(event) => {
-              if (!isDisabled) {
-                event.currentTarget.style.backgroundColor = 'var(--color-bg-card)';
-                event.currentTarget.style.borderColor = 'var(--color-border)';
-              }
-            }}
+            onMouseEnter={() => setHoveredCell(index)}
+            onMouseLeave={() => setHoveredCell((current) => (current === index ? null : current))}
           >
             {cell === 'X' && (
               <span className="text-4xl font-bold" style={{ color: getCellColor(props, 'X') }}>X</span>
@@ -465,6 +492,34 @@ function GameOverSection({ props }: { props: TicTacToeGameViewProps }) {
   );
 }
 
+/**
+ * Mid-match way out for a local 2-player game. Once the game ends,
+ * GameOverSection offers its own "Back to Games", so this hides to avoid
+ * stacking two buttons that do the same thing.
+ */
+function LocalMatchControls({ props }: { props: TicTacToeGameViewProps }) {
+  const { t } = useTranslation();
+  const inProgress = props.mode === 'local'
+    && props.localNamesReady
+    && !props.displayWinner;
+
+  if (!inProgress) return null;
+
+  return (
+    <button
+      onClick={props.onBackToGames}
+      className="px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+      style={{
+        backgroundColor: 'var(--color-bg-card)',
+        color: 'var(--color-text-secondary)',
+        border: '1px solid var(--color-border)',
+      }}
+    >
+      {t('ttt.exit')}
+    </button>
+  );
+}
+
 function Arena({ props }: { props: TicTacToeGameViewProps }) {
   return (
     <div className="flex flex-col items-center gap-6 relative">
@@ -473,6 +528,7 @@ function Arena({ props }: { props: TicTacToeGameViewProps }) {
       <RealtimeRecoveryOverlay props={props} />
       <GameBoard props={props} />
       <GameOverSection props={props} />
+      <LocalMatchControls props={props} />
     </div>
   );
 }

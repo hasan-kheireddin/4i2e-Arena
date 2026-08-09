@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Globe, Monitor, Gamepad2 } from 'lucide-react';
+import { PongIcon, TicTacToeIcon } from '../components/icons/GameIcons';
 import { cn } from '../lib/utils';
 
 type GameChoice = 'pong' | 'tictactoe' | null;
@@ -114,10 +115,12 @@ export default function PlayPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(249,115,22,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <div className="absolute top-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none" style={{ insetInlineEnd: '1rem' }}>🏓</div>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-3xl"
+                <div className="absolute top-4 opacity-10 group-hover:opacity-20 transition-opacity" style={{ insetInlineEnd: '1rem' }}>
+                  <PongIcon className="w-10 h-10" style={{ color: 'var(--color-text-primary)' }} />
+                </div>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-white"
                   style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)' }}>
-                  🏓
+                  <PongIcon className="w-7 h-7" />
                 </div>
                 <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>{t('home.game_pong')}</h2>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
@@ -144,10 +147,12 @@ export default function PlayPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(245,158,11,0.2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <div className="absolute top-4 text-4xl opacity-10 group-hover:opacity-20 transition-opacity select-none" style={{ insetInlineEnd: '1rem' }}>⭕</div>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-3xl"
+                <div className="absolute top-4 opacity-10 group-hover:opacity-20 transition-opacity" style={{ insetInlineEnd: '1rem' }}>
+                  <TicTacToeIcon className="w-10 h-10" style={{ color: 'var(--color-text-primary)' }} />
+                </div>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-white"
                   style={{ background: 'linear-gradient(135deg,#f59e0b,#f97316)' }}>
-                  ⭕
+                  <TicTacToeIcon className="w-7 h-7" />
                 </div>
                 <h2 className="text-xl font-extrabold mb-1" style={{ color: 'var(--color-text-primary)' }}>{t('home.game_ttt')}</h2>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
@@ -173,7 +178,11 @@ export default function PlayPage() {
         {step === 2 && game && (
           <div className={slideClass}>
             <div className="text-center mb-8">
-              <div className="text-3xl mb-2">{game === 'pong' ? '🏓' : '⭕'}</div>
+              <div className="flex justify-center mb-2" style={{ color: 'var(--color-primary)' }}>
+                {game === 'pong'
+                  ? <PongIcon className="w-8 h-8" />
+                  : <TicTacToeIcon className="w-8 h-8" />}
+              </div>
               <h1 className="text-3xl font-extrabold mb-2" style={{ color: 'var(--color-text-primary)' }}>
                 {t('play.choose_mode')}
               </h1>

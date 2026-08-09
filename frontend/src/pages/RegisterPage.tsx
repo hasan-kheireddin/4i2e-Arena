@@ -170,68 +170,39 @@ export default function RegisterPage() {
       <div className="absolute top-4 z-20" style={{ insetInlineEnd: '1rem' }}>
         <LanguageSwitcher />
       </div>
-      {/* ─────────────────────────────────────────
-          DESKTOP LAYOUT  (lg and above)
-          Left: image (full height) | Right: form (full height)
-      ───────────────────────────────────────── */}
-      <div className="hidden lg:flex w-full h-full">
-        {/* Image side - full height */}
-        <div className="w-[45%] flex-shrink-0 h-full animate-slideInLeft">
-          <img
-            src={registerImgDark}
-            alt={t("register.hero_image_alt", "Sports arena illustration")}
-            className="w-full h-full object-cover"
-          />
-        </div>
+      {/* One form for every breakpoint. Rendering a second copy behind a
+          `hidden` class still puts it in the DOM, which duplicated every input
+          id and gave the browser two autofill targets per field. Only the image
+          column is breakpoint-dependent. */}
 
-        {/* Form side - full height */}
-        <div
-          className="flex-1 flex flex-col justify-center px-8 xl:px-12 overflow-y-auto animate-slideInRight"
-          style={{ backgroundColor: "var(--color-bg)" }}
-        >
-          <div className="max-w-sm mx-auto w-full py-8">
-            <FormContent
-              formData={formData}
-              errors={errors}
-              serverError={serverError}
-              loading={loading}
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              showConfirmPassword={showConfirmPassword}
-              setShowConfirmPassword={setShowConfirmPassword}
-              handleChange={handleChange}
-              handleSubmit={handleSubmit}
-              t={t}
-            />
-          </div>
-        </div>
+      {/* Image side — desktop only */}
+      <div className="hidden lg:block w-[45%] flex-shrink-0 h-full animate-slideInLeft">
+        <img
+          src={registerImgDark}
+          alt={t("register.hero_image_alt", "Sports arena illustration")}
+          className="w-full h-full object-cover object-top"
+        />
       </div>
 
-      {/* ─────────────────────────────────────────
-          MOBILE + TABLET LAYOUT  (below lg)
-          Single column: form on top, image below
-      ───────────────────────────────────────── */}
-      <div className="flex lg:hidden flex-col w-full h-full overflow-y-auto">
-        {/* Form */}
-        <div
-          className="flex-1 flex items-center justify-center px-5 py-8"
-          style={{ backgroundColor: "var(--color-bg)" }}
-        >
-          <div className="max-w-sm w-full">
-            <FormContent
-              formData={formData}
-              errors={errors}
-              serverError={serverError}
-              loading={loading}
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              showConfirmPassword={showConfirmPassword}
-              setShowConfirmPassword={setShowConfirmPassword}
-              handleChange={handleChange}
-              handleSubmit={handleSubmit}
-              t={t}
-            />
-          </div>
+      {/* Form side */}
+      <div
+        className="flex-1 flex flex-col justify-center px-5 lg:px-8 xl:px-12 overflow-y-auto animate-slideInRight"
+        style={{ backgroundColor: "var(--color-bg)" }}
+      >
+        <div className="max-w-sm mx-auto w-full py-8">
+          <FormContent
+            formData={formData}
+            errors={errors}
+            serverError={serverError}
+            loading={loading}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            showConfirmPassword={showConfirmPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            t={t}
+          />
         </div>
       </div>
     </div>
