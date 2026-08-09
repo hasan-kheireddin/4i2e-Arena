@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
+        // Access tokens live in memory only, so after a reload there is none to
+        // send; apiFetch mints one before the request rather than eating a 401.
         const profile = await getProfile();
         if (!cancelled) setUser(profile);
       } catch {

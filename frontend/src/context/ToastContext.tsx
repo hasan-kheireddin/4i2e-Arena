@@ -1,36 +1,32 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
-import Toast from "../components/Toast";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import Toast, { type ToastData } from "../components/Toast";
 
-type ToastIcon = "success" | "achievement" | "game" | "friend" | "xp";
-
-interface ToastItem {
-  message: string;
-  icon?: ToastIcon;
-  duration?: number;
-  position?: "bottom-end" | "center";
-  tone?: "success" | "achievement" | "message";
-  onClick?: () => void;
-  avatar?: string;
-}
+export type { ToastData, ToastVariant } from "../components/Toast";
 
 interface ToastContextType {
-  showToast: (item: ToastItem) => void;
+  showToast: (item: ToastData) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
+interface ActiveToast extends ToastData {
+  id: number;
+}
+
+/** Newer toasts push older ones down; beyond this the oldest is retired early. */
+const MAX_VISIBLE = 3;
+
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [queue, setQueue] = useState<ToastItem[]>([]);
-  const [active, setActive] = useState<ToastItem | null>(null);
-  const processingRef = useRef(false);
+  const [toasts, setToasts] = useState<ActiveToast[]>([]);
+  const nextId = useRef(1);
   const audioUnlocked = useRef(false);
 
-  // Unlock audio on first user interaction
+  // Browsers block audio until the user interacts; preload on the first gesture.
   useEffect(() => {
     const unlock = () => {
       if (audioUnlocked.current) return;
       audioUnlocked.current = true;
-      new Audio("/sounds/notification.mp3"); // preload
+      new Audio("/sounds/notification.mp3");
       document.removeEventListener("click", unlock);
       document.removeEventListener("keydown", unlock);
     };
@@ -42,45 +38,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const showToast = useCallback((item: ToastItem) => {
-    setQueue((prev) => [...prev, item]);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setActive(null);
-    processingRef.current = false;
-  }, []);
-
-  useEffect(() => {
-    if (active || queue.length === 0 || processingRef.current) return;
-    processingRef.current = true;
-    const next = queue[0];
-    setQueue((prev) => prev.slice(1));
-    setActive(next);
+  const showToast = useCallback((item: ToastData) => {
+    setToasts((prev) => [...prev, { ...item, id: nextId.current++ }].slice(-MAX_VISIBLE));
     try {
       const a = new Audio("/sounds/notification.mp3");
       a.volume = 0.3;
       a.play().catch(() => {});
-    } catch (e) {
-      console.warn("Notification sound error:", e);
+    } catch {
+      /* audio is a nicety, never a failure path */
     }
-  }, [active, queue]);
+  }, []);
+
+  const dismiss = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {active && (
-        <Toast
-          message={active.message}
-          icon={active.icon}
-          avatar={active.avatar}
-          onClose={handleClose}
-          onClick={active.onClick}
-          duration={active.duration ?? 4000}
-          position={active.position ?? "bottom-end"}
-          tone={active.tone ?? "success"}
-        />
-      )}
+      <div
+        className="fixed z-[10000] flex flex-col items-end gap-2 pointer-events-none"
+        style={{ bottom: "5rem", insetInlineEnd: "1.5rem" }}
+        aria-live="polite"
+      >
+        {toasts.map((t) => (
+          <div key={t.id} className="pointer-events-auto">
+            <Toast {...t} onClose={() => dismiss(t.id)} />
+          </div>
+        ))}
+      </div>
     </ToastContext.Provider>
   );
 }

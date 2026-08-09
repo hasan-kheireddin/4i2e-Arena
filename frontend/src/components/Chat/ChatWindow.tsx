@@ -1,9 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ChatBubble from "./ChatBubble";
+import ChatAvatar from "./ChatAvatar";
 import EmotePalette from "./EmotePalette";
+import {
+  IconArrowLeft,
+  IconBell,
+  IconBellOff,
+  IconBlock,
+  IconClock,
+  IconDots,
+  IconGamepad,
+  IconReaction,
+  IconSend,
+  IconUnblock,
+  IconUser,
+  IconUserCheck,
+  IconUserMinus,
+  IconUserPlus,
+} from "./ChatIcons";
 import type { EmoteDef } from "../../assets/emotes/emotes";
 import type { ChatMessage, TypingUser } from "./useChatSocket";
-
 
 interface ChatWindowProps {
   messages: ChatMessage[];
@@ -15,8 +31,13 @@ interface ChatWindowProps {
   noBorder?: boolean;
   typingUsers?: TypingUser[];
   onTyping?: () => void;
-  onSettingsClick?: () => void;
   onTitleClick?: () => void;
+  /** Shown on narrow layouts to return to the conversation list. */
+  onBack?: () => void;
+  partnerAvatar?: string | null;
+  partnerOnline?: boolean;
+  isMuted?: boolean;
+  onToggleMute?: () => void;
   blockedUserIds?: Set<string>;
   dmPartnerId?: string | null;
   onBlockUser?: (userId: string) => void;
@@ -31,6 +52,33 @@ interface ChatWindowProps {
   sendGameInviteResponse?: (channelId: string, gameType: string, gameId: string, accept: boolean) => void;
 }
 
+interface MenuItem {
+  key: string;
+  label: string;
+  hint?: string;
+  icon: React.ReactNode;
+  danger?: boolean;
+  accent?: boolean;
+  separatorBefore?: boolean;
+  /** Destructive entries ask once, inside the menu, before firing. */
+  confirm?: { title: string; body: string; action: string };
+  onClick: () => void;
+}
+
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toDateString();
+}
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (d.getTime() >= startOfToday) return "Today";
+  if (d.getTime() >= startOfToday - 86_400_000) return "Yesterday";
+  return d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function ChatWindow({
   messages,
   onSendMessage,
@@ -41,8 +89,12 @@ export default function ChatWindow({
   noBorder,
   typingUsers,
   onTyping,
-  onSettingsClick,
   onTitleClick,
+  onBack,
+  partnerAvatar,
+  partnerOnline,
+  isMuted,
+  onToggleMute,
   blockedUserIds,
   dmPartnerId,
   onBlockUser,
@@ -58,17 +110,25 @@ export default function ChatWindow({
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [showEmotes, setShowEmotes] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [confirmItem, setConfirmItem] = useState<MenuItem | null>(null);
   const [contextMsg, setContextMsg] = useState<{ id: string; sender: string; username?: string; x: number; y: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingRef = useRef(onTyping);
   typingRef.current = onTyping;
+
+  const isBlocked = !!(blockedUserIds && dmPartnerId && blockedUserIds.has(dmPartnerId));
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
-    const close = () => setContextMsg(null);
+    const close = () => {
+      setContextMsg(null);
+      setShowMenu(false);
+      setConfirmItem(null);
+    };
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, []);
@@ -106,49 +166,336 @@ export default function ChatWindow({
 
   const otherTyping = (typingUsers || []).filter((u) => u.userId !== currentUserId);
 
-  const containerClass = noBorder
-    ? "flex flex-col h-full"
-    : "flex flex-col h-full rounded-xl";
+  const visible = useMemo(
+    () => messages.filter((msg) => !msg.sender || !blockedUserIds?.has(msg.sender)),
+    [messages, blockedUserIds],
+  );
+
+  const isFriend = !!dmPartnerId && !!friendUserIds?.has(dmPartnerId);
+  const requestReceived = !!dmPartnerId && !!pendingReceivedIds?.has(dmPartnerId);
+  const requestSent = !!dmPartnerId && !!pendingSentIds?.has(dmPartnerId);
+
+  const friendItem: MenuItem | null =
+    !dmPartnerId || !onFriendAction || isBlocked
+      ? null
+      : isFriend
+        ? {
+            key: "friend",
+            label: "Remove friend",
+            hint: "You are friends",
+            icon: <IconUserMinus size={15} />,
+            danger: true,
+            confirm: {
+              title: `Remove ${title}?`,
+              body: "They will be taken off your friends list. You can send a new request later.",
+              action: "Remove",
+            },
+            onClick: () => onFriendAction(dmPartnerId),
+          }
+        : requestReceived
+          ? {
+              key: "friend",
+              label: "Accept friend request",
+              hint: `${title} wants to be friends`,
+              icon: <IconUserCheck size={15} />,
+              accent: true,
+              onClick: () => onFriendAction(dmPartnerId),
+            }
+          : requestSent
+            ? {
+                key: "friend",
+                label: "Cancel friend request",
+                hint: "Request pending",
+                icon: <IconClock size={15} />,
+                onClick: () => onFriendAction(dmPartnerId),
+              }
+            : {
+                key: "friend",
+                label: "Add friend",
+                icon: <IconUserPlus size={15} />,
+                onClick: () => onFriendAction(dmPartnerId),
+              };
+
+  const menuItems = [
+    dmPartnerId && onProfileClick
+      ? { key: "profile", label: "View profile", icon: <IconUser size={15} />, onClick: () => onProfileClick(dmPartnerId) }
+      : null,
+    friendItem,
+    dmPartnerId && onInviteGame && !isBlocked
+      ? { key: "invite", label: "Invite to game", icon: <IconGamepad size={15} />, onClick: () => onInviteGame(dmPartnerId, title) }
+      : null,
+    onToggleMute
+      ? {
+          key: "mute",
+          label: isMuted ? "Unmute notifications" : "Mute notifications",
+          hint: isMuted ? "Notifications are off" : undefined,
+          icon: isMuted ? <IconBell size={15} /> : <IconBellOff size={15} />,
+          separatorBefore: true,
+          onClick: onToggleMute,
+        }
+      : null,
+    dmPartnerId && (isBlocked ? onUnblock : onBlockUser)
+      ? {
+          key: "block",
+          label: isBlocked ? "Unblock player" : "Block player",
+          hint: isBlocked ? "You blocked them" : undefined,
+          icon: isBlocked ? <IconUnblock size={15} /> : <IconBlock size={15} />,
+          danger: !isBlocked,
+          confirm: isBlocked
+            ? undefined
+            : {
+                title: `Block ${title}?`,
+                body: "They will not be able to message you or invite you to games, and any friendship is removed.",
+                action: "Block",
+              },
+          onClick: () => (isBlocked ? onUnblock?.() : onBlockUser?.(dmPartnerId)),
+        }
+      : null,
+  ].filter(Boolean) as MenuItem[];
+
   const containerStyle: React.CSSProperties = noBorder
     ? {}
     : { backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" };
 
   return (
-    <div className={containerClass} style={containerStyle}>
-      <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "var(--color-border)" }}>
-        <h3 className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)", cursor: onTitleClick ? "pointer" : undefined }}
-          onClick={onTitleClick}>{title}</h3>
-        <div className="flex items-center gap-1">
-          {onSettingsClick && (
-            <button
-              onClick={onSettingsClick}
-              className="w-7 h-7 flex items-center justify-center rounded text-xs"
-              style={{ backgroundColor: "var(--color-bg-input)" }}
-              title="Settings"
-            >⚙️</button>
-          )}
-        </div>
-      </div>
+    <div
+      className={`flex flex-col h-full min-h-0 overflow-hidden ${noBorder ? "" : "rounded-2xl"}`}
+      style={containerStyle}
+    >
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div
+        className="flex items-center gap-2.5 px-3 py-2.5 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--color-border)" }}
+      >
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to conversations"
+            className="w-8 h-8 -ml-1 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors hover:bg-surface-hover"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            <IconArrowLeft size={18} />
+          </button>
+        )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-1" style={{ minHeight: "200px", maxHeight: "400px" }}>
-        {loading && (
-          <div className="flex justify-center py-4">
-            <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }} />
+        <ChatAvatar
+          src={partnerAvatar}
+          name={title}
+          size={36}
+          online={partnerOnline}
+          onClick={onTitleClick}
+          title={onTitleClick ? "View profile" : undefined}
+        />
+
+        <button
+          type="button"
+          onClick={onTitleClick}
+          disabled={!onTitleClick}
+          className="flex-1 min-w-0 text-left disabled:cursor-default"
+        >
+          <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--color-text-primary)" }}>
+            {title}
+          </p>
+          <p
+            className="text-[10.5px] truncate"
+            style={{ color: partnerOnline ? "var(--color-success)" : "var(--color-text-muted)" }}
+          >
+            {otherTyping.length > 0 ? "typing…" : partnerOnline ? "Online" : "Offline"}
+          </p>
+        </button>
+
+        {isMuted && (
+          <span style={{ color: "var(--color-text-muted)" }} title="Notifications muted">
+            <IconBellOff size={14} />
+          </span>
+        )}
+
+        {menuItems.length > 0 && (
+          <div className="relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmItem(null);
+                setShowMenu((v) => !v);
+              }}
+              aria-label="Conversation options"
+              aria-haspopup="menu"
+              aria-expanded={showMenu}
+              className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-surface-hover"
+              style={{
+                color: showMenu ? "var(--color-primary)" : "var(--color-text-secondary)",
+                backgroundColor: showMenu ? "var(--color-bg-hover)" : undefined,
+              }}
+            >
+              <IconDots size={17} />
+            </button>
+
+            {showMenu && (
+              <div
+                role="menu"
+                className="absolute z-50 mt-1.5 w-60 rounded-xl overflow-hidden shadow-xl"
+                style={{
+                  insetInlineEnd: 0,
+                  backgroundColor: "var(--color-bg-elevated)",
+                  border: "1px solid var(--color-border)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {confirmItem?.confirm ? (
+                  <div className="p-3">
+                    <p className="text-[12.5px] font-bold" style={{ color: "var(--color-text-primary)" }}>
+                      {confirmItem.confirm.title}
+                    </p>
+                    <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: "var(--color-text-muted)" }}>
+                      {confirmItem.confirm.body}
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmItem(null)}
+                        className="flex-1 py-1.5 rounded-lg text-[11.5px] font-semibold transition-colors hover:bg-surface-hover"
+                        style={{ border: "1px solid var(--color-border)", color: "var(--color-text-secondary)" }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const run = confirmItem.onClick;
+                          setConfirmItem(null);
+                          setShowMenu(false);
+                          run();
+                        }}
+                        className="flex-1 py-1.5 rounded-lg text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: "var(--color-danger)" }}
+                      >
+                        {confirmItem.confirm.action}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-1">
+                    {menuItems.map((item) => (
+                      <div key={item.key}>
+                        {item.separatorBefore && (
+                          <div className="my-1 mx-3" style={{ borderTop: "1px solid var(--color-border)" }} />
+                        )}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            if (item.confirm) {
+                              setConfirmItem(item);
+                              return;
+                            }
+                            setShowMenu(false);
+                            item.onClick();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface-hover"
+                          style={{
+                            color: item.danger
+                              ? "var(--color-danger)"
+                              : item.accent
+                                ? "var(--color-success)"
+                                : "var(--color-text-primary)",
+                          }}
+                        >
+                          <span
+                            className="flex-shrink-0"
+                            style={{
+                              color: item.danger
+                                ? "var(--color-danger)"
+                                : item.accent
+                                  ? "var(--color-success)"
+                                  : "var(--color-text-muted)",
+                            }}
+                          >
+                            {item.icon}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-[12.5px] font-medium truncate">{item.label}</span>
+                            {item.hint && (
+                              <span className="block text-[10.5px] truncate" style={{ color: "var(--color-text-muted)" }}>
+                                {item.hint}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
-        {!loading && messages.length === 0 && (
-          <p className="text-xs text-center py-4" style={{ color: "var(--color-text-muted)" }}>No messages yet</p>
+      </div>
+
+      {/* ── Messages ───────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3">
+        {loading && (
+          <div className="flex justify-center py-4">
+            <div
+              className="w-6 h-6 rounded-full border-2 animate-spin"
+              style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }}
+            />
+          </div>
         )}
-        {messages
-          .filter((msg) => !msg.sender || !blockedUserIds?.has(msg.sender))
-          .map((msg) => (
-            <div key={msg.id} onContextMenu={(e) => handleContextMenu(e, msg)}>
-              <ChatBubble key={msg.id} msg={msg} isOwn={msg.sender === currentUserId} onProfileClick={onProfileClick} dmPartnerReadUntil={dmPartnerReadUntil} sendGameInviteResponse={sendGameInviteResponse} />
+        {!loading && visible.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center px-6">
+            <p className="text-[13px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
+              No messages yet
+            </p>
+            <p className="text-[11.5px]" style={{ color: "var(--color-text-muted)" }}>
+              Send the first message to {title}.
+            </p>
+          </div>
+        )}
+        {visible.map((msg, i) => {
+          const showDay = i === 0 || dayKey(msg.created_at) !== dayKey(visible[i - 1].created_at);
+          return (
+            <div key={msg.id}>
+              {showDay && (
+                <div className="flex justify-center my-2">
+                  <span
+                    className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-muted)" }}
+                  >
+                    {dayLabel(msg.created_at)}
+                  </span>
+                </div>
+              )}
+              <div onContextMenu={(e) => handleContextMenu(e, msg)}>
+                <ChatBubble
+                  msg={msg}
+                  isOwn={msg.sender === currentUserId}
+                  onProfileClick={onProfileClick}
+                  dmPartnerReadUntil={dmPartnerReadUntil}
+                  sendGameInviteResponse={sendGameInviteResponse}
+                />
+              </div>
             </div>
-          ))}
+          );
+        })}
         {otherTyping.length > 0 && (
-          <div className="text-xs italic py-1" style={{ color: "var(--color-text-muted)" }}>
-            {otherTyping.map((u) => u.username).join(", ")} {otherTyping.length === 1 ? "is" : "are"} typing...
+          <div className="flex items-center gap-2 py-1">
+            <span
+              className="flex items-center gap-1 px-3 py-2 rounded-2xl"
+              style={{ backgroundColor: "var(--color-bg-input)" }}
+            >
+              {[0, 1, 2].map((d) => (
+                <span
+                  key={d}
+                  className="w-1.5 h-1.5 rounded-full animate-bounce"
+                  style={{ backgroundColor: "var(--color-text-muted)", animationDelay: `${d * 0.12}s` }}
+                />
+              ))}
+            </span>
+            <span className="text-[11px] italic" style={{ color: "var(--color-text-muted)" }}>
+              {otherTyping.map((u) => u.username).join(", ")} {otherTyping.length === 1 ? "is" : "are"} typing
+            </span>
           </div>
         )}
         <div ref={bottomRef} />
@@ -156,62 +503,75 @@ export default function ChatWindow({
 
       {contextMsg && (
         <div
-          className="fixed z-50 rounded-lg shadow-xl py-1"
-          style={{ left: contextMsg.x, top: contextMsg.y, backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
+          className="fixed z-50 rounded-xl shadow-xl py-1 w-44"
+          style={{
+            left: Math.min(contextMsg.x, window.innerWidth - 190),
+            top: Math.min(contextMsg.y, window.innerHeight - 180),
+            backgroundColor: "var(--color-bg-elevated)",
+            border: "1px solid var(--color-border)",
+          }}
           onClick={() => setContextMsg(null)}
         >
           {onProfileClick && (
             <button
-              className="w-full text-left px-3 py-1.5 text-xs hover:opacity-80"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-primary)" }}
               onClick={() => { onProfileClick?.(contextMsg.sender); setContextMsg(null); }}
             >
-              View Profile
+              <span style={{ color: "var(--color-text-muted)" }}><IconUser size={15} /></span>
+              View profile
             </button>
           )}
           {onInviteGame && (
             <button
-              className="w-full text-left px-3 py-1.5 text-xs hover:opacity-80"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-primary)" }}
               onClick={() => { onInviteGame?.(contextMsg.sender, contextMsg.username); setContextMsg(null); }}
             >
+              <span style={{ color: "var(--color-text-muted)" }}><IconGamepad size={15} /></span>
               Invite to game
             </button>
           )}
           {onFriendAction && (
             <button
-              className="w-full text-left px-3 py-1.5 text-xs hover:opacity-80"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-primary)" }}
               onClick={() => { onFriendAction(contextMsg.sender); setContextMsg(null); }}
             >
-              {friendUserIds?.has(contextMsg.sender) ? "Remove Friend" :
-               pendingReceivedIds?.has(contextMsg.sender) ? "Accept Request" :
-               pendingSentIds?.has(contextMsg.sender) ? "Cancel Request" :
-               "Add Friend"}
+              <span style={{ color: "var(--color-text-muted)" }}><IconUser size={15} /></span>
+              {friendUserIds?.has(contextMsg.sender) ? "Remove friend" :
+               pendingReceivedIds?.has(contextMsg.sender) ? "Accept request" :
+               pendingSentIds?.has(contextMsg.sender) ? "Cancel request" :
+               "Add friend"}
             </button>
           )}
           {onBlockUser && (
             <button
-              className="w-full text-left px-3 py-1.5 text-xs hover:opacity-80"
-              style={{ color: "#EF4444" }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
+              style={{ color: "var(--color-danger)" }}
               onClick={() => { onBlockUser(contextMsg.sender); setContextMsg(null); }}
             >
-              Block user
+              <IconBlock size={15} />
+              Block player
             </button>
           )}
         </div>
       )}
 
-      <div className="relative px-4 py-3 border-t" style={{ borderColor: "var(--color-border)" }}>
-        {blockedUserIds && dmPartnerId && blockedUserIds.has(dmPartnerId) ? (
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-              You blocked <strong>{title}</strong>
+      {/* ── Composer ───────────────────────────────────────────── */}
+      <div
+        className="relative px-3 py-2.5 flex-shrink-0"
+        style={{ borderTop: "1px solid var(--color-border)" }}
+      >
+        {isBlocked ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[12px] min-w-0" style={{ color: "var(--color-text-muted)" }}>
+              You blocked <strong style={{ color: "var(--color-text-secondary)" }}>{title}</strong>
             </p>
             <button
               onClick={onUnblock}
-              className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90"
-              style={{ backgroundColor: "#10B981" }}
+              className="px-3.5 py-1.5 rounded-lg text-[11.5px] font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "var(--color-success)" }}
             >
               Unblock
             </button>
@@ -219,32 +579,47 @@ export default function ChatWindow({
         ) : (
           <>
             {showEmotes && <EmotePalette onEmote={handleEmote} />}
-            <div className="flex items-center gap-2">
+            <div className="flex items-end gap-2 w-full">
               <button
+                type="button"
                 onClick={() => setShowEmotes(!showEmotes)}
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-lg flex-shrink-0 transition-colors"
-                style={{ backgroundColor: showEmotes ? "var(--color-primary)" : "var(--color-bg-input)" }}
-                title="Emotes"
+                className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-colors"
+                style={{
+                  backgroundColor: showEmotes ? "var(--color-primary)" : "var(--color-bg-input)",
+                  color: showEmotes ? "#ffffff" : "var(--color-text-secondary)",
+                  border: "1px solid var(--color-border)",
+                }}
+                title="Reactions"
+                aria-label="Reactions"
+                aria-pressed={showEmotes}
               >
-                😂
+                <IconReaction size={18} />
               </button>
+
               <input
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
-                style={{ backgroundColor: "var(--color-bg-input)", border: "1px solid var(--color-border)", color: "var(--color-text-primary)" }}
+                placeholder="Type a message…"
+                aria-label="Message"
+                className="flex-1 min-w-0 w-full rounded-xl px-3 h-9 text-[13px] outline-none transition-shadow focus:shadow-[0_0_0_2px_rgb(var(--color-primary-rgb)/0.3)]"
+                style={{
+                  backgroundColor: "var(--color-bg-input)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-primary)",
+                }}
               />
+
               <button
+                type="button"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="w-9 h-9 rounded-lg flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex-shrink-0"
-                style={{ backgroundColor: "var(--color-primary)" }}
+                title="Send"
+                aria-label="Send message"
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
+                style={{ backgroundImage: "var(--gradient-brand)" }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }}>
-                  <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
+                <IconSend size={17} style={{ pointerEvents: "none" }} />
               </button>
             </div>
           </>

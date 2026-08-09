@@ -1,7 +1,6 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/ui/Avatar';
-import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
 import { cn } from '../lib/utils';
 import {
   getOpponentSymbol,
@@ -570,7 +569,6 @@ export default function TicTacToeGameView(props: TicTacToeGameViewProps) {
           </div>
         </div>
       </div>
-      <FloatingChatWidget />
     </>
   );
 }

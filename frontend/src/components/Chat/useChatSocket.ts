@@ -94,6 +94,8 @@ interface UseChatSocketReturn {
 
 const TYPING_TIMEOUT = 3000;
 const TYPING_THROTTLE = 2000;
+/** Ring buffer of recently delivered message ids, used to drop repeat frames. */
+const SEEN_MESSAGE_LIMIT = 500;
 
 export function useChatSocket(): UseChatSocketReturn {
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
@@ -110,6 +112,7 @@ export function useChatSocket(): UseChatSocketReturn {
   const typingTimers = useRef<Record<string, Record<string, ReturnType<typeof setTimeout>>>>({});
   const lastTypingSent = useRef<Record<string, number>>({});
   const onNewMessageRef = useRef<((msg: ChatMessage) => void) | null>(null);
+  const seenMessageIds = useRef<Set<string>>(new Set());
 
   const onMessage = useCallback((data: Record<string, unknown>) => {
     const type = data.type as string;
@@ -133,7 +136,24 @@ export function useChatSocket(): UseChatSocketReturn {
         }
         return { ...prev, [cid]: [...existing, msg] };
       });
-      if (msg.sender && (msg.message_type === "text" || msg.message_type === "emote") && onNewMessageRef.current) {
+      // The server fans a message out to both the channel group and the
+      // recipient's personal group, so the same id can arrive more than once.
+      // The message map dedupes by id on its own; this keeps the notification
+      // callback from firing twice for one message.
+      const alreadySeen = seenMessageIds.current.has(msg.id);
+      if (!alreadySeen) {
+        seenMessageIds.current.add(msg.id);
+        if (seenMessageIds.current.size > SEEN_MESSAGE_LIMIT) {
+          const oldest = seenMessageIds.current.values().next().value;
+          if (oldest) seenMessageIds.current.delete(oldest);
+        }
+      }
+      if (
+        !alreadySeen
+        && msg.sender
+        && (msg.message_type === "text" || msg.message_type === "emote")
+        && onNewMessageRef.current
+      ) {
         onNewMessageRef.current(msg);
       }
     } else if (type === "history") {
