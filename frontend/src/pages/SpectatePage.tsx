@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Eye, Smile } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
 import Renderer3D from "../components/Renderer3D/Renderer";
 import EmotePalette from "../components/Chat/EmotePalette";
@@ -15,15 +16,13 @@ const Y_SCALE = FIELD_H / ONLINE_FIELD_HEIGHT;
 export default function SpectatePage() {
   const { t } = useTranslation();
   const { gameId } = useParams<{ gameId: string }>();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const side = searchParams.get("side") ? parseInt(searchParams.get("side")!) : null;
 
   const [players, setPlayers] = useState<Record<string, { username: string }>>({});
   const [ball, setBall] = useState({ x: FIELD_W / 2, y: FIELD_H / 2 });
   const [paddles, setPaddles] = useState({ 1: { y: FIELD_H / 2 }, 2: { y: FIELD_H / 2 } });
   const [score, setScore] = useState({ p1: 0, p2: 0 });
-  const [specCount, setSpecCount] = useState({ total: 0, side1: 0, side2: 0 });
+  const [specCount, setSpecCount] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [showEmotes, setShowEmotes] = useState(false);
   const [joined, setJoined] = useState(false);
@@ -31,7 +30,6 @@ export default function SpectatePage() {
 
   const { status, join, sendEmote } = useSpectatorSocket({
     gameId: gameId!,
-    side,
     onJoined: useCallback((data) => {
       setJoined(true);
       const info = data.game_info as Record<string, unknown>;
@@ -60,10 +58,10 @@ export default function SpectatePage() {
         setScore({ p1: fs.player1.score, p2: fs.player2.score });
       }
     }, []),
-    onSpectatorCount: useCallback((counts) => setSpecCount(counts), []),
+    onSpectatorCount: useCallback((total: number) => setSpecCount(total), []),
     onEmote: useCallback((data) => {
-      if (data.side !== undefined) {
-        addSpectatorEmote(data.emote_id as string, data.side as number);
+      if (data.type === "spectator_emote") {
+        addSpectatorEmote(data.emote_id as string);
       } else {
         addEmote(data.emote_id as string, (data.slot as number) || 0, data.sender_username as string | undefined);
       }
@@ -76,7 +74,6 @@ export default function SpectatePage() {
     }
   }, [status, joined, gameId, join]);
 
-  const sideLabel = side === 1 ? "Blue" : side === 2 ? "Red" : "Neutral";
   const p1Label = players["1"]?.username || t("pong.player1");
   const p2Label = players["2"]?.username || t("pong.player2");
 
@@ -92,12 +89,8 @@ export default function SpectatePage() {
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--color-text-muted)" }}>
-                👁️ <span style={{ color: "#3B82F6" }}>{specCount.side1}</span>
-                <span style={{ color: "var(--color-text-muted)" }}>/</span>
-                <span style={{ color: "#EF4444" }}>{specCount.side2}</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: "var(--color-bg-input)", color: side === 1 ? "#3B82F6" : side === 2 ? "#EF4444" : "var(--color-text-muted)" }}>
-                {sideLabel}
+                <Eye className="w-3.5 h-3.5" />
+                <span style={{ color: "var(--color-text-primary)" }}>{specCount}</span>
               </span>
             </div>
             <span className="text-[10px] font-medium" style={{ color: "var(--color-text-muted)" }}>
@@ -152,13 +145,17 @@ export default function SpectatePage() {
           </span>
           <button
             onClick={() => setShowEmotes(!showEmotes)}
-            className="px-3 py-1.5 rounded-lg text-lg"
+            className="px-3 py-1.5 rounded-lg flex items-center transition-colors"
             style={{
               backgroundColor: showEmotes ? "var(--color-primary)" : "var(--color-bg-input)",
+              color: showEmotes ? "#fff" : "var(--color-text-secondary)",
               border: "1px solid var(--color-border)",
             }}
+            aria-pressed={showEmotes}
+            aria-label={t("pong.emotes", "Emotes")}
+            title={t("pong.emotes", "Emotes")}
           >
-            😂 React
+            <Smile className="w-4 h-4" />
           </button>
         </div>
       </div>

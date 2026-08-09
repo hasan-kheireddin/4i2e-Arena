@@ -168,11 +168,11 @@ export default function Pong3DPage() {
 
   const [showEmotePalette, setShowEmotePalette] = useState(false);
   const { emotes: floatingEmotes, addEmote, addSpectatorEmote } = useFloatingEmotes();
-  const [spectatorCount, setSpectatorCount] = useState({ total: 0, side1: 0, side2: 0 });
+  const [spectatorCount, setSpectatorCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const handleShare = useCallback(() => {
     if (!gameId || !mySlot) return;
-    const url = `${window.location.origin}/spectate/${gameId}?side=${mySlot}`;
+    const url = `${window.location.origin}/spectate/${gameId}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -545,11 +545,9 @@ export default function Pong3DPage() {
         const username = data.sender_username as string | undefined;
         addEmote(emoteId, slot, username);
       } else if (type === 'spectator_count') {
-        setSpectatorCount({ total: data.total as number, side1: data.side1 as number, side2: data.side2 as number });
+        setSpectatorCount(data.total as number);
       } else if (type === 'spectator_emote') {
-        const emoteId = data.emote_id as string;
-        const side = data.side as number;
-        addSpectatorEmote(emoteId, side || 0);
+        addSpectatorEmote(data.emote_id as string);
       }
     }, [pushOnlineSnapshot, addEmote, addSpectatorEmote]),
   });
@@ -761,9 +759,7 @@ export default function Pong3DPage() {
             {mode === 'online' && (
               <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
                 <Eye className="w-3 h-3" />
-                <span style={{ color: '#3B82F6' }}>{spectatorCount.side1}</span>
-                <span style={{ color: 'var(--color-text-muted)' }}>/</span>
-                <span style={{ color: '#EF4444' }}>{spectatorCount.side2}</span>
+                <span>{spectatorCount}</span>
               </span>
             )}
           </div>

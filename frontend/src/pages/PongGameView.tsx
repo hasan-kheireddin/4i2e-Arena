@@ -20,12 +20,6 @@ interface LocalPlayerNames {
   p2: string;
 }
 
-interface SpectatorCount {
-  total: number;
-  side1: number;
-  side2: number;
-}
-
 export interface PongGameViewProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   mode: PongMode;
@@ -44,7 +38,7 @@ export interface PongGameViewProps {
   opponentReady: boolean;
   gamePaused: boolean;
   gameSocketStatus: string;
-  spectatorCount: SpectatorCount;
+  spectatorCount: number;
   showEmotePalette: boolean;
   floatingEmotes: ComponentProps<typeof FloatingEmoteOverlay>['emotes'];
   isLocalPaused: boolean;
@@ -136,16 +130,14 @@ function PongHud({ props }: { props: PongGameViewProps }) {
             {statusLabel}
           </span>
         )}
-        {/* Watchers per side, blue for you, red for the opponent. The eye alone
-            carries the meaning, so there is no "Spectators" caption. */}
+        {/* Total watchers. The eye alone carries the meaning, so there is no
+            "Spectators" caption. */}
         {props.mode === 'online' && (
           <span className="text-[10px] font-medium flex items-center gap-1"
             style={{ color: 'var(--color-text-muted)' }}
             title={t('pong.spectators', 'Spectators')}>
             <Eye className="w-3 h-3" />
-            <span style={{ color: '#3B82F6' }}>{props.spectatorCount.side1}</span>
-            <span>/</span>
-            <span style={{ color: '#EF4444' }}>{props.spectatorCount.side2}</span>
+            <span>{props.spectatorCount}</span>
           </span>
         )}
       </div>

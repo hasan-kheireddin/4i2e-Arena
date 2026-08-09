@@ -51,11 +51,7 @@ export function usePongOnlineGame({
   const [gamePaused, setGamePaused] = useState(false);
   const [showEmotePalette, setShowEmotePalette] = useState(false);
   const [spectateLinkCopied, setSpectateLinkCopied] = useState(false);
-  const [spectatorCount, setSpectatorCount] = useState({
-    total: 0,
-    side1: 0,
-    side2: 0,
-  });
+  const [spectatorCount, setSpectatorCount] = useState(0);
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(
     initialGameId ? `/ws/game/pong/${initialGameId}/` : null,
@@ -331,10 +327,10 @@ export function usePongOnlineGame({
     setShowEmotePalette(false);
   };
 
-  /** Copies a /spectate link pinned to this player's side of the table. */
+  /** Copies the neutral /spectate link for this game. */
   const shareSpectateLink = useCallback(() => {
     if (!gameId || !mySlot) return;
-    const url = `${window.location.origin}/spectate/${gameId}?side=${mySlot}`;
+    const url = `${window.location.origin}/spectate/${gameId}`;
     navigator.clipboard.writeText(url).then(() => {
       setSpectateLinkCopied(true);
       setTimeout(() => setSpectateLinkCopied(false), 2000);
