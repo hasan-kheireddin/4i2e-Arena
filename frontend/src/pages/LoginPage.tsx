@@ -89,65 +89,44 @@ export default function LoginPage() {
       <div className="absolute top-4 z-20" style={{ insetInlineEnd: '1rem' }}>
         <LanguageSwitcher />
       </div>
-      {/* ─────────────────────────────────────────
-          DESKTOP LAYOUT  (lg and above)
-          Left: form (full height) | Right: image (full height)
-      ───────────────────────────────────────── */}
-      <div className="hidden lg:flex w-full h-full">
-        {/* Form side - full height */}
-        <div
-          className="flex-1 flex flex-col justify-center px-10 xl:px-14 overflow-y-auto animate-slideInLeft"
-          style={{ backgroundColor: "var(--color-bg)" }}
-        >
-          <div className="max-w-sm mx-auto w-full py-8">
-            <FormContent
-              formData={formData}
-              errors={errors}
-              serverError={serverError}
-              loading={loading}
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              handleChange={handleChange}
-              handleSubmit={handleSubmit}
-              t={t}
-            />
-          </div>
-        </div>
+      {/* One form for every breakpoint. Rendering a second copy behind a
+          `hidden` class still puts it in the DOM, which duplicated every input
+          id and gave the browser two autofill targets per field. Only the image
+          column is breakpoint-dependent. */}
 
-        {/* Image side - full height */}
-        <div className="w-[45%] flex-shrink-0 h-full animate-slideInRight">
-          <img
-            src={loginImgDark}
-            alt={t("login.hero_image_alt", "Sports arena illustration")}
-            className="w-full h-full object-cover"
+      {/* Form side */}
+      <div
+        className="flex-1 flex flex-col justify-center px-5 lg:px-10 xl:px-14 overflow-y-auto animate-slideInLeft"
+        style={{ backgroundColor: "var(--color-bg)" }}
+      >
+        <div className="max-w-sm mx-auto w-full py-8">
+          <FormContent
+            formData={formData}
+            errors={errors}
+            serverError={serverError}
+            loading={loading}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            t={t}
           />
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────
-          MOBILE + TABLET LAYOUT  (below lg)
-          Single column: form on top, image below
-      ───────────────────────────────────────── */}
-      <div className="flex lg:hidden flex-col w-full h-full overflow-y-auto">
-        {/* Form */}
-        <div
-          className="flex-1 flex items-center justify-center px-5 py-8"
-          style={{ backgroundColor: "var(--color-bg)" }}
-        >
-          <div className="max-w-sm w-full">
-            <FormContent
-              formData={formData}
-              errors={errors}
-              serverError={serverError}
-              loading={loading}
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              handleChange={handleChange}
-              handleSubmit={handleSubmit}
-              t={t}
-            />
-          </div>
-        </div>
+      {/* Image side — desktop only */}
+      {/* The art is landscape (1431x1099) inside a tall column, so `cover` threw
+          away ~40% of its width. `contain` shows the whole illustration; the
+          column paints the page background behind the letterboxing. */}
+      <div
+        className="hidden lg:flex w-[45%] flex-shrink-0 h-full items-center justify-center animate-slideInRight"
+        style={{ backgroundColor: "var(--color-bg)" }}
+      >
+        <img
+          src={loginImgDark}
+          alt={t("login.hero_image_alt", "Sports arena illustration")}
+          className="w-full h-full object-contain"
+        />
       </div>
     </div>
   );

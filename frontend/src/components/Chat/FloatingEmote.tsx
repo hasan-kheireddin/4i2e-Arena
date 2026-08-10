@@ -42,11 +42,11 @@ export function useFloatingEmotes() {
     }, EMOTE_LIFETIME);
   };
 
-  const addSpectatorEmote = (emoteId: string, teamSide: number) => {
+  const addSpectatorEmote = (emoteId: string) => {
     const def = EMOTES.find((e) => e.id === emoteId);
     if (!def) return;
     const id = nextId.current++;
-    const isLeft = teamSide === 1;
+    const isLeft = Math.random() < 0.5;
     const newEmote: FloatingEmoteData = {
       id,
       emoji: def.emoji,

@@ -395,10 +395,6 @@
     "match_breakdown": "Spielanalyse",
     "no_games": "Noch keine Spiele gespielt",
     "recent_form": "Aktuelle Form",
-    "xp_sources": "XP-Quellen",
-    "from_games": "Aus Spielen",
-    "win_bonus": "Siegbonus",
-    "streak_bonus": "Strähnenbonus",
     "recent_matches": "Letzte Spiele",
     "no_matches": "Noch keine Spiele.",
     "recent_pong": "Letzte Pong-Spiele",
@@ -447,8 +443,7 @@
     },
     "category": {
       "pong": "Pong",
-      "tictactoe": "Tic-Tac-Toe",
-      "level": "Spielerstufe"
+      "tictactoe": "Tic-Tac-Toe"
     }
   },
   "lb": {
@@ -524,7 +519,7 @@
     "controls_shared": "W / S oder ↑ / ↓"
   },
   "ttt": {
-    "title": "⭕ Tic-Tac-Toe",
+    "title": "Tic-Tac-Toe",
     "subtitle_online": "Online PvP — Rundenbasierter Mehrspielermodus",
     "subtitle_local": "Lokal 2 Spieler — abwechselnd auf demselben Bildschirm",
     "player1": "Spieler 1",
@@ -608,6 +603,7 @@
     "outcome_win": "Sieg",
     "outcome_loss": "Niederlage",
     "outcome_draw": "Unentschieden",
+    "vs_title": "Du vs {{opponent}}",
     "local_winner_text": "{{name}} gewinnt",
     "mode_2p": "2P",
     "mode_pvp": "PvP",
@@ -806,5 +802,99 @@
     "contact_title": "Kontakt",
     "contact_text": "Bei Fragen zu diesen Nutzungsbedingungen kontaktieren Sie uns unter:",
     "contact_email": "hakcathonthon@gmail.com"
+  },
+  "achievement_catalog": {
+    "pong_first_rally": {
+      "name": "Ballwechsel-Stammgast",
+      "description": "Schließe 5 Online-Pong-Matches ab."
+    },
+    "pong_getting_warm": {
+      "name": "Warmgelaufen",
+      "description": "Gewinne 3 Online-Pong-Matches."
+    },
+    "pong_ace": {
+      "name": "Pong-Ass",
+      "description": "Gewinne 25 Online-Pong-Matches."
+    },
+    "pong_master": {
+      "name": "Pong-Meister",
+      "description": "Gewinne 100 Online-Pong-Matches."
+    },
+    "pong_rally_master": {
+      "name": "Ballwechsel-Meister",
+      "description": "Erreiche einen Ballwechsel mit 30 Schlägen im Online-Pong."
+    },
+    "pong_speed_demon": {
+      "name": "Geschwindigkeitsdämon",
+      "description": "Erziele 3 Punkte in unter 10 Sekunden im Online-Pong."
+    },
+    "pong_unstoppable": {
+      "name": "Unaufhaltsam",
+      "description": "Gewinne 5 Online-Pong-Matches in Folge."
+    },
+    "pong_precision_player": {
+      "name": "Präzisionsspieler",
+      "description": "Gewinne ein Online-Pong-Match, ohne den Ball zu verfehlen."
+    },
+    "pong_comeback_king": {
+      "name": "Comeback-König",
+      "description": "Gewinne ein Online-Pong-Match nach 4 Punkten Rückstand."
+    },
+    "pong_defensive_wall": {
+      "name": "Abwehrmauer",
+      "description": "Wehre 15 Schläge in Folge im Online-Pong ab."
+    },
+    "pong_dominator": {
+      "name": "Dominator",
+      "description": "Gewinne ein Online-Pong-Match ohne Gegenpunkt."
+    },
+    "pong_veteran": {
+      "name": "Pong-Veteran",
+      "description": "Spiele 50 Online-Pong-Matches."
+    },
+    "pong_grinder": {
+      "name": "Pong-Dauerbrenner",
+      "description": "Spiele 200 Online-Pong-Matches."
+    },
+    "ttt_first_move": {
+      "name": "Brett-Stammgast",
+      "description": "Schließe 5 Online-Tic-Tac-Toe-Matches ab."
+    },
+    "ttt_first_victory": {
+      "name": "Bewährter Sieger",
+      "description": "Gewinne 5 Online-Tic-Tac-Toe-Matches."
+    },
+    "ttt_quick_thinker": {
+      "name": "Schnelldenker",
+      "description": "Gewinne ein Online-Tic-Tac-Toe-Match in 5 Zügen."
+    },
+    "ttt_strategist": {
+      "name": "Stratege",
+      "description": "Gewinne 5 Online-Tic-Tac-Toe-Matches in Folge."
+    },
+    "ttt_mind_reader": {
+      "name": "Gedankenleser",
+      "description": "Blockiere online 15 Siegzüge des Gegners."
+    },
+    "ttt_perfect_game": {
+      "name": "Perfektes Spiel",
+      "description": "Gewinne, während der Gegner höchstens 2 Zeichen setzt."
+    },
+    "ttt_draw_master": {
+      "name": "Remis-Meister",
+      "description": "Erreiche 10 Unentschieden im Online-Tic-Tac-Toe."
+    },
+    "ttt_veteran": {
+      "name": "Tic-Tac-Toe-Veteran",
+      "description": "Spiele 50 Online-Tic-Tac-Toe-Matches."
+    },
+    "ttt_grinder": {
+      "name": "Tic-Tac-Toe-Dauerbrenner",
+      "description": "Spiele 200 Online-Tic-Tac-Toe-Matches."
+    },
+    "ttt_unbeatable": {
+      "name": "Unbesiegbar",
+      "description": "Gewinne 10 Online-Tic-Tac-Toe-Matches in Folge."
+    }
   }
 }

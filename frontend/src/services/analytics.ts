@@ -9,7 +9,7 @@ export interface Achievement {
   key: string;
   name: string;
   description: string;
-  category: 'pong' | 'tictactoe' | 'level';
+  category: 'pong' | 'tictactoe';
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   icon: string;
   xp_reward: number;

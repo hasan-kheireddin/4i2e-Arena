@@ -1,7 +1,9 @@
 import type { ComponentProps, RefObject } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { Check, Eye, Link2, Smile } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
+import { useAuth } from '../context/AuthContext';
 import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay from '../components/Chat/FloatingEmote';
 
@@ -16,12 +18,6 @@ interface Score {
 interface LocalPlayerNames {
   p1: string;
   p2: string;
-}
-
-interface SpectatorCount {
-  total: number;
-  side1: number;
-  side2: number;
 }
 
 export interface PongGameViewProps {
@@ -42,7 +38,7 @@ export interface PongGameViewProps {
   opponentReady: boolean;
   gamePaused: boolean;
   gameSocketStatus: string;
-  spectatorCount: SpectatorCount;
+  spectatorCount: number;
   showEmotePalette: boolean;
   floatingEmotes: ComponentProps<typeof FloatingEmoteOverlay>['emotes'];
   isLocalPaused: boolean;
@@ -55,6 +51,9 @@ export interface PongGameViewProps {
   onBackToGames: () => void;
   onToggleLocalPause: () => void;
   onForfeit: () => void;
+  onToggleEmotePalette: () => void;
+  spectateLinkCopied: boolean;
+  onShareSpectateLink: () => void;
   onEmote: ComponentProps<typeof EmotePalette>['onEmote'];
 }
 
@@ -62,23 +61,16 @@ function isRecovering(socketStatus: string): boolean {
   return socketStatus === 'reconnecting' || socketStatus === 'connecting';
 }
 
+/** Empty for idle and waiting: both already own the screen with a full overlay,
+ *  so a status chip would only repeat what the overlay says. */
 function getOnlinePhaseLabel(
   phase: PongOnlinePhase,
   t: TFunction,
 ): string {
   if (phase === 'matchmaking') return t('pong.searching');
-  if (phase === 'waiting') return t('pong.waiting_opponent');
   if (phase === 'playing') return t('pong.live');
   if (phase === 'over') return t('pong.phase_over');
-  return t('pong.phase_idle');
-}
-
-function getModeLabel(
-  mode: PongMode,
-  t: TFunction,
-): string {
-  if (mode === 'online') return t('pong.mode_online');
-  return t('pong.mode_local');
+  return '';
 }
 
 function getHudStatusLabel(
@@ -119,6 +111,7 @@ function PongHud({ props }: { props: PongGameViewProps }) {
   const { t } = useTranslation();
   const scores = getDisplayScores(props);
   const labels = getDisplayLabels(props, t);
+  const statusLabel = getHudStatusLabel(props, t);
 
   return (
     <div className="flex items-center justify-between rounded-xl px-4 py-3"
@@ -129,21 +122,22 @@ function PongHud({ props }: { props: PongGameViewProps }) {
         <span className="text-2xl font-bold font-mono" style={{ color: '#3B82F6' }}>{scores.p1}</span>
       </div>
       <div className="flex flex-col items-center gap-0.5">
-        <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5"
-          style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ backgroundColor: 'var(--color-success)' }} />
-          {getHudStatusLabel(props, t)}
-        </span>
-        <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-          {getModeLabel(props.mode, t)}
-        </span>
+        {statusLabel && (
+          <span className="px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5"
+            style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--color-success)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ backgroundColor: 'var(--color-success)' }} />
+            {statusLabel}
+          </span>
+        )}
+        {/* Total watchers. The eye alone carries the meaning, so there is no
+            "Spectators" caption. */}
         {props.mode === 'online' && (
-          <span className="text-[10px] font-medium flex items-center gap-1.5"
-            style={{ color: 'var(--color-text-muted)' }}>
-            Spectators <span style={{ color: '#3B82F6' }}>{props.spectatorCount.side1}</span>
-            <span>/</span>
-            <span style={{ color: '#EF4444' }}>{props.spectatorCount.side2}</span>
+          <span className="text-[10px] font-medium flex items-center gap-1"
+            style={{ color: 'var(--color-text-muted)' }}
+            title={t('pong.spectators', 'Spectators')}>
+            <Eye className="w-3 h-3" />
+            <span>{props.spectatorCount}</span>
           </span>
         )}
       </div>
@@ -202,18 +196,52 @@ function LocalNameSetup({ props }: { props: PongGameViewProps }) {
   );
 }
 
+/**
+ * One row per player. `pong.opponent_ready` / `pong.opponent_not_ready` are
+ * name-generic ("{{name}} is ready"), so they serve for the local player too
+ * and no new translation keys are needed.
+ */
+function ReadyStatus({ name, ready }: { name: string; ready: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <span style={{ color: ready ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+      {ready
+        ? t('pong.opponent_ready', { name })
+        : t('pong.opponent_not_ready', { name })}
+    </span>
+  );
+}
+
 function OnlineWaitingOverlay({ props }: { props: PongGameViewProps }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const myName = user?.display_name || user?.username || t('pong.you');
+  const opponentName = props.opponentName || t('pong.opponent');
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5"
       style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
+      {/* Interpolating the opponent into `vs {{name}}` keeps word order under the
+          translator's control instead of hard-coding an English "A vs B". */}
+      <p className="text-xl font-bold text-center px-4" style={{ color: 'var(--color-text-primary)' }}>
+        <span style={{ color: '#3B82F6' }}>{myName}</span>
+        {' '}{t('pong.vs_opponent', { name: opponentName })}
+      </p>
+
+      <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm">
+        <ReadyStatus name={myName} ready={props.iReady} />
+        <ReadyStatus name={opponentName} ready={props.opponentReady} />
+      </div>
+
       {props.iReady ? (
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 rounded-full border-4 animate-spin"
             style={{ borderColor: '#f97316', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            {props.opponentReady ? t('pong.starting') : t('pong.waiting_opponent')}
-          </p>
+          {props.opponentReady && (
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('pong.starting')}
+            </p>
+          )}
         </div>
       ) : (
         <button onClick={props.onReady}
@@ -239,7 +267,6 @@ function OnlinePhaseOverlay({ props }: { props: PongGameViewProps }) {
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-5"
         style={{ backgroundColor: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(8px)' }}>
         <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('pong.title')}</h2>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.subtitle')}</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button onClick={props.onBackToGames} className="px-6 py-3 rounded-lg font-medium"
             style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
@@ -413,7 +440,7 @@ function PongControls({ props }: { props: PongGameViewProps }) {
   const showLocalActions = props.mode !== 'online'
     && !props.gameOver
     && props.localNamesReady;
-  const showForfeit = props.mode === 'online' && props.onlinePhase === 'playing';
+  const showOnlineActions = props.mode === 'online' && props.onlinePhase === 'playing';
 
   return (
     <div className="flex items-center justify-between rounded-xl px-4 py-2.5"
@@ -454,12 +481,38 @@ function PongControls({ props }: { props: PongGameViewProps }) {
             </button>
           </>
         )}
-        {showForfeit && (
-          <button onClick={props.onForfeit}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium"
-            style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}>
-            {t('pong.forfeit')}
-          </button>
+        {showOnlineActions && (
+          <>
+            <button onClick={props.onShareSpectateLink}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+              style={{
+                backgroundColor: props.spectateLinkCopied ? 'rgba(34,197,94,0.15)' : 'var(--color-bg-input)',
+                color: props.spectateLinkCopied ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                border: `1px solid ${props.spectateLinkCopied ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'}`,
+              }}
+              title={t('pong.share_spectate', 'Share spectate link')}>
+              {props.spectateLinkCopied
+                ? <><Check className="w-4 h-4" /> {t('pong.copied', 'Copied!')}</>
+                : <><Link2 className="w-4 h-4" /> {t('pong.share', 'Share')}</>}
+            </button>
+            <button onClick={props.onToggleEmotePalette}
+              className="px-3 py-1.5 rounded-lg flex items-center transition-colors"
+              style={{
+                backgroundColor: props.showEmotePalette ? 'var(--color-primary)' : 'var(--color-bg-input)',
+                color: props.showEmotePalette ? '#fff' : 'var(--color-text-secondary)',
+                border: '1px solid var(--color-border)',
+              }}
+              aria-pressed={props.showEmotePalette}
+              aria-label={t('pong.emotes', 'Emotes')}
+              title={t('pong.emotes', 'Emotes')}>
+              <Smile className="w-4 h-4" />
+            </button>
+            <button onClick={props.onForfeit}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium"
+              style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}>
+              {t('pong.forfeit')}
+            </button>
+          </>
         )}
       </div>
     </div>

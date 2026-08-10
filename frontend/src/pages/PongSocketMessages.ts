@@ -33,9 +33,9 @@ export interface PongSocketContext {
   setOnlineScore: Dispatch<SetStateAction<{ p1: number; p2: number }>>;
   setIReady: Dispatch<SetStateAction<boolean>>;
   setOpponentReady: Dispatch<SetStateAction<boolean>>;
-  setSpectatorCount: Dispatch<SetStateAction<{ total: number; side1: number; side2: number }>>;
+  setSpectatorCount: Dispatch<SetStateAction<number>>;
   addEmote: (emoteId: string, slot: number, username?: string) => void;
-  addSpectatorEmote: (emoteId: string, side: number) => void;
+  addSpectatorEmote: (emoteId: string) => void;
 }
 
 export interface MatchmakingContext {
@@ -115,14 +115,10 @@ export function handlePongGameMessage(
       );
       return;
     case 'spectator_count':
-      context.setSpectatorCount({
-        total: data.total as number,
-        side1: data.side1 as number,
-        side2: data.side2 as number,
-      });
+      context.setSpectatorCount(data.total as number);
       return;
     case 'spectator_emote':
-      context.addSpectatorEmote(data.emote_id as string, (data.side as number) || 0);
+      context.addSpectatorEmote(data.emote_id as string);
       return;
     default:
       return;

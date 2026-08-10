@@ -15,7 +15,6 @@ class SpectatorConsumer(BaseConsumer):
 
     async def on_connect(self) -> None:
         self._game_id: str | None = None
-        self._side: int | None = None
         self._session = None
 
     async def on_disconnect(self, code: int) -> None:
@@ -35,7 +34,6 @@ class SpectatorConsumer(BaseConsumer):
 
     async def _handle_join(self, content: dict[str, Any]) -> None:
         game_id = content.get("game_id", "")
-        side = content.get("side")
 
         if not game_id:
             await self.send_error("no_game_id", "Missing game_id")
@@ -47,14 +45,12 @@ class SpectatorConsumer(BaseConsumer):
             return
 
         self._game_id = game_id
-        self._side = side if side in (1, 2) else None
         self._session = session
 
         spec = SpectatorSlot(
             user_id=str(self.user.pk),
             username=self.user.username,
             channel_name=self.channel_name,
-            side=self._side,
         )
         session.spectators[self.channel_name] = spec
 
@@ -63,7 +59,6 @@ class SpectatorConsumer(BaseConsumer):
         await self.send_json({
             "type": "joined",
             "game_id": game_id,
-            "side": self._side,
             "game_info": session.to_info(),
         })
 
@@ -79,7 +74,6 @@ class SpectatorConsumer(BaseConsumer):
         payload = _channel_safe({
             "type": "spectator_emote",
             "emote_id": emote_id,
-            "side": self._side,
             "sender_username": self.user.username,
         })
         await self.channel_layer.group_send(session.group_name, payload)
@@ -101,8 +95,6 @@ class SpectatorConsumer(BaseConsumer):
             _channel_safe({
                 "type": "spectator_count",
                 "total": session.spectator_count,
-                "side1": session.spectator_count_side1,
-                "side2": session.spectator_count_side2,
             }),
         )
 

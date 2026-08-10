@@ -16,9 +16,10 @@ import {
 } from "../services/chat";
 import { useChatSocket } from "../components/Chat/useChatSocket";
 import {
-  Trophy, Flame, TrendingUp, Sword, Star,
-  Clock, Target, Zap, ShieldCheck, UserPlus, UserCheck, MessageCircle, Gamepad2, X,
+  Trophy, Flame, TrendingUp, Sword,
+  Clock, Target, ShieldCheck, UserPlus, UserCheck, MessageCircle, Gamepad2, X,
 } from "lucide-react";
+import AchievementIcon from "../components/AchievementIcon";
 import { Avatar } from "../components/ui/Avatar";
 import { useFriendships } from "../context/FriendshipContext";
 import { useBlocks } from "../context/BlockContext";
@@ -354,10 +355,10 @@ useEffect(() => {
         </div>
 
         {/* Performance Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
 
           {/* W/L/D Bar */}
-          <div className="p-5 rounded-xl md:col-span-2"
+          <div className="p-5 rounded-xl"
             style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
             <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--color-text-primary)" }}>
               <Sword className="w-4 h-4" style={{ color: "#f97316" }} /> {t("profile.match_breakdown")}
@@ -413,31 +414,6 @@ useEffect(() => {
             )}
           </div>
 
-          {/* XP Sources */}
-          <div className="p-5 rounded-xl"
-            style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
-            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--color-text-primary)" }}>
-              <Zap className="w-4 h-4" style={{ color: "#f59e0b" }} /> {t("profile.xp_sources")}
-            </h3>
-            <div className="space-y-3">
-              {[
-                { labelKey: "profile.from_games",    val: wins * 50 + losses * 10, max: Math.max(wins * 50 + losses * 10, 100), color: "#f97316" },
-                { labelKey: "profile.win_bonus",     val: wins * 25,               max: Math.max(wins * 25, 50),               color: "#ef4444" },
-                { labelKey: "profile.streak_bonus",  val: streak * 15,             max: Math.max(streak * 15, 30),             color: "#f97316" },
-              ].map(({ labelKey, val, max, color }) => (
-                <div key={labelKey}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span style={{ color: "var(--color-text-secondary)" }}>{t(labelKey)}</span>
-                    <span className="font-mono" style={{ color }}>{val.toLocaleString()}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-input)" }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${max > 0 ? Math.min((val / max) * 100, 100) : 0}%`, backgroundColor: color }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -526,20 +502,24 @@ useEffect(() => {
                 <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-lg"
                   style={{ border: "1px solid var(--color-border)", backgroundColor: "rgba(16, 212, 26, 0.04)" }}>
                   <div
-                    className="min-h-9 min-w-9 px-2 py-1 rounded-lg flex items-center justify-center text-lg shrink-0"
+                    className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       backgroundColor: `${TIER_COLORS[u.achievement.rarity] ?? "#a855f7"}18`,
                       border: `1px solid ${TIER_COLORS[u.achievement.rarity] ?? "#a855f7"}35`,
                     }}
                   >
-                    {u.achievement.icon || <Star className="w-4 h-4" />}
+                    <AchievementIcon
+                      color={TIER_COLORS[u.achievement.rarity] ?? "#a855f7"}
+                      category={u.achievement.category}
+                      className="h-5 w-5"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
-                      {t(`achievement.${u.achievement.key}.name`, u.achievement.name)}
+                      {t(`achievement_catalog.${u.achievement.key}.name`, u.achievement.name)}
                     </p>
                     <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
-                      {t(`achievement.${u.achievement.key}.description`, u.achievement.description)}
+                      {t(`achievement_catalog.${u.achievement.key}.description`, u.achievement.description)}
                     </p>
                   </div>
                   <span className="text-xs font-bold shrink-0"

@@ -47,7 +47,6 @@ class SpectatorSlot:
     user_id: int | str | uuid.UUID
     username: str
     channel_name: str
-    side: int | None
     joined_at: float = field(default_factory=time.time)
 
 
@@ -171,14 +170,6 @@ class GameSession:
     @property
     def spectator_count(self) -> int:
         return len(self.spectators)
-
-    @property
-    def spectator_count_side1(self) -> int:
-        return sum(1 for spectator in self.spectators.values() if spectator.side == 1)
-
-    @property
-    def spectator_count_side2(self) -> int:
-        return sum(1 for spectator in self.spectators.values() if spectator.side == 2)
 
     def to_info(self) -> dict[str, Any]:
         return {

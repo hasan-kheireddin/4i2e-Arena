@@ -9,12 +9,10 @@ from django.db import IntegrityError
 from django.db.models import F
 
 from apps.analytics.models import Achievement, AchievementProgress, AchievementUnlock
-from apps.analytics.achievement_definitions import ACHIEVEMENTS_BY_CATEGORY
 from apps.analytics.tracking_service import track_achievement_unlocked
 from apps.analytics.xp_service import award_xp_for_achievement
 from apps.games.models import GameMode, MatchPlayer
 from apps.games.session import FinishReason, GameSession, GameType
-from apps.games.stats_service import get_leaderboard
 
 logger = logging.getLogger("analytics.achievements")
 
@@ -122,18 +120,6 @@ async def check_achievements_after_game(session: GameSession) -> None:
         await _finalize_unlocked_achievements(user_id, newly_unlocked)
 
 
-async def check_level_achievements(user_id: int, new_level: int) -> None:
-    unlocked: list[dict[str, Any]] = []
-    for definition in ACHIEVEMENTS_BY_CATEGORY["level"]:
-        await _append_progressed(
-            unlocked,
-            user_id,
-            definition.key,
-            new_level,
-        )
-    await _finalize_unlocked_achievements(user_id, unlocked)
-
-
 async def _evaluate_all_checkers(
     *,
     user_id: int,
@@ -175,7 +161,7 @@ async def _evaluate_pong_achievements(
     state = _game_state_dict(session)
     stats = _stats_dict(state)
     max_rally = int(stats.get("max_rally_hits", 0))
-    if max_rally >= 20:
+    if max_rally >= 30:
         await _append_progressed(
             unlocked,
             user_id,
@@ -203,7 +189,7 @@ async def _evaluate_pong_achievements(
         slot,
         0,
     ))
-    if max_consecutive_blocks >= 10:
+    if max_consecutive_blocks >= 15:
         await _append_progressed(
             unlocked,
             user_id,
@@ -237,7 +223,7 @@ async def _evaluate_pong_achievements(
                 game_session_id=session.game_id,
             )
 
-        if max_deficit >= 3:
+        if max_deficit >= 4:
             await _append_progressed(
                 unlocked,
                 user_id,
@@ -256,7 +242,7 @@ async def _evaluate_pong_achievements(
             )
 
         streak = await _compute_game_win_streak(user_id, GameType.PONG)
-        if streak >= 3:
+        if streak >= 5:
             await _append_progressed(
                 unlocked,
                 user_id,
@@ -265,14 +251,6 @@ async def _evaluate_pong_achievements(
                 game_session_id=session.game_id,
             )
 
-    leaderboard_unlocks = await _evaluate_leaderboard_achievements(
-        user_id=user_id,
-        game_type=GameType.PONG,
-        top10_key="pong_champion",
-        rank1_key="pong_legend",
-        game_session_id=session.game_id,
-    )
-    unlocked.extend(leaderboard_unlocks)
     return unlocked
 
 
@@ -384,7 +362,7 @@ async def _evaluate_ttt_streak_achievements(
         return
 
     streak = await _compute_game_win_streak(user_id, GameType.TICTACTOE)
-    if streak >= 3:
+    if streak >= 5:
         await _append_progressed(
             unlocked,
             user_id,
@@ -438,44 +416,6 @@ async def _evaluate_ttt_achievements(
     )
 
     return unlocked
-
-
-async def _evaluate_leaderboard_achievements(
-    *,
-    user_id: int,
-    game_type: GameType,
-    top10_key: str,
-    rank1_key: str,
-    game_session_id: str,
-) -> list[dict[str, Any]]:
-    unlocked: list[dict[str, Any]] = []
-    for limit, achievement_key in ((10, top10_key), (1, rank1_key)):
-        if not await _is_user_in_top_n(user_id, game_type, limit):
-            continue
-
-        await _append_progressed(
-            unlocked,
-            user_id,
-            achievement_key,
-            1,
-            game_session_id=game_session_id,
-        )
-
-    return unlocked
-
-
-async def _is_user_in_top_n(user_id: int, game_type: GameType, n: int) -> bool:
-    @sync_to_async
-    def _do() -> bool:
-        rows = get_leaderboard(
-            game_type=game_type.value,
-            period="all",
-            limit=max(1, min(n, 100)),
-        )
-        target = str(user_id)
-        return any(str(row.get("user_id")) == target for row in rows)
-
-    return await _do()
 
 
 async def _compute_game_win_streak(user_id: int, game_type: GameType) -> int:

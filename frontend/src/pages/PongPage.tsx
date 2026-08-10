@@ -55,6 +55,9 @@ export default function PongPage() {
         onBackToGames={() => navigate('/games/playpage')}
         onToggleLocalPause={localGame.toggleLocalPause}
         onForfeit={onlineGame.forfeit}
+        onToggleEmotePalette={onlineGame.toggleEmotePalette}
+        spectateLinkCopied={onlineGame.spectateLinkCopied}
+        onShareSpectateLink={onlineGame.shareSpectateLink}
         onEmote={(emote) => onlineGame.sendEmote(emote.id)}
       />
       <FloatingChatWidget />

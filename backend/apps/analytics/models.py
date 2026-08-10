@@ -7,7 +7,6 @@ from django.utils import timezone
 class AchievementCategory(models.TextChoices):
     PONG = "pong", "Pong"
     TICTACTOE = "tictactoe", "Tic-Tac-Toe"
-    LEVEL = "level", "Player Level"
 
 
 class AchievementTier(models.TextChoices):
