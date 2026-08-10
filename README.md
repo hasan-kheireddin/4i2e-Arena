@@ -1,32 +1,54 @@
-# ft_transcendence – Fire Arena
-*This project has been created as part of the 42 curriculum by [hkheired](https://www.linkedin.com/in/hasan-kheireddin), [nabbas](https://www.linkedin.com/in/nathan-abbas-7581902a4/), [mjamil](https://www.linkedin.com/in/mohamad-jamil-8ba7bb33a/)*
 
-<br>
+*This project has been created as part of the 42 curriculum by [hkheired](https://www.linkedin.com/in/hasan-kheireddin), [nabbas](https://www.linkedin.com/in/nathan-abbas-7581902a4/), [mjamil](https://www.linkedin.com/in/mohamad-jamil-8ba7bb33a/), [rchalak](https://github.com/reemshalak)*
+
+# ft_transcendence – Fire Arena
+
+
+<h2 style="border-bottom: none;">  Table of Contents</h2>
+
+- [Description](#Description)
+- [Team Information](#Team-Information)
+- [Project Mangement](#Project-Mangement)
+- [Technical Stack](#️Technical-stack)
+- [Architecture](#Architecture)
+- [Database Schema](#Database-Schema)
+- [Features](#Features)
+- [Modules](#modules)
+- [Individual Contributions](#individual-Contributions)
+- [Installation & Instructions](#Installation-&-Instructions)
+- [Resources](#Resources)
 
 # Description
-**Fire Arena** is a full-stack gaming application developed for the ft_transcendence project. The objective of this game is to have a modern gaming platform that enables the players to compete against each other and monitor their performance within a safe and gamified environment.
+## Project Overview & Main Goal
+**Fire Arena** is a web-based multiplayer gaming platform inspired by the classic Pong and TicTacToe games.
+The objective of the platform is to provide users with a complete online gaming experience where they can create accounts, interact with other players, play real time matches and track their performance.
 
-This platform is made up of the backend which is composed of Django+DRF+Channels and frontend consisting of React+TypeScript+Vite.
+This application is made up of the backend, frontend, database and realtime communication between connected users.
 
-Features:
+The Project was developed as part of the 42 curriculum and focuses on web development, real time communication, authentication multiplayer gaming, and modern software architecrture.
 
-1. Real-time online Pong and Tic-Tac-Toe games through the use of WebSockets
-2. Efficient matchmaking system with reconnect/disconnect functionality
-3. Authentication process which includes JWT, email validation, OAuth42, and Two-Factor authentication (TOTP)
-4. User's match records, leaderboards, and detailed user stats
-5. Gamification elements such as achievements, XP, leveling up, and live notification system
-6. Multi-language interface (EN, FR, DE, AR) with Right-to-Left compatibility
-7. Containerization of app using Docker, HTTPS (Nginx), PostgreSQL, and Redis
+Our main goal as gaming platform is to create an engaging multiplayer experience where users can:
+
+- Create and manage their accounts.
+- Login Securely.
+- Find, add, and Interact with other players.
+- Play Pong and TicTakToe matches in real time.
+- View their profiles and game informations.
+- Track their match history and statistics.
+- Watch and support their friend's game.
 
 <br>
 
-# 🧑‍💻Team Roles and Responsibilities
+# Team Information
+The project was developed by a team 4 students.
+
 
 | Developer | Role                        | Responsibilities
 | --------- | --------------------------- |  --------------------------------------------------|
-| **hkheired** | PO / Tech Lead    | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/OAuth/2FA)   |
-| **mjamil** | Frontend Lead / UX Engineer | React UI architecture, design system, i18n/RTL, advanced search UX, cross-browser support  |
-| **nabbas** | PM / Game & AI Engineer          | Pong game logic, AI opponent behavior, matchmaking logic, analytics/gamification |
+| **hkheired** | Backend Developer    | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA)   |
+| **mjamil** | Fronend Developer | React UI architecture, design system, i18n/RTL, cross browser support  |
+| **nabbas** | Product Owner and Manager          | Pong game logic, analytics and gamification |
+|rchalak | Full Stack Developer | 3D graphics, spectator mode, friends and chat system 
 
 <br>
 
@@ -40,19 +62,20 @@ Project features were split into smaller, more achievable tasks.
 These tasks were assigned to team members according to their qualifications and availability.
 
 ### Project Management Tools
-- GitHub, Source code control, pull requests, code reviews.
-- Jira, Task organization, sprint planning, issues management.
-
-### Communication
-WhatsApp – Main method of daily communication
-
+- GitHub Issues For task tracking.
+- Git for version control
+- WhatsApp for daily communication and meetings
 <br>
+
+### Meetings
+The team held weekly meetings to review progrss, discuss completed tasks and plan upcoming work.
 
 # ⚙️ Technical Stack
 
 ### Architecture Overview
 
 The project follows a **full-stack modular architecture** with real-time capabilities, secure authentication, and scalable infrastructure.
+
 ### Frontend
 
 * **Framework:** React 18 (with Vite)
@@ -65,6 +88,7 @@ The project follows a **full-stack modular architecture** with real-time capabil
   * Supported languages: **EN, FR, DE, AR**
   * Includes **RTL (Right-to-Left) support**
 
+React was chosen for its component model and mature ecosystem, Typescript for compile time safety across a codebase shared by several developers, and Vite for its near-instant hot-module reload, which kept iteration fast during UI development.
 ### Backend
 
 * **Runtime:** Python 3.12
@@ -74,33 +98,29 @@ The project follows a **full-stack modular architecture** with real-time capabil
 * **Async Support:** Django Channels
 * **ASGI Server:** Daphne
 
+Django was selected for its ORM, migrations,and authentication layer removed a large amount of boilerplate, while Channels let us add real-time gameplay and notifications without introducing a second backend runtime alongside the REST API. 
+
 ### Database
 
 * **PostgreSQL 16**
 * Relational schema with structured game, user, and analytics data.
 
-### Real-Time System
+Postgres offers
+
+### Real-Time System, Cache, Sessions & Queues
 
 * **Protocol:** WebSockets (via Django Channels)
 * **Channel Layer:** Redis
-### Cache, Sessions & Queues
-
-* **Redis 7**
-
-### Authentication & Security
-
-* **JWT-based authentication**
-* **OAuth 42 integration**
-* **Two-Factor Authentication (2FA)** using TOTP (pyotp).
-* **Email verification flows**
 
 ### DevOps
 
-* **Docker & Docker Compose** – Containerized environment.
-* **Nginx** – Reverse proxy with HTTPS support.
-* **SSL:** Self-signed certificates (development).
-* **Makefile** – Automation for common tasks.
+* **Docker & Docker Compose**
+* **Nginx**
+* **SSL**
+* **Makefile**
 
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br>
 ### mjamil part
 
 My part in this project is the entire frontend, built with React + TypeScript + Vite.
@@ -116,7 +136,7 @@ Auth Pages
 
 Login, Register, Forgot Password, Reset Password
 Two-Factor Authentication (setup + verify)
-OAuth callback (Google & 42)
+OAuth callback (Google)
 
 Each auth page has a split layout — form on one side, a custom image on the other. The image switches automatically between a dark version and a light version based on the current theme.
 Dashboard & Layout
