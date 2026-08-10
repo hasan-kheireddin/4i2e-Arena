@@ -151,12 +151,29 @@ export default function RegisterPage() {
       if (apiErr.detail) {
         setServerError(apiErr.detail);
       } else if (apiErr.fieldErrors) {
+        const fieldErrors = apiErr.fieldErrors;
+        // The form has no display_name input — the backend derives it from the
+        // username — so surface that conflict on the username field.
+        const toFormField: Record<string, keyof typeof errors> = {
+          username: "username",
+          display_name: "username",
+          email: "email",
+          password: "password",
+          password2: "confirmPassword",
+        };
         const newErrors = { ...errors };
-        if (apiErr.fieldErrors.username) newErrors.username = apiErr.fieldErrors.username[0];
-        if (apiErr.fieldErrors.email) newErrors.email = apiErr.fieldErrors.email[0];
-        if (apiErr.fieldErrors.password) newErrors.password = apiErr.fieldErrors.password[0];
-        if (apiErr.fieldErrors.password2) newErrors.confirmPassword = apiErr.fieldErrors.password2[0];
+        const unmapped: string[] = [];
+        for (const [field, messages] of Object.entries(fieldErrors)) {
+          const target = toFormField[field];
+          if (target) {
+            if (!newErrors[target]) newErrors[target] = messages[0];
+          } else {
+            unmapped.push(messages[0]);
+          }
+        }
         setErrors(newErrors);
+        // Never fail silently: anything with no matching input still gets shown.
+        if (unmapped.length > 0) setServerError(unmapped.join(" "));
       } else {
         setServerError(t("errors.unexpected"));
       }

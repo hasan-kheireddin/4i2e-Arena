@@ -68,19 +68,29 @@ export default function FloatingChatWidget() {
     reconnectCount,
   } = useChatSocket();
 
+  const hydratedFor = useRef<string | undefined>(user?.id);
+
   useEffect(() => {
+    hydratedFor.current = user?.id;
     setHidden(loadHiddenChannels(user?.id));
   }, [user?.id]);
+
+  // Persisted here rather than inside the setHidden updaters: updaters run
+  // during render and must stay free of side effects. The guard keeps a
+  // just-swapped account from having the previous user's set written to it.
+  useEffect(() => {
+    if (hydratedFor.current !== user?.id) return;
+    saveHiddenChannels(user?.id, hidden);
+  }, [hidden, user?.id]);
 
   const unhide = useCallback((channelId: string) => {
     setHidden((prev) => {
       if (!prev.has(channelId)) return prev;
       const next = new Set(prev);
       next.delete(channelId);
-      saveHiddenChannels(user?.id, next);
       return next;
     });
-  }, [user?.id]);
+  }, []);
 
   const handleSelectChannel = useCallback(async (channelId: string) => {
     setActiveChannel(channelId);
@@ -253,7 +263,6 @@ export default function FloatingChatWidget() {
     setHidden((prev) => {
       const next = new Set(prev);
       next.add(channelId);
-      saveHiddenChannels(user?.id, next);
       return next;
     });
     if (activeChannel === channelId) {

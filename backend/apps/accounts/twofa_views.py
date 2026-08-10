@@ -16,7 +16,6 @@ import logging
 import base64
 import hashlib
 import secrets
-import time
 import pyotp
 import qrcode
 from django.contrib.auth import get_user_model
@@ -38,6 +37,7 @@ from .safety import (
 )
 from .serializers import UserProfileSerializer, get_tokens_for_user
 from .throttles import AuthScopedRateThrottle
+from .time_sync import trusted_time
 from .twofa_serializers import (
     TwoFactorConfirmSerializer,
     TwoFactorDisableSerializer,
@@ -60,8 +60,13 @@ TWOFA_ATTEMPT_WINDOW = 300  # seconds
 
 
 def _matching_timestep(totp: pyotp.TOTP, code: str) -> int | None:
-    """Return the exact accepted counter within the one-step clock window."""
-    current = int(time.time()) // totp.interval
+    """Return the exact accepted counter within the one-step clock window.
+
+    Anchored on `trusted_time()` rather than the system clock: the
+    authenticator app derives its counter from real time, so a drifting host
+    would push every code outside the window below.
+    """
+    current = int(trusted_time()) // totp.interval
     for timestep in range(current - 1, current + 2):
         if secrets.compare_digest(totp.at(timestep * totp.interval), code):
             return timestep

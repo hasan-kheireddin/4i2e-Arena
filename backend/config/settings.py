@@ -297,6 +297,32 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
 # ---------------------------------------------------------------------------
+# Time sync
+# ---------------------------------------------------------------------------
+# TOTP is compared against the user's authenticator, whose clock we do not
+# control, so a drifting host clock invalidates every code. Correcting the
+# system clock needs root, so the offset is measured and applied in software
+# instead. See apps/accounts/time_sync.py.
+TIME_SYNC_ENABLED = config("TIME_SYNC_ENABLED", default=True, cast=bool)
+TIME_SYNC_NTP_SERVERS = _split_csv(
+    config(
+        "TIME_SYNC_NTP_SERVERS",
+        default="pool.ntp.org,time.cloudflare.com,time.google.com",
+    )
+)
+TIME_SYNC_HTTP_URLS = _split_csv(
+    config("TIME_SYNC_HTTP_URLS", default="https://www.cloudflare.com")
+)
+TIME_SYNC_TIMEOUT = config("TIME_SYNC_TIMEOUT", default=2.0, cast=float)
+TIME_SYNC_REFRESH_SECONDS = config(
+    "TIME_SYNC_REFRESH_SECONDS", default=900, cast=int
+)
+TIME_SYNC_RETRY_SECONDS = config("TIME_SYNC_RETRY_SECONDS", default=60, cast=int)
+TIME_SYNC_MAX_OFFSET_SECONDS = config(
+    "TIME_SYNC_MAX_OFFSET_SECONDS", default=86400, cast=int
+)
+
+# ---------------------------------------------------------------------------
 # Email
 # ---------------------------------------------------------------------------
 EMAIL_BACKEND = config(

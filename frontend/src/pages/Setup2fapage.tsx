@@ -24,7 +24,14 @@ export default function Setup2FAPage() {
   const [secretKey, setSecretKey] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
-  // Fetch 2FA setup data from backend on mount
+  // Fetch 2FA setup data from the backend, once per mount.
+  //
+  // This must NOT re-run on re-render: /2fa/setup/ deletes any unconfirmed
+  // device and issues a brand new secret, so a second call would silently
+  // invalidate the QR code the user has already scanned and leave every code
+  // they enter rejected. `t` is deliberately excluded — its identity changes
+  // when the language changes, and switching language mid-setup would
+  // otherwise re-enrol the user behind their back.
   useEffect(() => {
     let cancelled = false;
 
@@ -45,7 +52,7 @@ export default function Setup2FAPage() {
 
     fetchSetup();
     return () => { cancelled = true; };
-  }, [t]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const copyToClipboard = async (text: string) => {
     setCopyError("");

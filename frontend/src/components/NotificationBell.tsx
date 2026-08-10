@@ -32,12 +32,12 @@ export function NotificationBell() {
   }, [open]);
 
   const toggle = () => {
-    setOpen((prev) => {
-      const next = !prev;
-      // Opening clears the badge but leaves rows in "New" until they are read.
-      if (next) markAllSeen();
-      return next;
-    });
+    const next = !open;
+    setOpen(next);
+    // Opening clears the badge but leaves rows in "New" until they are read.
+    // Kept out of the setOpen updater: React runs updaters during render, and
+    // touching another component's state there is a render-phase update.
+    if (next) markAllSeen();
   };
 
   return (

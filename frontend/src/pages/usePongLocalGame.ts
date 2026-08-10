@@ -58,6 +58,8 @@ export function usePongLocalGame({
   const [localNamesReady, setLocalNamesReady] = useState(mode !== 'local');
 
   const gameOverRef = useRef(false);
+  // Mirrors `score` so the game loop can read it without a state updater.
+  const scoreRef = useRef({ p1: 0, p2: 0 });
   const matchSavedRef = useRef(false);
   const lastFrameTsRef = useRef<number | null>(null);
   const accumulatorMsRef = useRef(0);
@@ -99,19 +101,17 @@ export function usePongLocalGame({
     resetVx: number,
     resetVy: number,
   ) => {
-    let gameEnded = false;
-    setScore((previous) => {
-      if (gameOverRef.current) return previous;
-      const nextScore = Math.min(previous[player] + 1, WIN_SCORE);
-      gameEnded = nextScore >= WIN_SCORE;
-      if (gameEnded) {
+    if (!gameOverRef.current) {
+      const nextScore = Math.min(scoreRef.current[player] + 1, WIN_SCORE);
+      scoreRef.current = { ...scoreRef.current, [player]: nextScore };
+      setScore(scoreRef.current);
+      if (nextScore >= WIN_SCORE) {
         gameOverRef.current = true;
         setGameOver(true);
+        return;
       }
-      return { ...previous, [player]: nextScore };
-    });
+    }
 
-    if (gameEnded) return;
     const resetSpeed = { vx: resetVx, vy: resetVy };
     state.ball = {
       x: canvas.width / 2,
@@ -202,6 +202,7 @@ export function usePongLocalGame({
   }, [gameOver, mode, gameStartTime, score, localPlayerNames]);
 
   const resetGame = () => {
+    scoreRef.current = { p1: 0, p2: 0 };
     setScore({ p1: 0, p2: 0 });
     setGameOver(false);
     setIsLocalPaused(false);

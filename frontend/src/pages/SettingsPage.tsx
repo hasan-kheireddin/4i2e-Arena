@@ -16,7 +16,8 @@ import {
   twoFAStatus,
   updateProfile,
 } from '../services/auth';
-import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from '../i18n/language';
+import { LANGUAGE_OPTIONS, normalizeLanguage } from '../i18n/language';
+import { setAppLanguage } from '../i18n';
 import { getApiErrorMessage } from '../services/api';
 
 type SettingsTab = 'profile' | 'security' | 'appearance';
@@ -45,12 +46,34 @@ export default function SettingsPage() {
 
   // Language - synced with i18n and user preferred_language
   const [language, setLanguage] = useState(() => normalizeLanguage(user?.preferred_language || i18n.language));
+  const [languageSaving, setLanguageSaving] = useState(false);
+  const [languageError, setLanguageError] = useState<string | null>(null);
 
-  // Apply language changes
-  const handleLanguageChange = (lang: string) => {
-    const normalizedLang = applyLanguageToDocument(lang);
+  // The profile is fetched after mount, so pick the saved language up when it lands
+  const preferredLanguage = user?.preferred_language;
+  useEffect(() => {
+    if (preferredLanguage) setLanguage(normalizeLanguage(preferredLanguage));
+  }, [preferredLanguage]);
+
+  // Apply language changes and persist them on the account
+  const handleLanguageChange = async (lang: string) => {
+    const normalizedLang = setAppLanguage(lang);
     setLanguage(normalizedLang);
-    void i18n.changeLanguage(normalizedLang);
+    setLanguageError(null);
+
+    if (!user || user.preferred_language === normalizedLang) return;
+
+    setLanguageSaving(true);
+    try {
+      const updated = await updateProfile({ preferred_language: normalizedLang });
+      setUser({ ...user, ...updated });
+    } catch (err: unknown) {
+      setLanguageError(getApiErrorMessage(err, t('settings.profile.save_failed')));
+      // Roll back to whatever the account still has so the UI never lies
+      setLanguage(setAppLanguage(user.preferred_language));
+    } finally {
+      setLanguageSaving(false);
+    }
   };
 
   // 2FA management state
@@ -469,8 +492,10 @@ export default function SettingsPage() {
                   {LANGUAGE_OPTIONS.map((lang) => (
                     <button
                       key={lang.code}
-                      onClick={() => handleLanguageChange(lang.code)}
-                      className="flex items-center gap-3 rounded-xl border bg-input p-3 transition-all"
+                      onClick={() => { void handleLanguageChange(lang.code); }}
+                      disabled={languageSaving}
+                      aria-pressed={language === lang.code}
+                      className="flex items-center gap-3 rounded-xl border bg-input p-3 transition-all disabled:opacity-60"
                       style={{
                         borderColor: language === lang.code ? 'rgb(var(--color-primary-rgb))' : 'rgb(var(--color-border-rgb))',
                         backgroundColor: language === lang.code ? 'rgb(var(--color-primary-rgb) / 0.1)' : undefined,
@@ -483,6 +508,9 @@ export default function SettingsPage() {
                     </button>
                   ))}
                 </div>
+                {languageError && (
+                  <p role="alert" className="mt-3 text-sm text-error">{languageError}</p>
+                )}
               </SurfaceCard>
             </>
           )}

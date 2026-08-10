@@ -12,6 +12,7 @@ import {
   logout as apiLogout,
 } from "../services/auth";
 import { clearTokens, hasPotentialSession } from "../services/api";
+import { setAppLanguage } from "../i18n";
 
 export type { User };
 
@@ -60,6 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // The account's saved language wins once we know who is signed in, so the
+  // choice follows the user across devices instead of living only in this browser.
+  const preferredLanguage = user?.preferred_language;
+  useEffect(() => {
+    if (preferredLanguage) setAppLanguage(preferredLanguage);
+  }, [preferredLanguage]);
 
   const logout = useCallback(async () => {
     await apiLogout();
