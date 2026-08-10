@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { EMOTES } from "../../assets/emotes/emotes";
 import { playEmoteSound } from "../../assets/emotes/sound";
 import { IconCheck, IconCheckDouble, IconGamepad } from "./ChatIcons";
@@ -54,21 +54,9 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
   };
 
   const isGameInvite = (msg.message_type === "system" || msg.message_type === "game_invite") && !!msg.game_id;
-  const [expired, setExpired] = useState(false);
-  const [countdown, setCountdown] = useState(30);
-  useEffect(() => {
-    if (!isGameInvite) return;
-    const createdAt = new Date(msg.created_at).getTime();
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((30000 - (Date.now() - createdAt)) / 1000));
-      setCountdown(remaining);
-      if (remaining <= 0) setExpired(true);
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [isGameInvite, msg.created_at]);
-
+  // Invite lifetime is the server's call: it holds the invite for
+  // INVITE_TTL_SECONDS (chat/consumers.py) and answers a stale one with an
+  // `invite_expired` error, which the chat socket surfaces as a toast.
   if (isGameInvite) {
     const handleAccept = () => {
       if (inviteResponded || !sendGameInviteResponse || !msg.game_id || !msg.game_type) return;
@@ -94,7 +82,7 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
             <IconGamepad size={15} />
             {msg.content}
           </span>
-          {!isOwn && !inviteResponded && !expired && sendGameInviteResponse && (
+          {!isOwn && !inviteResponded && sendGameInviteResponse && (
             <>
               <button onClick={handleAccept}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
@@ -107,13 +95,6 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
           {!isOwn && inviteResponded && (
             <span className="text-xs opacity-70">Response sent</span>
           )}
-          {!isOwn && expired && !inviteResponded && (
-            <span className="text-xs font-semibold" style={{ color: isOwn ? "#ffffff" : "var(--color-danger)" }}>Expired</span>
-          )}
-          {!inviteResponded && !expired && (
-            <span className="text-xs opacity-70">Expires in {countdown}s</span>
-          )}
-          {isOwn && expired && <span className="text-xs opacity-80">Expired</span>}
         </div>
         {isOwn && <ReadReceipt createdAt={msg.created_at} readUntil={dmPartnerReadUntil} />}
       </div>

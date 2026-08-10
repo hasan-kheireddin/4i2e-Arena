@@ -41,6 +41,7 @@ export default function ChatPage() {
     friendAccepted, clearFriendAccepted,
     friendRemoved, clearFriendRemoved,
     readReceipt, clearReadReceipt,
+    chatError, clearChatError,
     onNewMessageRef,
     reconnectCount,
   } = useChatSocket();
@@ -82,6 +83,7 @@ export default function ChatPage() {
     friendRemoved, clearFriendRemoved,
     wsFriendRequest, clearFriendRequest,
     readReceipt, clearReadReceipt,
+    chatError, clearChatError,
     onNewMessageRef,
     setChannels, setFriendships,
     showToast,

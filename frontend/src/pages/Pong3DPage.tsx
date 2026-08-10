@@ -691,6 +691,8 @@ export default function Pong3DPage() {
 
   const playerWon = score.p1 >= WIN_SCORE;
   const iWon = onlineWinnerSlot !== null && onlineWinnerSlot === mySlot;
+  // The opponent quit the lobby before the first point: no winner, no defeat.
+  const matchCanceled = onlineReason === 'canceled';
   const myDisplayScore = mode === 'online' ? (mySlot === 2 ? onlineScore.p2 : onlineScore.p1) : score.p1;
   const oppDisplayScore = mode === 'online' ? (mySlot === 2 ? onlineScore.p1 : onlineScore.p2) : score.p2;
   const p1DisplayLabel = mode === 'online'
@@ -907,11 +909,17 @@ export default function Pong3DPage() {
 
           {mode === 'online' && onlinePhase === 'over' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
-              <h2 className="text-5xl font-extrabold" style={{ color: iWon ? '#3B82F6' : '#EF4444' }}>
-                {iWon ? t('pong.you_win') : t('pong.you_lose')}
+              <h2
+                className="text-5xl font-extrabold"
+                style={{ color: matchCanceled ? 'var(--color-text-primary)' : iWon ? '#3B82F6' : '#EF4444' }}
+              >
+                {matchCanceled ? t('pong.match_canceled') : iWon ? t('pong.you_win') : t('pong.you_lose')}
               </h2>
               <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>{myDisplayScore} — {oppDisplayScore}</p>
-              {(onlineReason === 'disconnect_forfeit' || opponentLeft) && (
+              {matchCanceled && (
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_left_lobby')}</p>
+              )}
+              {!matchCanceled && (onlineReason === 'disconnect_forfeit' || opponentLeft) && (
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_disconnected')}</p>
               )}
               {onlineReason === 'forfeit' && (

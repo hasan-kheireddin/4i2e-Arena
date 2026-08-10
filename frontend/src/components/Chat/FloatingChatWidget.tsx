@@ -64,6 +64,8 @@ export default function FloatingChatWidget() {
     clearFriendRemoved,
     readReceipt,
     clearReadReceipt,
+    chatError,
+    clearChatError,
     onNewMessageRef,
     reconnectCount,
   } = useChatSocket();
@@ -118,6 +120,7 @@ export default function FloatingChatWidget() {
     friendRemoved, clearFriendRemoved,
     wsFriendRequest, clearFriendRequest,
     readReceipt, clearReadReceipt,
+    chatError, clearChatError,
     onNewMessageRef,
     setChannels, setFriendships,
     showToast,

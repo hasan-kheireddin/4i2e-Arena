@@ -489,6 +489,8 @@
     "player2_wins": "Spieler 2 gewinnt!",
     "you_win": "Du gewinnst!",
     "you_lose": "Du verlierst",
+    "match_canceled": "Spiel abgebrochen",
+    "opponent_left_lobby": "Dein Gegner hat vor dem Spielstart verlassen es wurde kein Ergebnis gewertet.",
     "play_again": "Nochmal spielen",
     "back_to_games": "Zurück zu Spielen",
     "forfeit": "Aufgeben",

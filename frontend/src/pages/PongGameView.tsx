@@ -304,12 +304,26 @@ function GameOverOverlay({ props }: { props: PongGameViewProps }) {
 
   if (props.mode === 'online') {
     if (props.onlinePhase !== 'over') return null;
+    // A lobby the opponent quit before the first point was never a match — it
+    // has no winner, so it must not be reported as a defeat.
+    if (props.onlineReason === 'canceled') {
+      return (
+        <GameOverPanel
+          title={t('pong.match_canceled')}
+          tone="neutral"
+          score={displayScore}
+          detail={t('pong.opponent_left_lobby')}
+          onPlayAgain={props.onFindMatch}
+          onBack={props.onBackToGames}
+        />
+      );
+    }
     const iWon = props.onlineWinnerSlot !== null && props.onlineWinnerSlot === props.mySlot;
     const disconnected = props.onlineReason === 'disconnect_forfeit' || props.opponentLeft;
     return (
       <GameOverPanel
         title={iWon ? t('pong.you_win') : t('pong.you_lose')}
-        winner={iWon}
+        tone={iWon ? 'win' : 'loss'}
         score={displayScore}
         detail={disconnected
           ? t('pong.opponent_disconnected')
@@ -329,7 +343,7 @@ function GameOverOverlay({ props }: { props: PongGameViewProps }) {
   return (
     <GameOverPanel
       title={t('pong.local_player_wins', { name: winnerName })}
-      winner={playerWon}
+      tone={playerWon ? 'win' : 'loss'}
       score={props.score}
       onPlayAgain={props.onResetGame}
       onBack={props.onBackToGames}
@@ -337,16 +351,22 @@ function GameOverOverlay({ props }: { props: PongGameViewProps }) {
   );
 }
 
+const TITLE_COLOR: Record<'win' | 'loss' | 'neutral', string> = {
+  win: '#3B82F6',
+  loss: '#EF4444',
+  neutral: 'var(--color-text-primary)',
+};
+
 function GameOverPanel({
   title,
-  winner,
+  tone,
   score,
   detail,
   onPlayAgain,
   onBack,
 }: {
   title: string;
-  winner: boolean;
+  tone: 'win' | 'loss' | 'neutral';
   score: Score;
   detail?: string | null;
   onPlayAgain: () => void;
@@ -356,7 +376,7 @@ function GameOverPanel({
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4"
       style={{ backgroundColor: 'rgba(10,14,26,0.85)', backdropFilter: 'blur(8px)' }}>
-      <h2 className="text-5xl font-extrabold" style={{ color: winner ? '#3B82F6' : '#EF4444' }}>
+      <h2 className="text-5xl font-extrabold" style={{ color: TITLE_COLOR[tone] }}>
         {title}
       </h2>
       <p className="text-2xl font-mono font-bold" style={{ color: 'var(--color-text-primary)' }}>
