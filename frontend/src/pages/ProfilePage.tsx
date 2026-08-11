@@ -24,6 +24,9 @@ import { Avatar } from "../components/ui/Avatar";
 import { useFriendships } from "../context/FriendshipContext";
 import { useBlocks } from "../context/BlockContext";
 import InviteGamePicker from "../components/Chat/InviteGamePicker";
+import FriendsModal, { type FriendsTab } from "../components/friends/FriendsModal";
+import ProfileOverflowMenu from "../components/profile/ProfileOverflowMenu";
+import { IconBlock, IconUnblock } from "../components/Chat/ChatIcons";
 
 function timeAgo(iso: string, t: TFunction): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -59,7 +62,7 @@ export default function ProfilePage() {
 
   const isOwn = !profileUserId || profileUserId === user?.id;
 
-  const { sendGameInvite, gameInviteAccepted, clearGameInviteAccepted, friendRemoved, clearFriendRemoved } = useChatSocket();
+  const { sendGameInvite, gameInviteAccepted, clearGameInviteAccepted, friendRemoved, clearFriendRemoved, onlineUserIds } = useChatSocket();
   const { blocks, blockedUserIds, unblock: doUnblock } = useBlocks();
   // Re-fetch profile when friendships change (to update friend_count for other users)
   useEffect(() => {
@@ -86,6 +89,7 @@ export default function ProfilePage() {
     }
   }, [gameInviteAccepted, clearGameInviteAccepted, navigate]);
   const [showInvitePicker, setShowInvitePicker] = useState(false);
+  const [friendsTab, setFriendsTab] = useState<FriendsTab | null>(null);
 useEffect(() => {
   let cancelled = false;
   async function load() {
@@ -152,6 +156,10 @@ useEffect(() => {
  const friendCount = isOwn
   ? friendships.filter((f) => f.status === "accepted").length
   : profileUser?.friend_count ?? 0;
+ // Only your own list is fetchable, so only your own count opens the dialog.
+ const pendingCount = isOwn
+  ? friendships.filter((f) => f.status === "pending" && f.direction === "received").length
+  : 0;
 
   const friendRel = targetUserId
     ? friendships.find((f) => f.other_user_id === targetUserId)
@@ -195,19 +203,7 @@ useEffect(() => {
   }
 
   if (isBlockedByTarget) {
-    return (
-      <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn">
-        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
-          <div className="text-5xl mb-4">🚫</div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--color-text-primary)" }}>
-            {profileUser?.display_name || profileUser?.username}
-          </h2>
-          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-            This profile is unavailable
-          </p>
-        </div>
-      </div>
-    );
+    return <UnavailableProfile name={profileUser?.display_name || profileUser?.username} onBack={() => navigate(-1)} />;
   }
 
   return (
@@ -234,15 +230,60 @@ useEffect(() => {
           </div>
 
           <div className="flex-1 min-w-0 text-center sm:text-left">
-            <h1 className="text-2xl sm:text-3xl font-extrabold" style={{ color: "var(--color-text-primary)" }}>
-              {profileUser?.display_name || profileUser?.username || user?.display_name || user?.username}
-            </h1>
-            <p className="text-sm mb-3" style={{ color: "var(--color-text-muted)" }}>
-              @{profileUser?.username || user?.username}
-              <span className="mx-2">·</span>
-              <UserCheck className="w-3.5 h-3.5 inline align-text-bottom mr-0.5" />
-              {friendCount} {friendCount === 1 ? "friend" : "friends"}
-            </p>
+            {/* The overflow menu rides beside the name, Instagram-style, so the
+                action row keeps only the things you actually came here to do. */}
+            <div className="flex items-center justify-center sm:justify-start gap-1.5">
+              <h1 className="text-2xl sm:text-3xl font-extrabold truncate" style={{ color: "var(--color-text-primary)" }}>
+                {profileUser?.display_name || profileUser?.username || user?.display_name || user?.username}
+              </h1>
+              {!isOwn && targetUserId && !blockedUserIds.has(targetUserId) && (
+                <ProfileOverflowMenu
+                  userId={targetUserId}
+                  username={profileUser?.username || ""}
+                  displayName={profileUser?.display_name}
+                />
+              )}
+            </div>
+            <div
+              className="text-sm mb-3 flex items-center justify-center sm:justify-start gap-2 flex-wrap"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              <span>@{profileUser?.username || user?.username}</span>
+              <span aria-hidden>·</span>
+              {isOwn ? (
+                <button
+                  type="button"
+                  onClick={() => setFriendsTab("friends")}
+                  aria-haspopup="dialog"
+                  aria-label={t("profile.open_friends")}
+                  className="flex items-center gap-1.5 rounded-lg px-2 py-1 -mx-1 font-medium transition-colors hover:bg-surface-hover"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>{t("profile.friends_count", { count: friendCount })}</span>
+                </button>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  {t("profile.friends_count", { count: friendCount })}
+                </span>
+              )}
+              {pendingCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFriendsTab("pending")}
+                  aria-haspopup="dialog"
+                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{
+                    backgroundColor: "rgb(var(--color-primary-rgb) / 0.14)",
+                    color: "var(--color-primary)",
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundImage: "var(--gradient-brand)" }} />
+                  {t("profile.pending_count", { count: pendingCount })}
+                </button>
+              )}
+            </div>
 
             {/* XP Bar */}
             <div className="max-w-xs mx-auto sm:mx-0">
@@ -270,20 +311,46 @@ useEffect(() => {
       </div>
 
       {/* ── Friend / DM Actions ── */}
+      {/* A block is a state, not a button: while it's on, every way of reaching
+          the person is withdrawn and only the way back out is offered. */}
       {!isOwn && targetUserId && (
-        <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
-          {blockedUserIds.has(targetUserId) ? (
+        blockedUserIds.has(targetUserId) ? (
+          <div
+            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl p-4"
+            style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}
+          >
+            <span
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 self-center sm:self-auto"
+              style={{ backgroundColor: "rgb(var(--color-danger-rgb) / 0.12)", color: "var(--color-danger)" }}
+            >
+              <IconBlock size={18} />
+            </span>
+            <div className="flex-1 min-w-0 text-center sm:text-start">
+              <p className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                {t("profile.blocked_banner_title", { username: profileUser?.username })}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                {t("profile.blocked_banner_body")}
+              </p>
+            </div>
             <button
               onClick={async () => {
-                const blockRec = blocks.find(b => b.blocked === targetUserId);
+                const blockRec = blocks.find((b) => b.blocked === targetUserId);
                 if (blockRec) { await doUnblock(blockRec.id); refreshFriendships(); }
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "#10B981" }}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shrink-0 transition-colors hover:bg-surface-hover"
+              style={{
+                backgroundColor: "var(--color-bg-input)",
+                color: "var(--color-text-primary)",
+                border: "1px solid var(--color-border)",
+              }}
             >
-              Unblock
+              <IconUnblock size={15} />
+              {t("profile.unblock")}
             </button>
-          ) : (
+          </div>
+        ) : (
+          <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
             <button
               onClick={handleFriendAction}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
@@ -299,31 +366,37 @@ useEffect(() => {
                friendStatus === "pending" && friendDirection === "received" ? <UserCheck className="w-4 h-4" /> :
                friendStatus === "pending" && friendDirection === "sent" ? <X className="w-4 h-4" /> :
                <UserPlus className="w-4 h-4" />}
-              {friendStatus === "accepted" ? "Remove Friend" :
-               friendStatus === "pending" && friendDirection === "received" ? "Accept Request" :
-               friendStatus === "pending" && friendDirection === "sent" ? "Cancel Request" :
-               "Add Friend"}
+              {friendStatus === "accepted" ? t("profile.remove_friend") :
+               friendStatus === "pending" && friendDirection === "received" ? t("profile.accept_request") :
+               friendStatus === "pending" && friendDirection === "sent" ? t("profile.cancel_request") :
+               t("profile.add_friend")}
             </button>
-          )}
-          <button
-            onClick={handleOpenDM}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}
-          >
-            <MessageCircle className="w-4 h-4" />
-            Send Message
-          </button>
-          {!blockedUserIds.has(targetUserId) && (
+            <button
+              onClick={handleOpenDM}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {t("profile.send_message")}
+            </button>
             <button
               onClick={() => setShowInvitePicker(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: "#22C55E" }}
             >
               <Gamepad2 className="w-4 h-4" />
-              Invite to Game
+              {t("profile.invite_to_game")}
             </button>
-          )}
-        </div>
+          </div>
+        )
+      )}
+
+      {friendsTab && (
+        <FriendsModal
+          initialTab={friendsTab}
+          onlineUserIds={onlineUserIds}
+          onClose={() => setFriendsTab(null)}
+        />
       )}
 
       {showInvitePicker && (
@@ -533,6 +606,116 @@ useEffect(() => {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+// ── Unavailable profile ───────────────────────────────────────────────────────
+/**
+ * Shown when the person you're looking at has blocked you. It deliberately
+ * reveals nothing beyond the name you already navigated with — no stats, no
+ * avatar, no actions that would ping them.
+ */
+function UnavailableProfile({ name, onBack }: { name?: string; onBack: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] animate-fadeIn">
+      <div
+        className="relative w-full max-w-2xl overflow-hidden rounded-3xl px-8 py-14 text-center"
+        style={{
+          backgroundColor: "var(--color-bg-card)",
+          border: "1px solid var(--color-border)",
+          boxShadow: "0 32px 96px -40px var(--color-shadow)",
+        }}
+      >
+        {/* Ambient wash — brand-tinted but heavily muted, so the card reads as a
+            dead end rather than an achievement. */}
+        <div
+          className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full blur-3xl pointer-events-none"
+          style={{ backgroundColor: "rgb(var(--color-primary-rgb) / 0.07)" }}
+        />
+
+        <div className="relative flex flex-col items-center">
+          {/* Concentric rings around a lock — pure SVG, inherits the palette. */}
+          <div className="relative mb-7 flex items-center justify-center">
+            <span
+              className="absolute rounded-full"
+              style={{ width: 118, height: 118, border: "1px solid var(--color-border)", opacity: 0.5 }}
+            />
+            <span
+              className="absolute rounded-full"
+              style={{ width: 92, height: 92, border: "1px solid var(--color-border)" }}
+            />
+            <span
+              className="relative flex items-center justify-center rounded-full"
+              style={{
+                width: 66,
+                height: 66,
+                backgroundColor: "var(--color-bg-input)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                focusable="false"
+              >
+                <rect x="4" y="10.5" width="16" height="10.5" rx="2.5" />
+                <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+                <circle cx="12" cy="15.75" r="1.15" />
+                <line x1="12" y1="16.9" x2="12" y2="18.2" />
+              </svg>
+            </span>
+          </div>
+
+          <h2 className="text-xl sm:text-2xl font-extrabold mb-2.5" style={{ color: "var(--color-text-primary)" }}>
+            {t("profile.unavailable_title")}
+          </h2>
+          <p className="text-sm leading-relaxed max-w-sm" style={{ color: "var(--color-text-muted)" }}>
+            {name
+              ? t("profile.unavailable_body", { name })
+              : t("profile.unavailable_body_generic")}
+          </p>
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-8 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors hover:bg-surface-hover"
+            style={{
+              backgroundColor: "var(--color-bg-input)",
+              color: "var(--color-text-primary)",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="icon-directional"
+              aria-hidden
+              focusable="false"
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            {t("profile.go_back")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

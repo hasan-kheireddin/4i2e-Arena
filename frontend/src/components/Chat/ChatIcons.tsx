@@ -113,6 +113,26 @@ export function IconDots({ size = 18, className, style }: IconProps) {
   );
 }
 
+/** Horizontal overflow menu — the profile-header variant of {@link IconDots}. */
+export function IconDotsHorizontal({ size = 18, className, style }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={style}
+      aria-hidden
+      focusable={false}
+    >
+      <circle cx="5" cy="12" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="19" cy="12" r="1.9" />
+    </svg>
+  );
+}
+
 export function IconBell({ size = 16, className, strokeWidth, style }: IconProps) {
   return (
     <svg {...base(size, className, strokeWidth, style)}>
