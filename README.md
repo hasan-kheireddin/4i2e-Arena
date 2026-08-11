@@ -423,11 +423,15 @@ explain why you choose to done those:
     - The game must have clear rules and win/loss conditions.
     - The game can be 2D or 3D.
 
+Pong was chosen as our main game because its rules are simple and easy for anyone to understand, but building it properly still requires real-time networking, which is a core requirement of the project.
+
 - Major: Add another game with user history and matchmaking.(TicTacToe)
     - Implement a second distinct game.
     - Track user history and statistics for this game.
     - Implement a matchmaking system.
     - Maintain performance and responsiveness.
+
+We chose Tic-Tac-Toe as the second game because it works very differently from Pong. It's turn-based instead of real-time which shows that our game system isn't just built for Pong specifically. It's also simple enough that we could fully add match history and matchmaking for it without extra complexity.
 
 - Minor: Game statistics and match history (requires a game module).
     - Track user game statistics (wins, losses, ranking, level, etc.).
@@ -435,13 +439,17 @@ explain why you choose to done those:
     - Show achievements and progression.
     - Leaderboard integration
 
+This module goes hand in hand with the two games above. Without saving match history, the gamification system wouldn't have anything to check achievements or streaks against, and players wouldn't be able to see how they've been performing over time.
+
 - Minor: A gamification system to reward users for their actions.
     - Implement achievements, leaderboards, XP/level system.
     - System must be persistent (stored in database)
     - Visual feedback for users (notifications, progress bars)
     - Clear rules and progression mechanics.
 
-Explain why you choose to done those:
+We picked this because just winning or losing a game isn't very motivating on its own. Adding achievements, levels, and a leaderboard gives players a reason to keep coming back and keep playing. It also connects directly to the two games below instead of being a separate, disconnected feature.We implemented 22 achievements across the two games also XP/Level system was implemented as a quadratic XP curve so each level takes progressively more effort, with XP awarded for playing, winning, streaks, and game-specific bonuses and a global ranking by XP for leaderboard. All progress, achievements, unlocks, and player activity are saved permanently, and unlocks/XP gains/level-ups are pushed to the client live over WebSockets so the player sees visual feedback immediately instead of on next page load.
+
+
 
 ## rchalak part
 - Major: Allow users to interact with other users. The minimum requirements are:
@@ -480,6 +488,11 @@ explain why you choose to done those:
 ### mjamil Contributions
 
 ### nabbas Contributions
+I owned the game layer and everything derived from match results, both server-authoritative engines, match history and statistics, and the entire gamification system.
+
+**challenges I faced**: 
+1. Ball–paddle collisions in the server-authoritative Pong engine. The first working version of the physics loop had the ball behaving wrongly at contact: because the engine advances the ball by its full velocity each tick and then tests for overlap, a ball that entered the paddle box could be re-detected on the next tick and bounce twice, effectively sticking to or passing through the paddle, and each bounce compounding the speed increment made the ball unplayably fast after a long rally. It was solved with three guards: an early rejection when the ball is already moving away from that paddle, so a single contact can only register once; snapping the ball's x to the paddle's outer edge plus its radius immediately after resolving the hit, so the next tick starts outside the box; and clamping the speed with min(speed + BALL_SPEED_INCREMENT, BALL_MAX_SPEED) while deriving the outgoing angle from the normalized hit position rather than a raw reflection. The same fix had to hold for the AI opponent, which reads the identical server state, so once the engine was deterministic the three difficulty tiers became a matter of tuning reaction delay rather than fighting the physics.
+2. Analytics endpoints were hard-wired to the requesting user. The XP, achievement-stats and unlocked-achievements views were all written as /me/ routes reading request.user directly, which was correct until profiles became publicly viewable hen opening another player's profile rendered your own XP, level and achievements under their name, and the Home "Global Ranking" card showed "-#" for anyone outside the top 5 because it searched the five-row leaderboard slice instead of asking for a rank. ProfilePage was switched to call the per-user endpoints when the id isn't your own, and HomePage now reads the rank straight from xp/me/, which computes it against the whole table.
 
 ### rchalak Contributions
 
