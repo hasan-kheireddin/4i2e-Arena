@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import ChatBubble from "./ChatBubble";
 import ChatAvatar from "./ChatAvatar";
 import EmotePalette from "./EmotePalette";
@@ -70,12 +72,12 @@ function dayKey(iso: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toDateString();
 }
 
-function dayLabel(iso: string): string {
+function dayLabel(iso: string, t: TFunction): string {
   const d = new Date(iso);
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (d.getTime() >= startOfToday) return "Today";
-  if (d.getTime() >= startOfToday - 86_400_000) return "Yesterday";
+  if (d.getTime() >= startOfToday) return t("chat.today");
+  if (d.getTime() >= startOfToday - 86_400_000) return t("chat.yesterday");
   return d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -108,6 +110,7 @@ export default function ChatWindow({
   dmPartnerReadUntil,
   sendGameInviteResponse,
 }: ChatWindowProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [showEmotes, setShowEmotes] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -181,22 +184,22 @@ export default function ChatWindow({
       : isFriend
         ? {
             key: "friend",
-            label: "Remove friend",
-            hint: "You are friends",
+            label: t("chat.remove_friend"),
+            hint: t("chat.you_are_friends"),
             icon: <IconUserMinus size={15} />,
             danger: true,
             confirm: {
-              title: `Remove ${title}?`,
-              body: "They will be taken off your friends list. You can send a new request later.",
-              action: "Remove",
+              title: t("chat.remove_friend_title", { name: title }),
+              body: t("chat.remove_friend_body"),
+              action: t("chat.remove"),
             },
             onClick: () => onFriendAction(dmPartnerId),
           }
         : requestReceived
           ? {
               key: "friend",
-              label: "Accept friend request",
-              hint: `${title} wants to be friends`,
+              label: t("chat.accept_friend_request"),
+              hint: t("chat.wants_to_be_friends", { name: title }),
               icon: <IconUserCheck size={15} />,
               accent: true,
               onClick: () => onFriendAction(dmPartnerId),
@@ -204,31 +207,31 @@ export default function ChatWindow({
           : requestSent
             ? {
                 key: "friend",
-                label: "Cancel friend request",
-                hint: "Request pending",
+                label: t("chat.cancel_friend_request"),
+                hint: t("chat.request_pending"),
                 icon: <IconClock size={15} />,
                 onClick: () => onFriendAction(dmPartnerId),
               }
             : {
                 key: "friend",
-                label: "Add friend",
+                label: t("chat.add_friend"),
                 icon: <IconUserPlus size={15} />,
                 onClick: () => onFriendAction(dmPartnerId),
               };
 
   const menuItems = [
     dmPartnerId && onProfileClick
-      ? { key: "profile", label: "View profile", icon: <IconUser size={15} />, onClick: () => onProfileClick(dmPartnerId) }
+      ? { key: "profile", label: t("chat.view_profile"), icon: <IconUser size={15} />, onClick: () => onProfileClick(dmPartnerId) }
       : null,
     friendItem,
     dmPartnerId && onInviteGame && !isBlocked
-      ? { key: "invite", label: "Invite to game", icon: <IconGamepad size={15} />, onClick: () => onInviteGame(dmPartnerId, title) }
+      ? { key: "invite", label: t("chat.invite_to_game"), icon: <IconGamepad size={15} />, onClick: () => onInviteGame(dmPartnerId, title) }
       : null,
     onToggleMute
       ? {
           key: "mute",
-          label: isMuted ? "Unmute notifications" : "Mute notifications",
-          hint: isMuted ? "Notifications are off" : undefined,
+          label: isMuted ? t("chat.unmute_notifications") : t("chat.mute_notifications"),
+          hint: isMuted ? t("chat.notifications_off") : undefined,
           icon: isMuted ? <IconBell size={15} /> : <IconBellOff size={15} />,
           separatorBefore: true,
           onClick: onToggleMute,
@@ -237,16 +240,16 @@ export default function ChatWindow({
     dmPartnerId && (isBlocked ? onUnblock : onBlockUser)
       ? {
           key: "block",
-          label: isBlocked ? "Unblock player" : "Block player",
-          hint: isBlocked ? "You blocked them" : undefined,
+          label: isBlocked ? t("chat.unblock_player") : t("chat.block_player"),
+          hint: isBlocked ? t("chat.you_blocked_them") : undefined,
           icon: isBlocked ? <IconUnblock size={15} /> : <IconBlock size={15} />,
           danger: !isBlocked,
           confirm: isBlocked
             ? undefined
             : {
-                title: `Block ${title}?`,
-                body: "They will not be able to message you or invite you to games, and any friendship is removed.",
-                action: "Block",
+                title: t("chat.block_title", { name: title }),
+                body: t("chat.block_body"),
+                action: t("chat.block"),
               },
           onClick: () => (isBlocked ? onUnblock?.() : onBlockUser?.(dmPartnerId)),
         }
@@ -271,7 +274,7 @@ export default function ChatWindow({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Back to conversations"
+            aria-label={t("chat.back_to_conversations")}
             className="w-8 h-8 -ml-1 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors hover:bg-surface-hover"
             style={{ color: "var(--color-text-secondary)" }}
           >
@@ -285,7 +288,7 @@ export default function ChatWindow({
           size={36}
           online={partnerOnline}
           onClick={onTitleClick}
-          title={onTitleClick ? "View profile" : undefined}
+          title={onTitleClick ? t("chat.view_profile") : undefined}
         />
 
         <button
@@ -301,12 +304,12 @@ export default function ChatWindow({
             className="text-[10.5px] truncate"
             style={{ color: partnerOnline ? "var(--color-success)" : "var(--color-text-muted)" }}
           >
-            {otherTyping.length > 0 ? "typing…" : partnerOnline ? "Online" : "Offline"}
+            {otherTyping.length > 0 ? t("chat.typing") : partnerOnline ? t("chat.online") : t("chat.offline")}
           </p>
         </button>
 
         {isMuted && (
-          <span style={{ color: "var(--color-text-muted)" }} title="Notifications muted">
+          <span style={{ color: "var(--color-text-muted)" }} title={t("chat.notifications_muted")}>
             <IconBellOff size={14} />
           </span>
         )}
@@ -320,7 +323,7 @@ export default function ChatWindow({
                 setConfirmItem(null);
                 setShowMenu((v) => !v);
               }}
-              aria-label="Conversation options"
+              aria-label={t("chat.conversation_options")}
               aria-haspopup="menu"
               aria-expanded={showMenu}
               className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-surface-hover"
@@ -446,10 +449,10 @@ export default function ChatWindow({
         {!loading && visible.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center px-6">
             <p className="text-[13px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
-              No messages yet
+              {t("chat.no_messages_yet")}
             </p>
             <p className="text-[11.5px]" style={{ color: "var(--color-text-muted)" }}>
-              Send the first message to {title}.
+              {t("chat.first_message_hint", { name: title })}
             </p>
           </div>
         )}
@@ -463,7 +466,7 @@ export default function ChatWindow({
                     className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
                     style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-muted)" }}
                   >
-                    {dayLabel(msg.created_at)}
+                    {dayLabel(msg.created_at, t)}
                   </span>
                 </div>
               )}
@@ -519,7 +522,7 @@ export default function ChatWindow({
               onClick={() => { onProfileClick?.(contextMsg.sender); setContextMsg(null); }}
             >
               <span style={{ color: "var(--color-text-muted)" }}><IconUser size={15} /></span>
-              View profile
+              {t("chat.view_profile")}
             </button>
           )}
           {onInviteGame && (
@@ -529,7 +532,7 @@ export default function ChatWindow({
               onClick={() => { onInviteGame?.(contextMsg.sender, contextMsg.username); setContextMsg(null); }}
             >
               <span style={{ color: "var(--color-text-muted)" }}><IconGamepad size={15} /></span>
-              Invite to game
+              {t("chat.invite_to_game")}
             </button>
           )}
           {onFriendAction && (
@@ -539,10 +542,10 @@ export default function ChatWindow({
               onClick={() => { onFriendAction(contextMsg.sender); setContextMsg(null); }}
             >
               <span style={{ color: "var(--color-text-muted)" }}><IconUser size={15} /></span>
-              {friendUserIds?.has(contextMsg.sender) ? "Remove friend" :
-               pendingReceivedIds?.has(contextMsg.sender) ? "Accept request" :
-               pendingSentIds?.has(contextMsg.sender) ? "Cancel request" :
-               "Add friend"}
+              {friendUserIds?.has(contextMsg.sender) ? t("chat.remove_friend") :
+               pendingReceivedIds?.has(contextMsg.sender) ? t("chat.accept_request") :
+               pendingSentIds?.has(contextMsg.sender) ? t("chat.cancel_request") :
+               t("chat.add_friend")}
             </button>
           )}
           {onBlockUser && (
@@ -552,7 +555,7 @@ export default function ChatWindow({
               onClick={() => { onBlockUser(contextMsg.sender); setContextMsg(null); }}
             >
               <IconBlock size={15} />
-              Block player
+              {t("chat.block_player")}
             </button>
           )}
         </div>
@@ -566,14 +569,14 @@ export default function ChatWindow({
         {isBlocked ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[12px] min-w-0" style={{ color: "var(--color-text-muted)" }}>
-              You blocked <strong style={{ color: "var(--color-text-secondary)" }}>{title}</strong>
+              {t("chat.you_blocked")} <strong style={{ color: "var(--color-text-secondary)" }}>{title}</strong>
             </p>
             <button
               onClick={onUnblock}
               className="px-3.5 py-1.5 rounded-lg text-[11.5px] font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
               style={{ backgroundColor: "var(--color-success)" }}
             >
-              Unblock
+              {t("chat.unblock")}
             </button>
           </div>
         ) : (
@@ -589,8 +592,8 @@ export default function ChatWindow({
                   color: showEmotes ? "#ffffff" : "var(--color-text-secondary)",
                   border: "1px solid var(--color-border)",
                 }}
-                title="Reactions"
-                aria-label="Reactions"
+                title={t("chat.reactions")}
+                aria-label={t("chat.reactions")}
                 aria-pressed={showEmotes}
               >
                 <IconReaction size={18} />
@@ -600,8 +603,8 @@ export default function ChatWindow({
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message…"
-                aria-label="Message"
+                placeholder={t("chat.type_message")}
+                aria-label={t("chat.message_label")}
                 className="flex-1 min-w-0 w-full rounded-xl px-3 h-9 text-[13px] outline-none transition-shadow focus:shadow-[0_0_0_2px_rgb(var(--color-primary-rgb)/0.3)]"
                 style={{
                   backgroundColor: "var(--color-bg-input)",
@@ -614,8 +617,8 @@ export default function ChatWindow({
                 type="button"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                title="Send"
-                aria-label="Send message"
+                title={t("chat.send")}
+                aria-label={t("chat.send_message")}
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
                 style={{ backgroundImage: "var(--gradient-brand)" }}
               >

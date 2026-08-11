@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface SwipeAction {
   key: string;
@@ -33,15 +34,27 @@ export default function SwipeableRow({
   actionWidth = 68,
   className = "",
 }: SwipeableRowProps) {
+  const { t } = useTranslation();
   const total = actions.length * actionWidth;
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; y: number; from: number; axis: "" | "x" | "y"; id: number } | null>(null);
   const moved = useRef(false);
+  const rail = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!dragging) setOffset(open ? -total : 0);
   }, [open, total, dragging]);
+
+  // `inert` is what the ARIA spec points to for a hidden-but-present rail: it
+  // hides the actions from assistive tech AND makes them unfocusable, unlike
+  // aria-hidden, which browsers rightly complain about when it lands on an
+  // element that still holds focus. Set imperatively because React 18 doesn't
+  // pass the prop through to the DOM.
+  useEffect(() => {
+    const el = rail.current;
+    if (el) (el as HTMLDivElement & { inert: boolean }).inert = !open;
+  }, [open]);
 
   const endDrag = (el: HTMLElement | null) => {
     const state = drag.current;
@@ -106,13 +119,16 @@ export default function SwipeableRow({
         }
       }}
     >
-      <div className="absolute inset-y-0 right-0 flex" style={{ width: total }}>
+      <div ref={rail} className="absolute inset-y-0 right-0 flex" style={{ width: total }}>
         {actions.map((action) => (
           <button
             key={action.key}
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              // Hand focus back before the rail closes — a focused button inside
+              // a hidden rail is exactly what the aria-hidden warning is about.
+              e.currentTarget.blur();
               onOpenChange(false);
               action.onClick();
             }}
@@ -122,8 +138,8 @@ export default function SwipeableRow({
               backgroundColor: action.background,
               color: action.color || "#ffffff",
             }}
+            // Fallback for browsers without `inert`; there it is redundant.
             tabIndex={open ? 0 : -1}
-            aria-hidden={!open}
           >
             {action.icon}
             <span>{action.label}</span>
@@ -152,8 +168,8 @@ export default function SwipeableRow({
               e.stopPropagation();
               onOpenChange(true);
             }}
-            title="More actions"
-            aria-label="More actions"
+            title={t("chat.more_actions")}
+            aria-label={t("chat.more_actions")}
             className="absolute inset-y-0 right-0 w-12 hidden md:flex items-center justify-end pr-2 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
               color: "var(--color-text-muted)",

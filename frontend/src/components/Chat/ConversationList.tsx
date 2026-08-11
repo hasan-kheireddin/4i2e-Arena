@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { WsStatus } from "../../hooks/useGameSocket";
 import { searchUsers, type Channel, type SearchUser } from "../../services/chat";
@@ -44,7 +46,7 @@ interface ConversationListProps {
   title?: string;
 }
 
-function formatStamp(iso: string): string {
+function formatStamp(iso: string, t: TFunction): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const now = new Date();
@@ -54,20 +56,23 @@ function formatStamp(iso: string): string {
   if (stamp >= startOfToday) {
     return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
-  if (stamp >= startOfToday - 86_400_000) return "Yesterday";
+  if (stamp >= startOfToday - 86_400_000) return t("chat.yesterday");
   if (stamp >= startOfToday - 6 * 86_400_000) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { day: "2-digit", month: "short" });
 }
 
-function previewOf(ch: Channel, currentUserId?: string | null): string {
+function previewOf(ch: Channel, t: TFunction, currentUserId?: string | null): string {
   const last = ch.last_message;
-  if (!last) return "No messages yet";
-  const mine = !!currentUserId && last.sender === currentUserId;
-  const prefix = mine ? "You: " : "";
-  if (last.message_type === "emote") return `${prefix}Sent a reaction`;
-  if (last.message_type === "game_invite") return `${prefix}Game invite`;
+  if (!last) return t("chat.no_messages_yet");
+  // System lines are already written from the reader's point of view.
   if (last.message_type === "system") return last.content;
-  return `${prefix}${last.content}`;
+  const text = last.message_type === "emote"
+    ? t("chat.preview_reaction")
+    : last.message_type === "game_invite"
+      ? t("chat.preview_game_invite")
+      : last.content;
+  const mine = !!currentUserId && last.sender === currentUserId;
+  return mine ? t("chat.preview_you", { text }) : text;
 }
 
 /** Most recent conversation first; channels without traffic keep creation order. */
@@ -95,8 +100,10 @@ export default function ConversationList({
   onToggleBlock,
   onDeleteChat,
   headerAction,
-  title = "Messages",
+  title,
 }: ConversationListProps) {
+  const { t } = useTranslation();
+  const heading = title ?? t("chat.title");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
@@ -157,16 +164,18 @@ export default function ConversationList({
     <div className="relative flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-2">
         <h2 className="text-[15px] font-bold tracking-tight" style={{ color: "var(--color-text-primary)" }}>
-          {title}
+          {heading}
         </h2>
         <div className="flex items-center gap-1.5">
           {offline && (
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{ backgroundColor: "rgb(var(--color-warning-rgb) / 0.14)", color: "var(--color-warning)" }}
-              title={`Connection: ${status}`}
+              title={t("chat.connection_status", { status })}
             >
-              {status === "connecting" || status === "reconnecting" ? "Reconnecting" : "Offline"}
+              {status === "connecting" || status === "reconnecting"
+                ? t("chat.status_reconnecting")
+                : t("chat.status_offline")}
             </span>
           )}
           {headerAction}
@@ -185,8 +194,8 @@ export default function ConversationList({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search people to message…"
-            aria-label="Search people to message"
+            placeholder={t("chat.search_placeholder")}
+            aria-label={t("chat.search_label")}
             className="w-full rounded-xl py-2.5 pl-9 pr-9 text-[13px] outline-none transition-shadow focus:shadow-[0_0_0_2px_rgb(var(--color-primary-rgb)/0.35)]"
             style={{
               backgroundColor: "var(--color-bg-input)",
@@ -198,7 +207,7 @@ export default function ConversationList({
             <button
               type="button"
               onClick={() => setQuery("")}
-              aria-label="Clear search"
+              aria-label={t("chat.clear_search")}
               className="absolute inset-y-0 right-2.5 flex items-center transition-opacity hover:opacity-70"
               style={{ color: "var(--color-text-muted)" }}
             >
@@ -220,7 +229,7 @@ export default function ConversationList({
               className="text-[10px] font-bold uppercase tracking-[0.14em]"
               style={{ color: "var(--color-text-muted)" }}
             >
-              Currently Active
+              {t("chat.currently_active")}
             </span>
           </div>
           <div className="flex gap-3 overflow-x-auto px-4 pb-2">
@@ -229,7 +238,7 @@ export default function ConversationList({
                 key={p.id}
                 type="button"
                 onClick={() => onOpenDM(p.id)}
-                title={`Message ${p.display_name || p.username}`}
+                title={t("chat.message_person", { name: p.display_name || p.username })}
                 className="flex flex-col items-center gap-1 flex-shrink-0 w-[52px] transition-transform active:scale-95"
               >
                 <ChatAvatar src={p.avatar_url} name={p.display_name || p.username} size={46} halo online />
@@ -250,11 +259,11 @@ export default function ConversationList({
           className="text-[10px] font-bold uppercase tracking-[0.14em]"
           style={{ color: "var(--color-text-muted)" }}
         >
-          {isSearching ? "People" : "Direct Messages"}
+          {isSearching ? t("chat.section_people") : t("chat.section_dms")}
         </span>
         {!isSearching && unreadTotal > 0 && (
           <span className="text-[10px] font-semibold" style={{ color: "var(--color-primary)" }}>
-            {unreadTotal} unread
+            {t("chat.unread", { count: unreadTotal })}
           </span>
         )}
       </div>
@@ -272,7 +281,7 @@ export default function ConversationList({
               </div>
             )}
             {!searching && results.length === 0 && (
-              <EmptyState label="No players found" hint={`Nothing matches “${query.trim()}”`} />
+              <EmptyState label={t("chat.no_players")} hint={t("chat.no_players_hint", { query: query.trim() })} />
             )}
             {results.map((u) => {
               const blocked = blockedUserIds.has(u.id);
@@ -285,7 +294,7 @@ export default function ConversationList({
                       size={40}
                       online={onlineUserIds.has(u.id)}
                       onClick={() => onOpenProfile(u.id)}
-                      title="View profile"
+                      title={t("chat.view_profile")}
                     />
                     <button
                       type="button"
@@ -309,8 +318,8 @@ export default function ConversationList({
                         setQuery("");
                         onOpenDM(u.id);
                       }}
-                      title={blocked ? "You blocked this player" : "Start a conversation"}
-                      aria-label={blocked ? "Blocked" : "Start a conversation"}
+                      title={blocked ? t("chat.blocked_player") : t("chat.start_conversation")}
+                      aria-label={blocked ? t("chat.blocked") : t("chat.start_conversation")}
                       className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ backgroundImage: "var(--gradient-brand)" }}
                     >
@@ -323,8 +332,8 @@ export default function ConversationList({
           </>
         ) : ordered.length === 0 ? (
           <EmptyState
-            label="No conversations yet"
-            hint="Search for a player above to start chatting."
+            label={t("chat.no_conversations")}
+            hint={t("chat.no_conversations_hint")}
           />
         ) : (
           ordered.map((ch) => {
@@ -333,7 +342,7 @@ export default function ConversationList({
             const blockedBy = partner ? !!blockedByUserIds?.has(partner.id) : false;
             const online = !!partner && onlineUserIds.has(partner.id) && !blocked && !blockedBy;
             const isActive = activeChannelId === ch.id;
-            const name = partner?.display_name || partner?.username || "Unknown";
+            const name = partner?.display_name || partner?.username || t("chat.unknown");
             const stamp = ch.last_message?.created_at || ch.created_at;
             const mineLast = !!ch.last_message && ch.last_message.sender === currentUserId;
             const seen =
@@ -349,14 +358,14 @@ export default function ConversationList({
                 actions={[
                   {
                     key: "mute",
-                    label: ch.notifications_muted ? "Unmute" : "Mute",
+                    label: ch.notifications_muted ? t("chat.unmute") : t("chat.mute"),
                     icon: <IconBellOff size={16} />,
                     background: "#F59E0B",
                     onClick: () => onToggleMute(ch.id),
                   },
                   {
                     key: "block",
-                    label: blocked ? "Unblock" : "Block",
+                    label: blocked ? t("chat.unblock") : t("chat.block"),
                     icon: blocked ? <IconUnblock size={16} /> : <IconBlock size={16} />,
                     background: "#64748B",
                     onClick: () => {
@@ -366,23 +375,23 @@ export default function ConversationList({
                         return;
                       }
                       setConfirm({
-                        title: `Block ${name}?`,
-                        body: "They will not be able to message you or invite you to games, and any friendship between you is removed.",
-                        action: "Block",
+                        title: t("chat.block_title", { name }),
+                        body: t("chat.block_body"),
+                        action: t("chat.block"),
                         onConfirm: () => onToggleBlock(partner.id, false),
                       });
                     },
                   },
                   {
                     key: "delete",
-                    label: "Delete",
+                    label: t("chat.delete"),
                     icon: <IconTrash size={16} />,
                     background: "#EF4444",
                     onClick: () =>
                       setConfirm({
-                        title: `Delete chat with ${name}?`,
-                        body: "The conversation leaves your list. It comes back if either of you sends a new message.",
-                        action: "Delete",
+                        title: t("chat.delete_title", { name }),
+                        body: t("chat.delete_body"),
+                        action: t("chat.delete"),
                         onConfirm: () => onDeleteChat(ch.id),
                       }),
                   },
@@ -429,12 +438,12 @@ export default function ConversationList({
                           {name}
                         </span>
                         {ch.notifications_muted && (
-                          <span style={{ color: "var(--color-text-muted)" }} title="Notifications muted">
+                          <span style={{ color: "var(--color-text-muted)" }} title={t("chat.notifications_muted")}>
                             <IconBellOff size={12} />
                           </span>
                         )}
                         {blocked && (
-                          <span style={{ color: "var(--color-text-muted)" }} title="You blocked this player">
+                          <span style={{ color: "var(--color-text-muted)" }} title={t("chat.blocked_player")}>
                             <IconBlock size={12} />
                           </span>
                         )}
@@ -458,13 +467,13 @@ export default function ConversationList({
                             fontWeight: ch.unread_count > 0 && !ch.notifications_muted ? 600 : 400,
                           }}
                         >
-                          {previewOf(ch, currentUserId)}
+                          {previewOf(ch, t, currentUserId)}
                         </p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="text-[10px] whitespace-nowrap" style={{ color: "var(--color-text-muted)" }}>
-                        {formatStamp(stamp)}
+                        {formatStamp(stamp, t)}
                       </span>
                       {ch.unread_count > 0 && (
                         <span
@@ -512,7 +521,7 @@ export default function ConversationList({
                 className="flex-1 py-2 rounded-xl text-[12px] font-semibold transition-colors hover:bg-surface-hover"
                 style={{ border: "1px solid var(--color-border)", color: "var(--color-text-secondary)" }}
               >
-                Cancel
+                {t("chat.cancel")}
               </button>
               <button
                 type="button"

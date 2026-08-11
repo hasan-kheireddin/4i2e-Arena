@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useFriendships } from "../../context/FriendshipContext";
 import { useBlocks } from "../../context/BlockContext";
 import { useToast } from "../../context/ToastContext";
@@ -12,6 +13,7 @@ import { buildActivePeople } from "./activePeople";
 import { IconChatFilled, IconClose } from "./ChatIcons";
 import { loadHiddenChannels, saveHiddenChannels } from "./hiddenChats";
 import { registerChatOpener } from "./chatOpener";
+import { withLatestMessages } from "./channelPreviews";
 import {
   fetchChannels,
   sendFriendRequest,
@@ -25,6 +27,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 
 export default function FloatingChatWidget() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -149,6 +152,34 @@ export default function FloatingChatWidget() {
       .catch(() => {});
   }, [open, reconnectCount]);
 
+  // Keep the conversation list's preview line and ordering in step with what
+  // the socket delivers, instead of only with what the last fetch returned.
+  useEffect(() => {
+    setChannels((prev) => withLatestMessages(prev, messages));
+  }, [messages]);
+
+  // A message can arrive for a conversation this list has never seen — someone
+  // DMs you for the first time, or starts one while the bubble sits closed. The
+  // socket delivers it, but with no matching channel there is nothing to list,
+  // badge or open, which is why it only showed up after closing and reopening
+  // (the reopen is what refetched the list). Pull it in as soon as it lands.
+  const requestedLookups = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const unknown = Object.keys(messages).filter(
+      (cid) => !channels.some((c) => c.id === cid) && !requestedLookups.current.has(cid),
+    );
+    if (unknown.length === 0) return;
+    unknown.forEach((cid) => requestedLookups.current.add(cid));
+    fetchChannels()
+      .then((list) => {
+        setChannels(list);
+        // Anything the server still doesn't return is not ours to show; leave it
+        // marked so a burst of messages can't spin this into a fetch loop.
+        list.forEach((c) => requestedLookups.current.delete(c.id));
+      })
+      .catch(() => unknown.forEach((cid) => requestedLookups.current.delete(cid)));
+  }, [messages, channels]);
+
   useEffect(() => {
     if (activeChannel) {
       requestHistory(activeChannel);
@@ -272,7 +303,7 @@ export default function FloatingChatWidget() {
       setActiveChannel(null);
       setView("list");
     }
-    showToast({ title: "Conversation removed from your list", variant: "success" });
+    showToast({ title: t("chat.conversation_removed"), variant: "success" });
   };
 
   const friendUserIds = new Set(friendships.filter((f) => f.status === "accepted").map((f) => f.other_user_id));

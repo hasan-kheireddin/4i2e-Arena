@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { EMOTES, type EmoteDef } from "../../assets/emotes/emotes";
 import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 
@@ -7,10 +8,11 @@ interface EmotePaletteProps {
 }
 
 export default function EmotePalette({ onEmote, inline }: EmotePaletteProps) {
+  const { t } = useTranslation();
   if (inline) {
     return (
       <div className="flex flex-wrap gap-2 p-3 rounded-xl" style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
-        <p className="w-full text-xs font-medium mb-1" style={{ color: "var(--color-text-muted)" }}>Send an emote:</p>
+        <p className="w-full text-xs font-medium mb-1" style={{ color: "var(--color-text-muted)" }}>{t("chat.send_emote")}</p>
         <div className="flex flex-wrap gap-1.5">
           {EMOTES.map((emote) => (
             <button

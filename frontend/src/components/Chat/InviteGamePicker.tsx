@@ -1,13 +1,16 @@
+import { useTranslation } from "react-i18next";
+
 interface InviteGamePickerProps {
   onSelect: (gameType: string) => void;
   onCancel: () => void;
 }
 
 export default function InviteGamePicker({ onSelect, onCancel }: InviteGamePickerProps) {
+  const { t } = useTranslation();
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
       <div className="rounded-xl p-4 mx-4 shadow-2xl" style={{ backgroundColor: "var(--color-bg-card)" }}>
-        <p className="text-sm font-medium mb-3" style={{ color: "var(--color-text-primary)" }}>Choose a game</p>
+        <p className="text-sm font-medium mb-3" style={{ color: "var(--color-text-primary)" }}>{t("chat.choose_game")}</p>
         <div className="flex flex-col gap-2">
           {["pong", "pong3d", "tictactoe"].map((g) => (
             <button

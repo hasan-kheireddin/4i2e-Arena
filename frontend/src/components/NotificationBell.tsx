@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNotificationCenter } from "@/context/NotificationCenterContext";
 import { useFriendships } from "@/context/FriendshipContext";
@@ -6,6 +7,7 @@ import NotificationPanel from "@/components/notifications/NotificationPanel";
 import { IconBellRinging } from "@/components/notifications/NotificationIcons";
 
 export function NotificationBell() {
+  const { t } = useTranslation();
   const { unseenCount, markAllSeen } = useNotificationCenter();
   const { friendships } = useFriendships();
   const [open, setOpen] = useState(false);
@@ -51,7 +53,7 @@ export function NotificationBell() {
           backgroundColor: open ? "rgb(var(--color-primary-rgb) / 0.14)" : "var(--color-bg-input)",
           color: open ? "var(--color-primary)" : "var(--color-text-secondary)",
         }}
-        aria-label={badgeCount > 0 ? `Notifications, ${badgeCount} new` : "Notifications"}
+        aria-label={badgeCount > 0 ? t("notifications.bell_label_count", { count: badgeCount }) : t("notifications.bell_label")}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -69,7 +71,7 @@ export function NotificationBell() {
       {open && (
         <div
           role="dialog"
-          aria-label="Notifications"
+          aria-label={t("notifications.bell_label")}
           className="absolute top-full mt-2 w-[min(calc(100vw-2rem),380px)] rounded-2xl overflow-hidden z-50"
           style={{
             insetInlineEnd: 0,
