@@ -61,6 +61,12 @@ interface ReadReceiptEvent {
   read_until: string;
 }
 
+/** Structured failure from the consumer, e.g. answering a long-dead invite. */
+export interface ChatErrorEvent {
+  error: string;
+  message: string;
+}
+
 interface UseChatSocketReturn {
   status: WsStatus;
   messages: Record<string, ChatMessage[]>;
@@ -79,6 +85,8 @@ interface UseChatSocketReturn {
   clearFriendRemoved: () => void;
   readReceipt: ReadReceiptEvent | null;
   clearReadReceipt: () => void;
+  chatError: ChatErrorEvent | null;
+  clearChatError: () => void;
   onNewMessageRef: { current: ((msg: ChatMessage) => void) | null };
   reconnectCount: number;
   sendMessage: (channelId: string, content: string) => void;
@@ -108,6 +116,7 @@ export function useChatSocket(): UseChatSocketReturn {
   const [friendAccepted, setFriendAccepted] = useState<FriendAcceptedEvent | null>(null);
   const [friendRemoved, setFriendRemoved] = useState<FriendRemovedEvent | null>(null);
   const [readReceipt, setReadReceipt] = useState<ReadReceiptEvent | null>(null);
+  const [chatError, setChatError] = useState<ChatErrorEvent | null>(null);
   const [reconnectCount, setReconnectCount] = useState(0);
   const typingTimers = useRef<Record<string, Record<string, ReturnType<typeof setTimeout>>>>({});
   const lastTypingSent = useRef<Record<string, number>>({});
@@ -117,7 +126,12 @@ export function useChatSocket(): UseChatSocketReturn {
   const onMessage = useCallback((data: Record<string, unknown>) => {
     const type = data.type as string;
 
-    if (type === "connected") {
+    if (type === "error") {
+      setChatError({
+        error: (data.error as string) || "error",
+        message: (data.message as string) || "Something went wrong",
+      });
+    } else if (type === "connected") {
       const channels = (data.channels as string[]) || [];
       setConnectedChannels(channels);
       const onlineIds = (data.online_user_ids as string[]) || [];
@@ -329,6 +343,10 @@ export function useChatSocket(): UseChatSocketReturn {
     setReadReceipt(null);
   }, []);
 
+  const clearChatError = useCallback(() => {
+    setChatError(null);
+  }, []);
+
   const sendTyping = useCallback(
     (channelId: string) => {
       const now = Date.now();
@@ -378,6 +396,8 @@ export function useChatSocket(): UseChatSocketReturn {
     clearFriendRemoved,
     readReceipt,
     clearReadReceipt,
+    chatError,
+    clearChatError,
     onNewMessageRef,
     reconnectCount,
     sendMessage,

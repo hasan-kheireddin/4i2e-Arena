@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Channel, FriendshipRecord } from "../services/chat";
-import type { GameInvite, FriendRequestEvent, ChatMessage } from "../components/Chat/useChatSocket";
+import type { GameInvite, FriendRequestEvent, ChatMessage, ChatErrorEvent } from "../components/Chat/useChatSocket";
 import { useNotificationCenter } from "../context/NotificationCenterContext";
 import type { ToastData } from "../context/ToastContext";
 
@@ -17,6 +17,8 @@ interface ChatEventEffectsProps {
   clearFriendRequest: () => void;
   readReceipt: { channel_id: string; read_until: string } | null;
   clearReadReceipt: () => void;
+  chatError?: ChatErrorEvent | null;
+  clearChatError?: () => void;
   onNewMessageRef?: { current: ((msg: ChatMessage) => void) | null };
 
   setChannels: (updater: (prev: Channel[]) => Channel[]) => void;
@@ -147,6 +149,18 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
     navigate(`/games/${gtype}?game_id=${accepted.game_id}`);
     props.clearGameInviteAccepted();
   }, [props.gameInviteAccepted, navigate, props.clearGameInviteAccepted]);
+
+  // Invites carry no visible timer, so a refusal from the server — a dead or
+  // already-used invite — is the only signal the player gets.
+  useEffect(() => {
+    if (!props.chatError) return;
+    props.showToast({
+      title: props.chatError.message,
+      variant: "info",
+      duration: 4000,
+    });
+    props.clearChatError?.();
+  }, [props.chatError, props.clearChatError, props.showToast]);
 
   useEffect(() => {
     if (!props.readReceipt) return;

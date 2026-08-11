@@ -489,6 +489,8 @@
     "player2_wins": "Player 2 Wins!",
     "you_win": "You Win!",
     "you_lose": "You Lose",
+    "match_canceled": "Match Canceled",
+    "opponent_left_lobby": "Your opponent left before the match started no result was recorded.",
     "play_again": "Play Again",
     "back_to_games": "Back to Games",
     "forfeit": "Forfeit",
