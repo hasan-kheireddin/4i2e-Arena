@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { EMOTES } from "../../assets/emotes/emotes";
-import { playEmoteSound } from "../../assets/emotes/sound";
+import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 import { IconCheck, IconCheckDouble, IconGamepad } from "./ChatIcons";
 import type { ChatMessage } from "./useChatSocket";
 
@@ -48,7 +48,10 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
     if (played) return;
     setPlayed(true);
     if (emoteDef) {
-      playEmoteSound(emoteDef.soundFreq, emoteDef.soundDuration);
+      // The emote's own recording, same as the palette and the in-game overlay.
+      // The oscillator tone is only a fallback for emotes shipped without audio.
+      if (emoteDef.mp3) playEmoteMp3(emoteDef.mp3);
+      else playEmoteSound(emoteDef.soundFreq, emoteDef.soundDuration);
     }
     setTimeout(() => setPlayed(false), 1000);
   };

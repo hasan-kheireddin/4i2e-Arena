@@ -8,6 +8,7 @@ import { Card as SurfaceCard } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Spinner } from '../components/ui/Spinner';
+import BlockedAccounts from '../components/settings/BlockedAccounts';
 import { useAuth } from '../context/AuthContext';
 import {
   changePassword,
@@ -20,7 +21,7 @@ import { LANGUAGE_OPTIONS, normalizeLanguage } from '../i18n/language';
 import { setAppLanguage } from '../i18n';
 import { getApiErrorMessage } from '../services/api';
 
-type SettingsTab = 'profile' | 'security' | 'appearance';
+type SettingsTab = 'profile' | 'security' | 'privacy' | 'appearance';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -246,6 +247,7 @@ export default function SettingsPage() {
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: t('settings.tabs.profile') },
     { key: 'security', label: t('settings.tabs.security') },
+    { key: 'privacy', label: t('settings.tabs.privacy') },
     { key: 'appearance', label: t('settings.tabs.appearance') },
   ];
 
@@ -479,6 +481,13 @@ export default function SettingsPage() {
                 </Button>
               </SurfaceCard>
             </>
+          )}
+
+          {/* Privacy Tab */}
+          {tab === 'privacy' && (
+            <SurfaceCard className="p-6">
+              <BlockedAccounts />
+            </SurfaceCard>
           )}
 
           {/* Appearance Tab */}
