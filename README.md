@@ -6,17 +6,17 @@
 
 <h2 style="border-bottom: none;">  Table of Contents</h2>
 
-- [Description](#Description)
-- [Team Information](#Team-Information)
-- [Project Management](#Project-Management)
-- [Technical Stack](#️Technical-Stack)
-- [Architecture](#Architecture)
-- [Database Schema](#Database-Schema)
-- [Features](#Features)
+- [Description](#description)
+- [Team Information](#team-information)
+- [Project Management](#project-management)
+- [Technical Stack](#technical-stack)
+- [Architecture](#architecture)
+- [Database Schema](#database-schema)
+- [Features](#features)
 - [Modules](#modules)
-- [Individual Contributions](#individual-Contributions)
-- [Installation & Instructions](#Installation-&-Instructions)
-- [Resources](#Resources)
+- [Individual Contributions](#individual-contributions)
+- [Installation & Instructions](#installation--instructions)
+- [Resources](#resources)
 
 # Description
 ## Project Overview & Main Goal
@@ -46,9 +46,9 @@ The project was developed by a team 4 students.
 | Developer | Role                        | Responsibilities
 | --------- | --------------------------- |  --------------------------------------------------|
 | **hkheired** | Backend Developer    | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA)   |
-| **mjamil** | Fronend Developer | React UI architecture, design system, i18n/RTL, cross browser support  |
+| **mjamil** | Frontend Developer | React UI architecture, design system, i18n/RTL, cross browser support  |
 | **nabbas** | Product Owner and Manager          | Pong game logic, analytics and gamification |
-|rchalak | Full Stack Developer | 3D graphics, spectator mode, friends and chat system 
+|**rchalak** | Full Stack Developer | 3D graphics, spectator mode, friends and chat system 
 
 <br>
 
@@ -474,6 +474,15 @@ explain why you choose to done those:
 - Total: 25 points
 
 # Individual Contributions
+### hkheired Contributions
+
+
+### mjamil Contributions
+
+### nabbas Contributions
+
+### rchalak Contributions
+
 
 
 # Installation & Instructions
