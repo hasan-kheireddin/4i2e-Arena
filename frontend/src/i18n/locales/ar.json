@@ -464,6 +464,7 @@
     "add_friend": "إضافة صديق",
     "remove_friend": "إزالة الصديق",
     "accept_request": "قبول الطلب",
+    "decline_request": "حذف",
     "cancel_request": "إلغاء الطلب",
     "send_message": "إرسال رسالة",
     "invite_to_game": "دعوة إلى مباراة",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Channel, FriendshipRecord } from "../services/chat";
 import type { GameInvite, FriendRequestEvent, ChatMessage, ChatErrorEvent } from "../components/Chat/useChatSocket";
@@ -45,6 +45,14 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
   const { addNotification } = useNotificationCenter();
   const [friendNotif, setFriendNotif] = useState<FriendRequestEvent | null>(null);
 
+  // Socket callbacks fire outside React's render cycle, so anything they read
+  // has to come from a ref. Reading `props.channels` through a closure meant the
+  // mute flag was whatever it was when that closure was built — a message
+  // arriving between the toggle request and its re-render used the old value,
+  // which is why muting appeared to work only some of the time.
+  const liveRef = useRef(props);
+  liveRef.current = props;
+
   // Incoming friend request — the bell reads pending requests off the friendship
   // list, so this only needs the live toast plus the optimistic list insert.
   useEffect(() => {
@@ -78,7 +86,7 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
   useEffect(() => {
     const invite = props.gameInvite;
     if (!invite) return;
-    const muteCh = props.channels?.find((c) => c.id === invite.channel_id);
+    const muteCh = liveRef.current.channels?.find((c) => c.id === invite.channel_id);
     if (muteCh?.notifications_muted) return;
     const label = gameLabel(invite.game_type);
     props.showToast({
@@ -177,27 +185,33 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
 
   // Direct messages surface as a toast only — they stay out of the bell, where
   // the unread badges in the chat list already track them.
-  if (props.onNewMessageRef) {
-    const showToast = props.showToast;
-    const navigateToChat = props.navigateToChat;
-    props.onNewMessageRef.current = (msg: ChatMessage) => {
-      if (!msg.sender || !props.currentUserId) return;
-      if (msg.sender === props.currentUserId) return;
-      if (msg.channel_id === props.activeChannel) return;
-      const ch = props.channels?.find((c) => c.id === msg.channel_id);
+  //
+  // Installed in an effect rather than during render: a render can be thrown
+  // away before it commits, and installing from one would leave a handler
+  // holding state the app never actually adopted.
+  const onNewMessageRef = props.onNewMessageRef;
+  useEffect(() => {
+    if (!onNewMessageRef) return;
+    onNewMessageRef.current = (msg: ChatMessage) => {
+      const live = liveRef.current;
+      if (!msg.sender || !live.currentUserId) return;
+      if (msg.sender === live.currentUserId) return;
+      if (msg.channel_id === live.activeChannel) return;
+      const ch = live.channels?.find((c) => c.id === msg.channel_id);
       if (ch?.notifications_muted) return;
       const preview = msg.message_type === "emote"
         ? "Sent a reaction"
         : msg.content.length > 70 ? `${msg.content.slice(0, 70)}…` : msg.content;
-      showToast({
+      live.showToast({
         title: msg.sender_username || "New message",
         description: preview,
         variant: "message",
         avatar: msg.sender_avatar || undefined,
-        onClick: navigateToChat ? () => navigateToChat(msg.channel_id) : undefined,
+        onClick: live.navigateToChat ? () => live.navigateToChat!(msg.channel_id) : undefined,
       });
     };
-  }
+    return () => { onNewMessageRef.current = null; };
+  }, [onNewMessageRef]);
 
   return friendNotif;
 }

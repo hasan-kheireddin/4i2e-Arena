@@ -12,6 +12,7 @@ import { buildActivePeople } from "../components/Chat/activePeople";
 import { IconChat } from "../components/Chat/ChatIcons";
 import { loadHiddenChannels, saveHiddenChannels } from "../components/Chat/hiddenChats";
 import { registerChatOpener } from "../components/Chat/chatOpener";
+import { withLatestMessages } from "../components/Chat/channelPreviews";
 import {
   fetchChannels,
   sendFriendRequest, acceptFriendRequest, removeFriend,
@@ -123,6 +124,30 @@ export default function ChatPage() {
       })
       .catch(() => {});
   }, [reconnectCount]);
+
+  // Keep the conversation list's preview line and ordering in step with what
+  // the socket delivers, instead of only with what the last fetch returned.
+  useEffect(() => {
+    setChannels((prev) => withLatestMessages(prev, messages));
+  }, [messages]);
+
+  // The socket can deliver a message for a conversation this list has never
+  // seen — a first-time DM opened by the other person. Without the channel
+  // there is nothing to list or open, so pull it in as soon as one lands.
+  const requestedLookups = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const unknown = Object.keys(messages).filter(
+      (cid) => !channels.some((c) => c.id === cid) && !requestedLookups.current.has(cid),
+    );
+    if (unknown.length === 0) return;
+    unknown.forEach((cid) => requestedLookups.current.add(cid));
+    fetchChannels()
+      .then((list) => {
+        setChannels(list);
+        list.forEach((c) => requestedLookups.current.delete(c.id));
+      })
+      .catch(() => unknown.forEach((cid) => requestedLookups.current.delete(cid)));
+  }, [messages, channels]);
 
   useEffect(() => {
     if (activeChannel) requestHistory(activeChannel);

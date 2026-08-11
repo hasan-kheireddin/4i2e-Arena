@@ -464,6 +464,7 @@
     "add_friend": "Ajouter",
     "remove_friend": "Retirer des amis",
     "accept_request": "Accepter la demande",
+    "decline_request": "Supprimer",
     "cancel_request": "Annuler la demande",
     "send_message": "Envoyer un message",
     "invite_to_game": "Inviter à jouer",

@@ -11,7 +11,7 @@ import {
   type UserXPDetail, type AchievementStats, type AchievementUnlock,
 } from "../services/analytics";
 import {
-  fetchFriendships, sendFriendRequest, acceptFriendRequest, removeFriend,
+  fetchFriendships, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend,
   getOrCreateDM,
 } from "../services/chat";
 import { useChatSocket } from "../components/Chat/useChatSocket";
@@ -181,8 +181,25 @@ useEffect(() => {
       }
       await refreshFriendships();
     } catch (e) {
+      // The record can already be gone server-side — a request rejected while
+      // this tab was offline, or answered in another tab. Re-syncing turns the
+      // dead "Cancel Request" button back into "Add Friend" instead of letting
+      // it 404 forever.
+      console.error("Friend action error:", e);
+      refreshFriendships();
+    }
+  };
+
+  const handleDeclineRequest = async () => {
+    if (!friendRel) return;
+    try {
+      await rejectFriendRequest(friendRel.id);
+    } catch (e) {
       console.error("Friend action error:", e);
     }
+    // Runs either way: a request already answered elsewhere still needs the
+    // stale buttons cleared off this page.
+    refreshFriendships();
   };
 
   const handleOpenDM = async () => {
@@ -371,6 +388,21 @@ useEffect(() => {
                friendStatus === "pending" && friendDirection === "sent" ? t("profile.cancel_request") :
                t("profile.add_friend")}
             </button>
+            {/* An incoming request needs both answers here, the same pair the
+                notification panel offers — accepting was the only option. */}
+            {friendStatus === "pending" && friendDirection === "received" && (
+              <button
+                onClick={handleDeclineRequest}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-surface-hover"
+                style={{
+                  backgroundColor: "var(--color-bg-input)",
+                  color: "var(--color-text-secondary)",
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                {t("profile.decline_request")}
+              </button>
+            )}
             <button
               onClick={handleOpenDM}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"

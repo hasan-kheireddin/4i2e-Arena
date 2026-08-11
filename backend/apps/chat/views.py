@@ -424,5 +424,23 @@ class FriendshipViewSet(mixins.ListModelMixin,
             return Response({"detail": "Only the recipient can reject."}, status=status.HTTP_403_FORBIDDEN)
         if friendship.status != Friendship.PENDING:
             return Response({"detail": "Friendship is not pending."}, status=status.HTTP_400_BAD_REQUEST)
+        # Tell the sender their request is gone, exactly as unfriending does.
+        # Without this their client keeps the stale pending row and its
+        # "Cancel Request" button 404s against a friendship that no longer exists.
+        friendship_id = str(friendship.id)
+        sender_id = friendship.from_user_id
         friendship.delete()
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{sender_id}",
+                {
+                    "type": "chat.friend_removed",
+                    "friendship_id": friendship_id,
+                    "removed_by": str(request.user.pk),
+                    "target_user_id": str(sender_id),
+                },
+            )
+        except Exception:
+            pass
         return Response(status=status.HTTP_204_NO_CONTENT)
