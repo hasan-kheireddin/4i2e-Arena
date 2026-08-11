@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useFriendships } from "../../context/FriendshipContext";
 import { useBlocks } from "../../context/BlockContext";
 import { useToast } from "../../context/ToastContext";
@@ -26,6 +27,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 
 export default function FloatingChatWidget() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -301,7 +303,7 @@ export default function FloatingChatWidget() {
       setActiveChannel(null);
       setView("list");
     }
-    showToast({ title: "Conversation removed from your list", variant: "success" });
+    showToast({ title: t("chat.conversation_removed"), variant: "success" });
   };
 
   const friendUserIds = new Set(friendships.filter((f) => f.status === "accepted").map((f) => f.other_user_id));

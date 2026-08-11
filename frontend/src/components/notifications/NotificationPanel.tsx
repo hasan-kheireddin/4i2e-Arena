@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import ChatAvatar from "@/components/Chat/ChatAvatar";
@@ -16,6 +17,7 @@ type FeedItem =
   | { key: string; createdAt: number; isNew: boolean; type: "request"; request: FriendshipRecord };
 
 export default function NotificationPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { notifications, markRead, markAllRead, remove, clear } = useNotificationCenter();
   const { friendships, setFriendships, refresh: refreshFriendships } = useFriendships();
@@ -58,18 +60,18 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
         const updated = await acceptFriendRequest(f.id);
         setFriendships((prev) => prev.map((x) => (x.id === f.id ? { ...x, ...updated } : x)));
         showToast({
-          title: `You and ${name} are now friends`,
-          description: "Say hello or invite them to a game",
+          title: t("notifications.toast_now_friends_title", { name }),
+          description: t("notifications.toast_say_hello"),
           variant: "friend_accepted",
           onClick: () => navigate(`/profile/${f.other_user_id}`),
         });
       } else {
         await rejectFriendRequest(f.id);
         setFriendships((prev) => prev.filter((x) => x.id !== f.id));
-        showToast({ title: `Request from ${name} declined`, variant: "info", duration: 2500 });
+        showToast({ title: t("notifications.toast_request_declined", { name }), variant: "info", duration: 2500 });
       }
     } catch {
-      showToast({ title: "That didn't go through. Please try again.", variant: "info" });
+      showToast({ title: t("notifications.toast_failed"), variant: "info" });
     }
     refreshFriendships();
     setBusyId(null);
@@ -93,12 +95,12 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     <div className="flex flex-col max-h-[min(32rem,calc(100vh-6rem))]">
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-2 px-4 pt-3.5 pb-1">
-        <h2 className="text-[19px] font-bold tracking-tight text-primary">Notifications</h2>
+        <h2 className="text-[19px] font-bold tracking-tight text-primary">{t("notifications.panel_title")}</h2>
         <div className="relative">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
-            aria-label="Notification options"
+            aria-label={t("notifications.options")}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-surface-hover"
@@ -122,12 +124,12 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
             >
               <MenuItem
                 icon={<IconMailOpen size={15} />}
-                label="Mark all as read"
+                label={t("notifications.mark_all_read")}
                 onClick={() => { markAllRead(); setMenuOpen(false); }}
               />
               <MenuItem
                 icon={<IconSweep size={15} />}
-                label="Clear all"
+                label={t("notifications.clear_all")}
                 danger
                 onClick={() => { clear(); setMenuOpen(false); }}
               />
@@ -138,13 +140,13 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
 
       {/* ── Tabs ── */}
       <div className="flex items-center gap-2 px-4 pb-2">
-        {(["all", "unread"] as const).map((t) => {
-          const active = tab === t;
+        {(["all", "unread"] as const).map((key) => {
+          const active = tab === key;
           return (
             <button
-              key={t}
+              key={key}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => setTab(key)}
               className={cn(
                 "px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-colors",
                 !active && "hover:bg-surface-hover",
@@ -154,7 +156,7 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
                 color: active ? "var(--color-primary)" : "var(--color-text-secondary)",
               }}
             >
-              {t === "all" ? "All" : "Unread"}
+              {key === "all" ? t("notifications.tab_all") : t("notifications.tab_unread")}
             </button>
           );
         })}
@@ -171,17 +173,17 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
               <IconInbox size={22} />
             </div>
             <p className="text-[13px] font-semibold text-primary">
-              {tab === "unread" ? "Nothing unread" : "You're all caught up"}
+              {tab === "unread" ? t("notifications.nothing_unread") : t("notifications.all_caught_up")}
             </p>
             <p className="text-[11.5px] leading-relaxed text-muted">
-              Friend requests, game invites and rewards will show up here.
+              {t("notifications.empty_hint")}
             </p>
           </div>
         ) : (
           <>
             {fresh.length > 0 && (
               <>
-                <SectionLabel>New</SectionLabel>
+                <SectionLabel>{t("notifications.section_new")}</SectionLabel>
                 {fresh.map((item) => (
                   <Row
                     key={item.key}
@@ -197,7 +199,7 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
             )}
             {earlier.length > 0 && (
               <>
-                <SectionLabel>Earlier</SectionLabel>
+                <SectionLabel>{t("notifications.section_earlier")}</SectionLabel>
                 {earlier.map((item) => (
                   <Row
                     key={item.key}
@@ -253,6 +255,7 @@ interface RowProps {
 }
 
 function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: RowProps) {
+  const { t } = useTranslation();
   const isRequest = item.type === "request";
   const kind = isRequest ? "friend_request" : item.entry.kind;
   const style = KIND_STYLE[kind];
@@ -261,7 +264,7 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
     ? item.request.other_display_name || item.request.other_username
     : item.entry.actor;
   const avatar = isRequest ? item.request.other_avatar : item.entry.avatar;
-  const title = isRequest ? "sent you a friend request." : item.entry.title;
+  const title = isRequest ? t("notifications.entry_sent_friend_request") : item.entry.title;
   const body = isRequest ? undefined : item.entry.body;
 
   const clickable = isRequest || !!item.entry.link;
@@ -292,7 +295,7 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
             <span
               className="absolute -bottom-0.5 -right-0.5 w-[22px] h-[22px] rounded-full flex items-center justify-center text-white"
               style={{ backgroundColor: style.color, border: "2px solid var(--color-bg-surface)" }}
-              title={style.label}
+              title={t(style.labelKey)}
             >
               {style.icon}
             </span>
@@ -301,7 +304,7 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
           <span
             className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `rgb(${style.rgb} / 0.14)`, color: style.color }}
-            title={style.label}
+            title={t(style.labelKey)}
           >
             <span className="scale-[1.7] flex">{style.icon}</span>
           </span>
@@ -317,7 +320,7 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
             className="text-[11.5px] font-semibold mt-1"
             style={{ color: item.isNew ? "var(--color-primary)" : "var(--color-text-muted)" }}
           >
-            {relativeTime(item.createdAt)}
+            {relativeTime(item.createdAt, t)}
           </p>
 
           {isRequest && (
@@ -329,7 +332,7 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
                 className="px-5 py-1.5 rounded-lg text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundImage: "var(--gradient-brand)" }}
               >
-                Confirm
+                {t("notifications.confirm")}
               </button>
               <button
                 type="button"
@@ -338,7 +341,7 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
                 className="px-5 py-1.5 rounded-lg text-[12.5px] font-semibold transition-colors hover:bg-surface-hover disabled:opacity-50"
                 style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-secondary)", border: "1px solid var(--color-border)" }}
               >
-                Delete
+                {t("notifications.delete")}
               </button>
             </div>
           )}
@@ -349,15 +352,15 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
             <span
               className="w-2.5 h-2.5 rounded-full"
               style={{ backgroundImage: "var(--gradient-brand)" }}
-              title="Unread"
+              title={t("notifications.unread")}
             />
           )}
           {!isRequest && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(item.entry.id); }}
-              aria-label="Remove notification"
-              title="Remove"
+              aria-label={t("notifications.remove_notification")}
+              title={t("notifications.remove")}
               className="w-6 h-6 rounded-full items-center justify-center hidden group-hover:flex transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-muted)" }}
             >

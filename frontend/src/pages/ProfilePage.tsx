@@ -393,12 +393,8 @@ useEffect(() => {
             {friendStatus === "pending" && friendDirection === "received" && (
               <button
                 onClick={handleDeclineRequest}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-surface-hover"
-                style={{
-                  backgroundColor: "var(--color-bg-input)",
-                  color: "var(--color-text-secondary)",
-                  border: "1px solid var(--color-border)",
-                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#EF4444" }}
               >
                 {t("profile.decline_request")}
               </button>

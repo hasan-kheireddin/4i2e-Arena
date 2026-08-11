@@ -33,16 +33,16 @@ export default function GamificationNotifications() {
         const name = achievement.name || t("notifications.achievement_fallback_name");
         const xpReward = Number(achievement.xp_reward ?? 0);
         showToast({
-          title: `Achievement unlocked — ${name}`,
-          description: xpReward > 0 ? `+${xpReward} XP earned` : undefined,
+          title: t("notifications.toast_achievement", { name }),
+          description: xpReward > 0 ? t("notifications.toast_xp_earned", { xp: xpReward }) : undefined,
           variant: "achievement",
           duration: 5000,
           onClick: () => navigate("/achievements"),
         });
         addNotification({
           kind: "achievement",
-          title: `You unlocked ${name}.`,
-          body: xpReward > 0 ? `+${xpReward} XP` : undefined,
+          title: t("notifications.entry_unlocked", { name }),
+          body: xpReward > 0 ? t("notifications.entry_xp_reward", { xp: xpReward }) : undefined,
           link: "/achievements",
           dedupeKey: `achievement-${achievement.id ?? name}`,
         });
@@ -67,14 +67,14 @@ export default function GamificationNotifications() {
         if (newLevel > 0) {
           showToast({
             title: t("notifications.level_up", { level: newLevel }),
-            description: "Keep playing to climb the leaderboard",
+            description: t("notifications.toast_keep_playing"),
             variant: "level",
             duration: 4500,
             onClick: () => navigate("/leaderboard"),
           });
           addNotification({
             kind: "level",
-            title: `You reached level ${newLevel}.`,
+            title: t("notifications.entry_reached_level", { level: newLevel }),
             link: "/leaderboard",
             dedupeKey: `level-${newLevel}`,
           });

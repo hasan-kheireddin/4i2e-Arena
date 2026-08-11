@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import ChatAvatar from "./Chat/ChatAvatar";
 import {
   IconCheck,
@@ -65,6 +66,7 @@ export default function Toast({
   onClick,
   onClose,
 }: ToastProps) {
+  const { t } = useTranslation();
   const style = VARIANT[variant];
   const [leaving, setLeaving] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -128,7 +130,7 @@ export default function Toast({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); dismiss(); }}
-          aria-label="Dismiss"
+          aria-label={t("notifications.dismiss")}
           className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-surface-hover"
           style={{ color: "var(--color-text-muted)" }}
         >

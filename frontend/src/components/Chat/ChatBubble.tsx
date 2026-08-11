@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { EMOTES } from "../../assets/emotes/emotes";
 import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 import { IconCheck, IconCheckDouble, IconGamepad } from "./ChatIcons";
@@ -26,12 +27,13 @@ const PEER_BUBBLE: React.CSSProperties = {
 };
 
 function ReadReceipt({ createdAt, readUntil }: { createdAt: string; readUntil?: string | null }) {
+  const { t } = useTranslation();
   const seen = !!readUntil && new Date(createdAt) <= new Date(readUntil);
   return (
     <span
       className="mt-0.5 mr-1 flex items-center"
       style={{ color: seen ? "var(--color-success)" : "var(--color-text-muted)" }}
-      title={seen ? "Seen" : "Sent"}
+      title={seen ? t("chat.seen") : t("chat.sent")}
     >
       {seen ? <IconCheckDouble size={13} /> : <IconCheck size={13} />}
     </span>
@@ -39,6 +41,7 @@ function ReadReceipt({ createdAt, readUntil }: { createdAt: string; readUntil?: 
 }
 
 export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUntil, sendGameInviteResponse }: ChatBubbleProps) {
+  const { t } = useTranslation();
   const [played, setPlayed] = useState(false);
   const [inviteResponded, setInviteResponded] = useState(false);
 
@@ -89,14 +92,14 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
             <>
               <button onClick={handleAccept}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: "var(--color-success)" }}>Accept</button>
+                style={{ backgroundColor: "var(--color-success)" }}>{t("chat.accept")}</button>
               <button onClick={handleDecline}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: "var(--color-danger)" }}>Decline</button>
+                style={{ backgroundColor: "var(--color-danger)" }}>{t("chat.decline")}</button>
             </>
           )}
           {!isOwn && inviteResponded && (
-            <span className="text-xs opacity-70">Response sent</span>
+            <span className="text-xs opacity-70">{t("chat.response_sent")}</span>
           )}
         </div>
         {isOwn && <ReadReceipt createdAt={msg.created_at} readUntil={dmPartnerReadUntil} />}

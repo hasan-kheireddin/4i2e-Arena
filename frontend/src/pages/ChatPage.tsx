@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useFriendships } from "../context/FriendshipContext";
 import { useBlocks } from "../context/BlockContext";
 import { useToast } from "../context/ToastContext";
@@ -22,6 +23,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 
 export default function ChatPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -258,7 +260,7 @@ export default function ChatPage() {
       return next;
     });
     if (activeChannel === channelId) setActiveChannel(null);
-    showToast({ title: "Conversation removed from your list", variant: "success" });
+    showToast({ title: t("chat.conversation_removed"), variant: "success" });
   };
 
   const handleInviteGame = (targetUserId: string) => {
@@ -278,7 +280,7 @@ export default function ChatPage() {
   );
 
   const partner = activeChannelData?.dm_partner || null;
-  const activeTitle = partner ? partner.display_name || partner.username : "Chat";
+  const activeTitle = partner ? partner.display_name || partner.username : t("chat.title");
 
   return (
     <div className="w-full flex justify-center">

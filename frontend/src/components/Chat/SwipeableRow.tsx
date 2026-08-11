@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface SwipeAction {
   key: string;
@@ -33,6 +34,7 @@ export default function SwipeableRow({
   actionWidth = 68,
   className = "",
 }: SwipeableRowProps) {
+  const { t } = useTranslation();
   const total = actions.length * actionWidth;
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -166,8 +168,8 @@ export default function SwipeableRow({
               e.stopPropagation();
               onOpenChange(true);
             }}
-            title="More actions"
-            aria-label="More actions"
+            title={t("chat.more_actions")}
+            aria-label={t("chat.more_actions")}
             className="absolute inset-y-0 right-0 w-12 hidden md:flex items-center justify-end pr-2 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
               color: "var(--color-text-muted)",
