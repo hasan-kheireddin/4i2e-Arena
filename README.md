@@ -8,8 +8,8 @@
 
 - [Description](#Description)
 - [Team Information](#Team-Information)
-- [Project Mangement](#Project-Mangement)
-- [Technical Stack](#️Technical-stack)
+- [Project Management](#Project-Management)
+- [Technical Stack](#️Technical-Stack)
 - [Architecture](#Architecture)
 - [Database Schema](#Database-Schema)
 - [Features](#Features)
@@ -65,7 +65,6 @@ These tasks were assigned to team members according to their qualifications and 
 - GitHub Issues For task tracking.
 - Git for version control
 - WhatsApp for daily communication and meetings
-<br>
 
 ### Meetings
 The team held weekly meetings to review progress, discuss completed tasks and plan upcoming work.
@@ -79,6 +78,7 @@ The project follows a **full-stack modular architecture** with real-time capabil
 * **Language:** TypeScript
 * **Routing:** React Router
 * **Styling:** Tailwind CSS
+* **3D Graphics:** Babylon.js
 * **UI & Icons:** Lucide React
 * **Internationalization:** i18next
 
@@ -116,6 +116,20 @@ Postgres offers
 * **SSL**
 * **Makefile**
 
+
+# Architecture
+The project follows a **full-stack modular architecture** with real-time capabilities, secure authentication, and scalable infrastructure.
+
+### Deployment Architecture
+Five containers on one bridge network, with exactly one published port. Nginx terminates TLS and is the only thing the browser ever talks to — it splits traffic by path prefix, so the app is same-origin end to end and the JWT can live in a Secure HttpOnly cookie instead of localStorage.
+![containers](./assists/containers.png)
+
+### The match loop
+Gameplay is server-authoritative: the client sends intent (up, down, stop), never position. The consumer owns the physics, steps it on a fixed timestep, and broadcasts snapshots at half the tick rate. This is the one genuinely sequential part of the system, so it's numbered. 
+![loop](./assists/loop.png)
+### Backend Architecture
+The backend is a Django monolith with a REST API, WebSocket consumers, and a PostgreSQL database. The Django ORM is used for all database interactions, and migrations are used to manage schema changes. The backend is responsible for user authentication, game logic, match history, and analytics.
+![alt text](./assists/backend.png)
 # Database Schema
 The database schema is designed around four domains.
 ## Identity & Authentication
@@ -355,10 +369,157 @@ erDiagram
 
 
 # Modules
-The project is divided into several modules, each responsible for a specific aspect of the application:
-- 
+The project is divided into several modules, each responsible for a specific aspect of the application and all developers contributed with each other to some modules, but each developer had a main module that they were responsible for:
 
-<br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+- Major: Use a framework for both the frontend and backend.
+<br>
+We choose to use React for the frontend and Django for the backend, leveraging their respective strengths in building modern web applications.
+
+## hkheired part
+- Major: Implement real-time features using WebSockets or similar technology.
+    - Real-time updates across clients.
+    - Handle connection/disconnection gracefully.
+    - Efficient message broadcasting.
+
+- Major: Remote players — Enable two players on separate computers to play the same game in real-time.
+    - Handle network latency and disconnections gracefully.
+    - Provide a smooth user experience for remote gameplay.
+    - Implement reconnection logic.
+
+- Minor: Use an ORM for the database
+
+- Minor: Implement a complete 2FA system for the users.
+
+explain why you choose to done those:
+
+## mjamil part
+- Minor: Support for multiple languages (at least 3 languages).
+    - Implement i18n (internationalization) system.
+    - At least 3 complete language translations.
+    - Language switcher in the UI.
+    - All user-facing text must be translatable.
+
+- Minor: Right-to-left (RTL) language support.
+    - Support for at least one RTL language (Arabic)
+    - Complete layout mirroring (not just text direction).
+    - RTL-specific UI adjustments where needed.
+    - Seamless switching between LTR and RTL.
+
+- Minor: Support for additional browsers.
+    - Full compatibility with at least 2 additional browsers (Firefox, Brave).
+    - Test and fix all features in each browser.
+    - Document any browser-specific limitations.
+    - Consistent UI/UX across all supported browsers.
+
+- Minor: Implement advanced search functionality with filters, sorting, and pagination
+
+- Minor: Custom-made design system with reusable components, including a proper color palette, typography, and icons (minimum: 10 reusable components).
+
+explain why you choose to done those:
+## nabbas part
+- Major: Implement a complete web-based game where users can play against each other.
+    - The game can be real-time multiplayer (Pong)
+    - Players must be able to play live matches.
+    - The game must have clear rules and win/loss conditions.
+    - The game can be 2D or 3D.
+
+- Major: Add another game with user history and matchmaking.(TicTacToe)
+    - Implement a second distinct game.
+    - Track user history and statistics for this game.
+    - Implement a matchmaking system.
+    - Maintain performance and responsiveness.
+
+- Minor: Game statistics and match history (requires a game module).
+    - Track user game statistics (wins, losses, ranking, level, etc.).
+    - Display match history (1v1 games, dates, results, opponents).
+    - Show achievements and progression.
+    - Leaderboard integration
+
+- Minor: A gamification system to reward users for their actions.
+    - Implement achievements, leaderboards, XP/level system.
+    - System must be persistent (stored in database)
+    - Visual feedback for users (notifications, progress bars)
+    - Clear rules and progression mechanics.
+
+Explain why you choose to done those:
+
+## rchalak part
+- Major: Allow users to interact with other users. The minimum requirements are:
+    - A basic chat system (send/receive messages between users)
+    - A profile system (view user information).
+    - A friends system (add/remove friends, see friends list).
+
+- Major: Implement advanced 3D graphics using a library like Three js or Baby-lon.js.
+    - Create an immersive 3D environment.
+    - Implement advanced rendering techniques.
+    - Ensure smooth performance and user interaction.
+
+- Minor: Advanced chat features (enhances the basic chat from "User interaction"module).
+    - Ability to block users from messaging you.
+    - Invite users to play games directly from chat.
+    - Access to user profiles from chat interface.
+    - Chat history persistence.
+    - Typing indicators and read receipts
+
+- Minor: Implement spectator mode for games.
+    - Allow users to watch ongoing games.
+    - Real-time updates for spectators.
+    - Optional: spectator chat.
+
+explain why you choose to done those:
+
+### point Calculation
+- Major: 14 points
+- Minor: 11 points
+- Total: 25 points
+
+# Individual Contributions
+
+
+# Installation & Instructions
+### Prerequisites
+- Docker & Docker Compose installed on your machine.
+- A modern web browser (Chrome, Firefox, Brave, edge).
+- Node.js and npm installed (for frontend development).
+- git installed (for cloning the repository).
+- github account (for accessing the repository).
+- MakeFile installed (for building and running the project).
+- ports 8443, 5433, 6380, 3000 are available and not blocked by firewall or other applications.
+
+### Instructions
+1. Clone the repository:
+```bash
+git clone https://github.com/4i2e-Arena/4i2e-Arena.git
+```
+2. Navigate to the project directory:
+```bash
+cd 4i2e-Arena
+```
+3. Build and start the Docker containers:
+```bash
+make
+```
+4. Access the application in your web browser at:
+```
+https://localhost:8443
+or
+https://MACHINE_IP:8443
+```
+5. Create an account, verify your email, and start playing games with friends!
+
+# Resources
+- [Django Documentation](https://docs.djangoproject.com/en/5.1/)
+- [Django REST Framework Documentation](https://www.django-rest-framework.org/)
+- [Django Channels Documentation](https://channels.readthedocs.io/en/stable/)
+- [Docker Documentation](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://docs.docker.com/&ved=2ahUKEwjDkZ2nrZiWAxXbR_4FHSGwK3QQFnoECA4QAQ&usg=AOvVaw2o85KRImb73of1uit3agPQ)
+- [TypeScript](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.typescriptlang.org/docs/&ved=2ahUKEwj0g8XKrZiWAxUf9QIHHXWkJRAQFnoECAwQAQ&usg=AOvVaw20TV6LfjkMklzed6tZ3GJe)
+- [Pong game Article](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://towardsdatascience.com/coding-the-pong-game-from-scratch-in-python/&ved=2ahUKEwjl_c_mrZiWAxUa0gIHHURVEdoQFnoECCEQAQ&usg=AOvVaw3xxoYT0a_IkUVpkpCS5jlG)
+
+We Used Artificial Intelligence in generating ERD diagrams by providing the database schema for README.md file, also we use it in testing the implemented backend features by asking him to generate a temporary UI design.
+
+
+
+
 ### mjamil part
 
 My part in this project is the entire frontend, built with React + TypeScript + Vite.
