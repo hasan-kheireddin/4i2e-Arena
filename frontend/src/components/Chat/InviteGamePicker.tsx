@@ -16,7 +16,7 @@ export default function InviteGamePicker({ onSelect, onCancel }: InviteGamePicke
             <button
               key={g}
               onClick={() => onSelect(g)}
-              className="px-4 py-2 rounded text-xs font-medium text-white text-left"
+              className="px-4 py-2 rounded text-xs font-medium text-white text-start"
               style={{ backgroundColor: "var(--color-primary)" }}
             >
               {g === "pong3d" ? "Pong 3D" : g.charAt(0).toUpperCase() + g.slice(1)}
@@ -27,7 +27,7 @@ export default function InviteGamePicker({ onSelect, onCancel }: InviteGamePicke
             className="px-4 py-2 rounded text-xs"
             style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-primary)" }}
           >
-            Cancel
+            {t("chat.cancel")}
           </button>
         </div>
       </div>

@@ -492,7 +492,7 @@ function PongControls({ props }: { props: PongGameViewProps }) {
             <button onClick={props.onToggleLocalPause}
               className="px-4 py-1.5 rounded-lg text-sm font-medium"
               style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-              {props.isLocalPaused ? 'Resume' : 'Pause'}
+              {props.isLocalPaused ? t('pong.resume') : t('pong.pause')}
             </button>
             <button onClick={props.onBackToGames}
               className="px-4 py-1.5 rounded-lg text-sm font-medium"
@@ -510,10 +510,10 @@ function PongControls({ props }: { props: PongGameViewProps }) {
                 color: props.spectateLinkCopied ? 'var(--color-success)' : 'var(--color-text-secondary)',
                 border: `1px solid ${props.spectateLinkCopied ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'}`,
               }}
-              title={t('pong.share_spectate', 'Share spectate link')}>
+              title={t('pong.share_spectate')}>
               {props.spectateLinkCopied
-                ? <><Check className="w-4 h-4" /> {t('pong.copied', 'Copied!')}</>
-                : <><Link2 className="w-4 h-4" /> {t('pong.share', 'Share')}</>}
+                ? <><Check className="w-4 h-4" /> {t('pong.copied')}</>
+                : <><Link2 className="w-4 h-4" /> {t('pong.share')}</>}
             </button>
             <button onClick={props.onToggleEmotePalette}
               className="px-3 py-1.5 rounded-lg flex items-center transition-colors"

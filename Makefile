@@ -29,7 +29,8 @@ logs-frontend:
 	docker compose logs -f frontend
 
 restart:
-	docker compose restart
+	docker compose stop
+	docker compose up -d
 
 restart-backend:
 	docker compose restart backend

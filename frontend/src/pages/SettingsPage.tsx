@@ -17,7 +17,7 @@ import {
   twoFAStatus,
   updateProfile,
 } from '../services/auth';
-import { LANGUAGE_OPTIONS, normalizeLanguage } from '../i18n/language';
+import { LANGUAGE_OPTIONS, normalizeLanguage, rememberLanguageChoice } from '../i18n/language';
 import { setAppLanguage } from '../i18n';
 import { getApiErrorMessage } from '../services/api';
 
@@ -61,6 +61,7 @@ export default function SettingsPage() {
     const normalizedLang = setAppLanguage(lang);
     setLanguage(normalizedLang);
     setLanguageError(null);
+    rememberLanguageChoice();
 
     if (!user || user.preferred_language === normalizedLang) return;
 

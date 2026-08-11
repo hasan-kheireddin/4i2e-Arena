@@ -504,12 +504,18 @@ useEffect(() => {
               <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--color-border)" }}>
                 <p className="text-xs font-medium mb-2" style={{ color: "var(--color-text-muted)" }}>{t("profile.recent_form")}</p>
                 <div className="flex gap-1.5">
-                  {recentForm.slice(-10).map((r, i) => (
-                    <div key={i} className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white"
-                      style={{ backgroundColor: r === "W" ? "#22c55e" : r === "L" ? "#ef4444" : "#f59e0b" }}>
-                      {r}
-                    </div>
-                  ))}
+                  {recentForm.slice(-10).map((r, i) => {
+                    // The API speaks W/L/D; the badge shows the letter of the
+                    // active language, with the full result as its tooltip.
+                    const outcome = r === "W" ? "win" : r === "L" ? "loss" : "draw";
+                    return (
+                      <div key={i} className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white"
+                        style={{ backgroundColor: r === "W" ? "#22c55e" : r === "L" ? "#ef4444" : "#f59e0b" }}
+                        title={t(`profile.result_${outcome}`)}>
+                        {t(`profile.form_${outcome}`)}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

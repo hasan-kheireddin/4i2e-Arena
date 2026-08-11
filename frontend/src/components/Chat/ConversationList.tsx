@@ -46,7 +46,7 @@ interface ConversationListProps {
   title?: string;
 }
 
-function formatStamp(iso: string, t: TFunction): string {
+function formatStamp(iso: string, t: TFunction, locale: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const now = new Date();
@@ -54,11 +54,11 @@ function formatStamp(iso: string, t: TFunction): string {
   const stamp = d.getTime();
 
   if (stamp >= startOfToday) {
-    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
   }
   if (stamp >= startOfToday - 86_400_000) return t("chat.yesterday");
-  if (stamp >= startOfToday - 6 * 86_400_000) return d.toLocaleDateString([], { weekday: "short" });
-  return d.toLocaleDateString([], { day: "2-digit", month: "short" });
+  if (stamp >= startOfToday - 6 * 86_400_000) return d.toLocaleDateString(locale, { weekday: "short" });
+  return d.toLocaleDateString(locale, { day: "2-digit", month: "short" });
 }
 
 function previewOf(ch: Channel, t: TFunction, currentUserId?: string | null): string {
@@ -102,7 +102,7 @@ export default function ConversationList({
   headerAction,
   title,
 }: ConversationListProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const heading = title ?? t("chat.title");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchUser[]>([]);
@@ -186,7 +186,7 @@ export default function ConversationList({
       <div className="px-3 pb-2">
         <div className="relative">
           <span
-            className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
+            className="absolute inset-y-0 start-3 flex items-center pointer-events-none"
             style={{ color: "var(--color-text-muted)" }}
           >
             <IconSearch size={15} />
@@ -196,7 +196,7 @@ export default function ConversationList({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("chat.search_placeholder")}
             aria-label={t("chat.search_label")}
-            className="w-full rounded-xl py-2.5 pl-9 pr-9 text-[13px] outline-none transition-shadow focus:shadow-[0_0_0_2px_rgb(var(--color-primary-rgb)/0.35)]"
+            className="w-full rounded-xl py-2.5 ps-9 pe-9 text-[13px] outline-none transition-shadow focus:shadow-[0_0_0_2px_rgb(var(--color-primary-rgb)/0.35)]"
             style={{
               backgroundColor: "var(--color-bg-input)",
               border: "1px solid var(--color-border)",
@@ -208,7 +208,7 @@ export default function ConversationList({
               type="button"
               onClick={() => setQuery("")}
               aria-label={t("chat.clear_search")}
-              className="absolute inset-y-0 right-2.5 flex items-center transition-opacity hover:opacity-70"
+              className="absolute inset-y-0 end-2.5 flex items-center transition-opacity hover:opacity-70"
               style={{ color: "var(--color-text-muted)" }}
             >
               <IconClose size={15} />
@@ -299,15 +299,16 @@ export default function ConversationList({
                     <button
                       type="button"
                       onClick={() => onOpenProfile(u.id)}
-                      className="flex-1 min-w-0 text-left"
+                      className="flex-1 min-w-0 text-start"
                     >
                       <p
+                        dir="auto"
                         className="text-[13px] font-semibold truncate"
                         style={{ color: "var(--color-text-primary)" }}
                       >
                         {u.display_name || u.username}
                       </p>
-                      <p className="text-[11px] truncate" style={{ color: "var(--color-text-muted)" }}>
+                      <p dir="auto" className="text-[11px] truncate" style={{ color: "var(--color-text-muted)" }}>
                         @{u.username}
                       </p>
                     </button>
@@ -418,7 +419,7 @@ export default function ConversationList({
                   >
                     {isActive && (
                       <span
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full"
+                        className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full"
                         style={{ backgroundImage: "var(--gradient-brand)" }}
                       />
                     )}
@@ -432,6 +433,7 @@ export default function ConversationList({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span
+                          dir="auto"
                           className="text-[13px] font-semibold truncate"
                           style={{ color: "var(--color-text-primary)" }}
                         >
@@ -458,6 +460,7 @@ export default function ConversationList({
                           </span>
                         )}
                         <p
+                          dir="auto"
                           className="text-[11.5px] truncate"
                           style={{
                             color:
@@ -473,7 +476,7 @@ export default function ConversationList({
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="text-[10px] whitespace-nowrap" style={{ color: "var(--color-text-muted)" }}>
-                        {formatStamp(stamp, t)}
+                        {formatStamp(stamp, t, i18n.language)}
                       </span>
                       {ch.unread_count > 0 && (
                         <span

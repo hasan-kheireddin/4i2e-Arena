@@ -14,6 +14,18 @@ interface ChatBubbleProps {
   sendGameInviteResponse?: (channelId: string, gameType: string, gameId: string, accept: boolean) => void;
 }
 
+/**
+ * The squared-off corner marks which side the bubble hangs from, so it is keyed
+ * to the inline axis rather than to left/right — in RTL the whole conversation
+ * mirrors and the tail has to follow.
+ */
+function tailRadii(isOwn: boolean): React.CSSProperties {
+  return {
+    borderStartStartRadius: isOwn ? "1rem" : "0.25rem",
+    borderStartEndRadius: isOwn ? "0.25rem" : "1rem",
+  };
+}
+
 /** Own bubbles ride the brand gradient; incoming ones use a theme-aware tint. */
 const OWN_BUBBLE: React.CSSProperties = {
   backgroundImage: "var(--gradient-brand)",
@@ -31,7 +43,7 @@ function ReadReceipt({ createdAt, readUntil }: { createdAt: string; readUntil?: 
   const seen = !!readUntil && new Date(createdAt) <= new Date(readUntil);
   return (
     <span
-      className="mt-0.5 mr-1 flex items-center"
+      className="mt-0.5 me-1 flex items-center"
       style={{ color: seen ? "var(--color-success)" : "var(--color-text-muted)" }}
       title={seen ? t("chat.seen") : t("chat.sent")}
     >
@@ -78,15 +90,11 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
       <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"} mb-2`}>
         <div
           className="max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed break-words flex flex-wrap items-center gap-x-2 gap-y-1"
-          style={{
-            ...(isOwn ? OWN_BUBBLE : PEER_BUBBLE),
-            borderTopLeftRadius: isOwn ? "1rem" : "0.25rem",
-            borderTopRightRadius: isOwn ? "0.25rem" : "1rem",
-          }}
+          style={{ ...(isOwn ? OWN_BUBBLE : PEER_BUBBLE), ...tailRadii(isOwn) }}
         >
           <span className="flex items-center gap-1.5" style={{ fontWeight: 500, whiteSpace: "normal" }}>
             <IconGamepad size={15} />
-            {msg.content}
+            <span dir="auto">{msg.content}</span>
           </span>
           {!isOwn && !inviteResponded && sendGameInviteResponse && (
             <>
@@ -125,6 +133,7 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
           )}
           {!isOwn && msg.sender_username && msg.sender && (
             <span
+              dir="auto"
               className="text-[10px] font-medium cursor-pointer hover:underline"
               style={{ color: "var(--color-text-muted)" }}
               onClick={(e) => { e.stopPropagation(); onProfileClick?.(msg.sender!); }}
@@ -157,14 +166,14 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
         className="max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed break-words"
         style={{
           ...(isOwn ? OWN_BUBBLE : PEER_BUBBLE),
-          borderTopLeftRadius: isOwn ? "1rem" : "0.25rem",
-          borderTopRightRadius: isOwn ? "0.25rem" : "1rem",
+          ...tailRadii(isOwn),
           overflowWrap: "break-word",
           wordBreak: "break-word",
         }}
       >
         {!isOwn && msg.sender_username && msg.sender && (
           <p
+            dir="auto"
             className="text-[11px] font-semibold mb-0.5 cursor-pointer hover:underline"
             style={{ color: "var(--color-text-muted)" }}
             onClick={() => onProfileClick?.(msg.sender!)}
@@ -172,7 +181,9 @@ export default function ChatBubble({ msg, isOwn, onProfileClick, dmPartnerReadUn
             {msg.sender_username}
           </p>
         )}
-        <p style={{ overflowWrap: "break-word", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{msg.content}</p>
+        {/* `dir="auto"` per message: an Arabic reply and an English one sit in
+            the same thread and each has to lay out by its own script. */}
+        <p dir="auto" style={{ overflowWrap: "break-word", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{msg.content}</p>
       </div>
       {isOwn && <ReadReceipt createdAt={msg.created_at} readUntil={dmPartnerReadUntil} />}
     </div>

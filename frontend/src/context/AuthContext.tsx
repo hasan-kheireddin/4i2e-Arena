@@ -10,9 +10,15 @@ import type { User } from "../services/auth";
 import {
   getProfile,
   logout as apiLogout,
+  updateProfile,
 } from "../services/auth";
 import { clearTokens, hasPotentialSession } from "../services/api";
 import { setAppLanguage } from "../i18n";
+import {
+  forgetLanguageChoice,
+  hasExplicitLanguageChoice,
+  normalizeLanguage,
+} from "../i18n/language";
 
 export type { User };
 
@@ -62,16 +68,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // The account's saved language wins once we know who is signed in, so the
-  // choice follows the user across devices instead of living only in this browser.
+  // The account's saved language normally wins once we know who is signed in, so
+  // the choice follows the user across devices instead of living only in this
+  // browser. The exception is a language the user just picked by hand on the way
+  // in: every account reads "en" until it is explicitly changed, so honouring the
+  // profile unconditionally used to throw that pick away at the login boundary.
+  // A deliberate choice wins instead, and is written back so it carries over.
   const preferredLanguage = user?.preferred_language;
+  const userId = user?.id;
   useEffect(() => {
-    if (preferredLanguage) setAppLanguage(preferredLanguage);
-  }, [preferredLanguage]);
+    if (!userId) return;
+
+    const accountLanguage = normalizeLanguage(preferredLanguage);
+    if (!hasExplicitLanguageChoice()) {
+      if (preferredLanguage) setAppLanguage(preferredLanguage);
+      return;
+    }
+
+    const chosen = normalizeLanguage(localStorage.getItem("i18nextLng"));
+    setAppLanguage(chosen);
+    if (chosen === accountLanguage) return;
+
+    // Persist so the pick follows the account; a failure here is not worth
+    // surfacing — the language is already applied, it just isn't saved yet.
+    updateProfile({ preferred_language: chosen })
+      .then((updated) => setUser((current) => (current ? { ...current, ...updated } : current)))
+      .catch(() => {});
+  }, [userId, preferredLanguage]);
 
   const logout = useCallback(async () => {
     await apiLogout();
     setUser(null);
+    forgetLanguageChoice();
   }, []);
 
   return (

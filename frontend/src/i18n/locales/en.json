@@ -34,9 +34,9 @@
     "log_in": "Log in",
     "hero_image_alt": "Sports arena illustration",
     "agree_terms_prefix": "I agree to the",
-  "agree_terms_link": "terms and conditions",
-  "agree_privacy_prefix": "I agree to the",
-  "agree_privacy_link": "privacy policy"
+    "agree_terms_link": "terms and conditions",
+    "agree_privacy_prefix": "I agree to the",
+    "agree_privacy_link": "privacy policy"
   },
   "navbar": {
     "home": "Home",
@@ -364,6 +364,8 @@
     "play_now": "Play Now"
   },
   "play": {
+    "mode_2d": "2D Mode",
+    "mode_3d": "3D Mode",
     "step_game": "Game",
     "step_mode": "Mode",
     "choose_game": "Choose a Game",
@@ -521,7 +523,15 @@
     "decline": "Decline",
     "response_sent": "Response sent",
     "choose_game": "Choose a game",
-    "send_emote": "Send an emote:"
+    "send_emote": "Send an emote:",
+    "open_chat": "Open chat",
+    "close_chat": "Close chat",
+    "conversation": "Chat",
+    "name_separator": ", ",
+    "typing_names_one": "{{names}} is typing",
+    "typing_names_other": "{{names}} are typing",
+    "your_messages": "Your messages",
+    "pick_conversation": "Pick a conversation from the list, or search for a player to start a new one."
   },
   "friends": {
     "title": "Friends",
@@ -557,6 +567,9 @@
     "dm_failed": "Couldn't open that conversation. Please try again."
   },
   "profile": {
+    "form_win": "W",
+    "form_loss": "L",
+    "form_draw": "D",
     "global_rank": "Global Rank",
     "game_analytics": "Game Analytics",
     "pong_analytics": "Pong Analytics",
@@ -658,7 +671,7 @@
     }
   },
   "lb": {
-    "title": "🏆 Leaderboard",
+    "title": "Leaderboard",
     "subtitle": "Top players ranked by wins",
     "your_rank": "Your Current Rank",
     "win_rate_stat": "{{rate}}% win rate • {{wins}} wins",
@@ -681,6 +694,11 @@
     "you": "(You)"
   },
   "pong": {
+    "pause": "Pause",
+    "resume": "Resume",
+    "share": "Share",
+    "copied": "Copied!",
+    "share_spectate": "Share spectate link",
     "title": "Online Pong",
     "subtitle": "Real-time PvP — server authoritative",
     "find_match": "Find Match",
@@ -835,9 +853,7 @@
     "back": "Back",
     "back_home": "← Back to Home",
     "copyright": "© {{year}} Fire Arena. All rights reserved.",
-    
     "intro": "Welcome to Fire Arena, a gaming platform where users can compete in Pong and Tic-Tac-Toe. We take your privacy seriously and respect your personal information. This Privacy Policy explains what data we collect, how we use it, and your rights regarding your information.",
-    
     "collect_title": "Information We Collect",
     "collect_account_title": "Account Information",
     "collect_account_text": "When you create an account on Fire Arena, we collect:",
@@ -845,13 +861,11 @@
     "collect_account_email": "Email address",
     "collect_account_username": "Username",
     "collect_account_password": "Password (securely hashed, never stored in plain text)",
-    
     "collect_device_title": "Device & Security Information",
     "collect_device_text": "We collect the following for security and analytics purposes:",
     "collect_device_device": "Device information",
     "collect_device_ip": "IP address",
     "collect_device_browser": "Browser and user-agent data",
-    
     "not_collect_title": "Information We Do NOT Collect",
     "not_collect_text": "Fire Arena explicitly does not collect:",
     "not_collect_payment": "Payment or billing information",
@@ -859,7 +873,6 @@
     "not_collect_files": "Uploaded files, images, documents, or profile photos",
     "not_collect_location": "Precise location data",
     "not_collect_forms": "Contact form submissions (none exist on Fire Arena)",
-    
     "tracking_title": "Tracking & Analytics",
     "tracking_text": "Fire Arena does not use the following third-party tracking or advertising tools:",
     "tracking_ads": "Advertising pixels and retargeting networks",
@@ -870,7 +883,6 @@
     "tracking_clarity": "Third-party product analytics recordings",
     "tracking_email": "Third-party email marketing platforms",
     "tracking_note": "We do not display ads or use any third-party tracking services. Our analytics are internal only.",
-    
     "sharing_title": "Data Sharing",
     "sharing_text": "Fire Arena does not sell personal data. We may share limited data only with:",
     "sharing_vendors": "Infrastructure and hosting providers needed to run the service",
@@ -878,7 +890,6 @@
     "sharing_crm": "Security, abuse-prevention, or operational support providers",
     "sharing_ads": "Legal authorities when required by law or to protect the service",
     "sharing_note": "We do not sell personal data or share it for advertising. Any limited disclosure is only for operating, securing, or legally complying with the service.",
-    
     "usage_title": "How We Use Your Data",
     "usage_text": "Your information is used only for:",
     "usage_account": "Creating and managing your account",
@@ -887,7 +898,6 @@
     "usage_security": "Security monitoring and fraud prevention",
     "usage_abuse": "Preventing abuse or unauthorized access",
     "usage_improvement": "Improving the Fire Arena platform and user experience",
-    
     "cookies_title": "Cookies",
     "cookies_text": "Fire Arena does not intentionally use cookies for advertising or tracking purposes.",
     "cookies_note": "If Fire Arena uses authentication or session cookies, they are only for:",
@@ -895,12 +905,10 @@
     "cookies_session": "Session management",
     "cookies_remember": "Remembering your login status",
     "cookies_note2": "These cookies are essential for the platform to function and are not used for profiling or marketing.",
-    
     "retention_title": "Data Retention",
     "retention_text": "Your personal data is retained as follows:",
     "retention_active": "While your account is active: We keep your data to provide the service.",
     "retention_after": "After account deletion or inactivity: Some data may be retained for a reasonable period for legal, security, or technical reasons (such as backup restoration).",
-    
     "security_title": "Security",
     "security_text": "Fire Arena takes data security seriously:",
     "security_encryption": "Sensitive data (passwords, tokens) is encrypted",
@@ -908,22 +916,18 @@
     "security_rbac": "Access to operational data is restricted by least-privilege access controls",
     "security_backups": "Regular backups ensure data resilience",
     "security_note": "No system is 100% secure. While we work hard to protect your information, we cannot guarantee absolute security. Please use a strong, unique password for your account.",
-    
     "children_title": "Children's Privacy",
     "children_text": "Fire Arena may be used by younger users. We do not knowingly collect unnecessary personal data from children beyond what is required to create an account and play.",
     "children_contact": "If you are a parent or guardian and believe your child has provided personal data to Fire Arena inappropriately, please contact us immediately using the contact information below.",
-    
     "rights_title": "Your Rights",
     "rights_text": "You have the right to:",
     "rights_ask": "Ask questions about your personal data",
     "rights_request": "Request information about what data we hold",
     "rights_contact": "Contact Fire Arena for privacy-related questions",
     "rights_deletion": "Account deletion: Account deletion is not currently available through the platform self-service. Please contact us to request deletion of your account and associated data.",
-
     "changes_title": "Changes to This Policy",
     "changes_text": "Fire Arena may update this Privacy Policy from time to time. When we make material changes, we will notify you by updating the \"Last Updated\" date at the top of this page.",
     "changes_note": "Your continued use of Fire Arena after changes means you accept the updated policy.",
-    
     "contact_title": "Contact Us",
     "contact_text": "If you have questions, concerns, or requests related to this Privacy Policy or your data, please contact:",
     "contact_team": "Fire Arena Team",
@@ -937,20 +941,16 @@
     "back": "Back",
     "back_home": "← Back to Home",
     "copyright": "© {{year}} Fire Arena. All rights reserved.",
-
     "intro_title": "Introduction",
     "intro": "Fire Arena is a free gaming platform where users compete in Pong and Tic-Tac-Toe using ranked matches, a points system, leaderboards, and user profiles. By using Fire Arena, you agree to these Terms of Service.",
     "ownership": "Fire Arena is owned and operated in Lebanon by a team of 4 developers, and is built with a React frontend and Django backend.",
-    
     "eligibility_title": "Eligibility",
     "eligibility_age": "Fire Arena is intended for users ages 6 and older.",
-    
     "accounts_title": "User Accounts",
     "accounts_accurate": "You must provide accurate, truthful information when creating your account.",
     "accounts_responsibility": "You are responsible for maintaining the confidentiality of your account credentials and password.",
     "accounts_sharing": "You may not share your login credentials with others or allow others to use your account.",
     "accounts_prohibited": "Creating multiple accounts is strictly prohibited. Fire Arena may merge or terminate duplicate accounts without notice.",
-    
     "use_title": "Acceptable Use Policy",
     "use_intro": "You agree not to engage in any of the following prohibited activities:",
     "use_cheating": "Cheating, exploiting bugs, or using unauthorized modifications to gain unfair advantages",
@@ -960,24 +960,20 @@
     "use_unfair": "Attempting to gain unfair advantage through any means",
     "use_reverse": "Reverse engineering, decompiling, or scraping the Fire Arena platform or code",
     "use_violation": "Violation of these rules may result in immediate account suspension or permanent ban.",
-    
     "enforcement_title": "Enforcement and Account Termination",
     "enforcement_suspend": "Fire Arena reserves the right to suspend or permanently ban any account that violates these terms.",
     "enforcement_cheating": "Cheating of any kind results in permanent account termination with no refund or restoration.",
     "enforcement_discretion": "Accounts may be terminated at Fire Arena's sole discretion for violations, suspicious activity, or other reasons without prior notice.",
     "enforcement_appeal": "Banned users may not appeal or request account restoration.",
-    
     "gameplay_title": "Gameplay and Competition",
     "gameplay_ranked": "Fire Arena includes ranked matches, leaderboards, and a points system to track player skill.",
     "gameplay_bugs": "Game results may be affected by bugs, glitches, or technical issues beyond Fire Arena's control.",
     "gameplay_disclaimer": "Fire Arena does not guarantee the accuracy of rankings, points, or match results.",
     "gameplay_loss": "Fire Arena is not responsible for any loss of progress, rankings, or points due to technical issues.",
-    
     "warranty_title": "Disclaimer of Warranties",
     "warranty_as_is": "Fire Arena is provided \"as is\" and \"as available\" without any warranties, express or implied.",
     "warranty_no_guarantee": "Fire Arena makes no guarantee of uninterrupted, error-free, or secure operation.",
     "warranty_fitness": "We disclaim all warranties of merchantability, fitness for a particular purpose, and non-infringement.",
-    
     "liability_title": "Limitation of Liability",
     "liability_not_responsible": "Fire Arena is not liable for:",
     "liability_downtime": "Platform downtime, service interruptions, or maintenance",
@@ -985,32 +981,26 @@
     "liability_bugs": "Bugs, glitches, or technical issues affecting gameplay",
     "liability_indirect": "Any indirect, incidental, consequential, or punitive damages",
     "liability_limit": "To the maximum extent permitted by law, Fire Arena's total liability to you for any claim or damages shall not exceed $0.",
-    
     "ip_title": "Intellectual Property Rights",
     "ip_owned": "All Fire Arena platform content, design, branding, code, and graphics are owned by Fire Arena and protected by copyright laws.",
     "ip_license": "You are granted a limited, personal, non-commercial license to use the platform for gameplay only.",
     "ip_no_copy": "You may not copy, distribute, reproduce, or reuse any part of the Fire Arena platform, code, design, or assets.",
     "ip_no_reverse": "Reverse engineering, decompiling, or disassembling the platform is strictly prohibited.",
-    
     "availability_title": "Service Availability",
     "availability_modify": "Fire Arena may modify, suspend, or discontinue the service (or any part of it) at any time without notice.",
     "availability_no_uptime": "Fire Arena does not guarantee any minimum uptime or availability.",
     "availability_maintenance": "Scheduled maintenance, updates, or other operational changes may result in temporary unavailability.",
-    
     "termination_title": "Account Termination",
     "termination_right": "Fire Arena may terminate your account at any time for:",
     "termination_violation": "Violating these Terms of Service",
     "termination_suspicious": "Suspicious activity, including but not limited to cheating or multiple accounts",
     "termination_other": "Other reasons at Fire Arena's sole discretion",
     "termination_no_refund": "Termination may be immediate and permanent with no opportunity for appeal or restoration.",
-    
     "governing_title": "Governing Law",
     "governing_law": "These Terms of Service are governed by and construed in accordance with the laws of Lebanon, without regard to its conflicts of law principles.",
-    
     "changes_title": "Changes to Terms",
     "changes_notice": "Fire Arena may update these Terms of Service at any time. Material changes will be announced at least 30 days in advance via email notification and a banner on the platform.",
     "changes_binding": "Your continued use of Fire Arena after changes become effective constitutes your acceptance of the updated terms.",
-    
     "contact_title": "Contact Us",
     "contact_text": "If you have questions about these Terms of Service, please contact us at:",
     "contact_email": "hakcathonthon@gmail.com"

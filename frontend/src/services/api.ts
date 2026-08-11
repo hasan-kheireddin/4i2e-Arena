@@ -192,7 +192,13 @@ export async function apiFetch<T = unknown>(
   // logs an error in the console on every call made past the token's lifetime.
   // Gated on an existing session so the login page never fires a doomed refresh.
   if (auth && !accessTokenIsUsable() && hasPotentialSession()) {
-    await refreshAccessToken();
+    const refreshed = await refreshAccessToken();
+    // The refresh just told us the session is dead. Sending the request anyway
+    // only buys a second 401 (and a third from the retry below), so report the
+    // expiry straight away instead of logging three failures per call.
+    if (!refreshed && !getAccessToken()) {
+      throw { detail: "Session expired.", status: 401 } satisfies ApiError;
+    }
   }
 
   let res = await fetch(path, {
@@ -202,8 +208,10 @@ export async function apiFetch<T = unknown>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // Attempt token refresh on 401
-  if (res.status === 401 && auth) {
+  // Attempt token refresh on 401. `hasPotentialSession()` is false once a
+  // refresh has already failed and wiped the hint, so a dead session doesn't
+  // retry the same doomed refresh on every request in flight.
+  if (res.status === 401 && auth && hasPotentialSession()) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
       res = await fetch(path, {

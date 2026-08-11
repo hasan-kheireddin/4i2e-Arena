@@ -34,9 +34,9 @@
     "log_in": "Anmelden",
     "hero_image_alt": "Illustration einer Sportarena",
     "agree_terms_prefix": "Ich stimme den",
-  "agree_terms_link": "Allgemeinen Geschäftsbedingungen zu",
-  "agree_privacy_prefix": "Ich stimme der",
-  "agree_privacy_link": "Datenschutzrichtlinie zu"
+    "agree_terms_link": "Allgemeinen Geschäftsbedingungen zu",
+    "agree_privacy_prefix": "Ich stimme der",
+    "agree_privacy_link": "Datenschutzrichtlinie zu"
   },
   "navbar": {
     "home": "Startseite",
@@ -317,7 +317,7 @@
     "toast_xp_earned": "+{{xp}} XP verdient",
     "toast_keep_playing": "Spiele weiter, um in der Rangliste zu steigen",
     "game_pong": "Pong",
-    "game_pong3d": "3D-Pong",
+    "game_pong3d": "3D Pong",
     "game_tictactoe": "Tic Tac Toe"
   },
   "home": {
@@ -364,6 +364,8 @@
     "play_now": "Jetzt spielen"
   },
   "play": {
+    "mode_2d": "2D-Modus",
+    "mode_3d": "3D-Modus",
     "step_game": "Spiel",
     "step_mode": "Modus",
     "choose_game": "Spiel wählen",
@@ -521,7 +523,15 @@
     "decline": "Ablehnen",
     "response_sent": "Antwort gesendet",
     "choose_game": "Spiel auswählen",
-    "send_emote": "Emote senden:"
+    "send_emote": "Emote senden:",
+    "open_chat": "Chat öffnen",
+    "close_chat": "Chat schließen",
+    "conversation": "Chat",
+    "name_separator": ", ",
+    "typing_names_one": "{{names}} schreibt gerade",
+    "typing_names_other": "{{names}} schreiben gerade",
+    "your_messages": "Deine Nachrichten",
+    "pick_conversation": "Wähle eine Unterhaltung aus der Liste oder suche einen Spieler, um eine neue zu beginnen."
   },
   "friends": {
     "title": "Freunde",
@@ -557,6 +567,9 @@
     "dm_failed": "Diese Unterhaltung konnte nicht geöffnet werden. Bitte versuche es erneut."
   },
   "profile": {
+    "form_win": "S",
+    "form_loss": "N",
+    "form_draw": "U",
     "global_rank": "Weltrang",
     "game_analytics": "Spiel-Analytik",
     "pong_analytics": "Pong-Analytik",
@@ -658,7 +671,7 @@
     }
   },
   "lb": {
-    "title": "🏆 Rangliste",
+    "title": "Rangliste",
     "subtitle": "Top-Spieler nach Siegen",
     "your_rank": "Ihr aktueller Rang",
     "win_rate_stat": "{{rate}}% Siegrate • {{wins}} Siege",
@@ -681,6 +694,11 @@
     "you": "(Sie)"
   },
   "pong": {
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "share": "Teilen",
+    "copied": "Kopiert!",
+    "share_spectate": "Zuschauer-Link teilen",
     "title": "Online Pong",
     "subtitle": "Echtzeit-PvP — Server-autoritär",
     "find_match": "Spiel finden",
@@ -836,9 +854,7 @@
     "back": "Zurück",
     "back_home": "← Zur Startseite",
     "copyright": "© {{year}} Fire Arena. Alle Rechte vorbehalten.",
-    
     "intro": "Willkommen bei Fire Arena, einer Spieleplattform, auf der Benutzer im Pong und Tic-Tac-Toe konkurrieren können. Wir nehmen Ihren Datenschutz ernst und respektieren Ihre persönlichen Informationen. Diese Datenschutzrichtlinie erläutert, welche Daten wir sammeln, wie wir sie verwenden und welche Rechte Sie bezüglich Ihrer Informationen haben.",
-    
     "collect_title": "Informationen, die wir sammeln",
     "collect_account_title": "Kontoinformationen",
     "collect_account_text": "Wenn Sie ein Konto auf Fire Arena erstellen, sammeln wir:",
@@ -846,13 +862,11 @@
     "collect_account_email": "E-Mail-Adresse",
     "collect_account_username": "Benutzername",
     "collect_account_password": "Passwort (sicher gehasht, niemals im Klartext gespeichert)",
-    
     "collect_device_title": "Geräte- und Sicherheitsinformationen",
     "collect_device_text": "Wir sammeln Folgendes zu Sicherheits- und Analysezwecken:",
     "collect_device_device": "Geräteinformationen",
     "collect_device_ip": "IP-Adresse",
     "collect_device_browser": "Browser- und Benutzer-Agent-Daten",
-    
     "not_collect_title": "Informationen, die wir NICHT sammeln",
     "not_collect_text": "Fire Arena sammelt ausdrücklich NICHT:",
     "not_collect_payment": "Zahlungs- oder Abrechnungsinformationen",
@@ -860,7 +874,6 @@
     "not_collect_files": "Hochgeladene Dateien, Bilder, Dokumente oder Profilfotos",
     "not_collect_location": "Präzise Standortdaten",
     "not_collect_forms": "Kontaktformular-Übermittlungen (keine auf Fire Arena vorhanden)",
-    
     "tracking_title": "Tracking und Analytik",
     "tracking_text": "Fire Arena verwendet die folgenden Tracking- oder Werbetools von Drittanbietern nicht:",
     "tracking_ads": "Werbe-Pixel und Retargeting-Netzwerke",
@@ -871,7 +884,6 @@
     "tracking_clarity": "Produktanalyse-Aufzeichnungen von Drittanbietern",
     "tracking_email": "Drittanbieter-Plattformen für E-Mail-Marketing",
     "tracking_note": "Wir zeigen keine Anzeigen und verwenden keine Dienste von Drittanbietern zum Tracking. Unsere Analytik ist nur intern.",
-    
     "sharing_title": "Datenweitergabe",
     "sharing_text": "Fire Arena verkauft keine personenbezogenen Daten. Begrenzte Daten können wir nur weitergeben an:",
     "sharing_vendors": "Infrastruktur- und Hosting-Anbieter, die für den Betrieb des Dienstes erforderlich sind",
@@ -879,7 +891,6 @@
     "sharing_crm": "Anbieter für Sicherheit, Missbrauchsprävention oder operativen Support",
     "sharing_ads": "Behörden, wenn dies gesetzlich vorgeschrieben ist oder zum Schutz des Dienstes erforderlich ist",
     "sharing_note": "Wir verkaufen keine personenbezogenen Daten und geben sie nicht zu Werbezwecken weiter. Jede begrenzte Offenlegung dient ausschließlich dem Betrieb, der Absicherung oder der rechtlichen Compliance des Dienstes.",
-    
     "usage_title": "Wie wir Ihre Daten verwenden",
     "usage_text": "Ihre Informationen werden nur für folgende Zwecke verwendet:",
     "usage_account": "Erstellen und Verwalten Ihres Kontos",
@@ -888,7 +899,6 @@
     "usage_security": "Sicherheitsüberwachung und Betrugsprävention",
     "usage_abuse": "Verhinderung von Missbrauch oder unbefugtem Zugriff",
     "usage_improvement": "Verbesserung der Fire Arena Plattform und Benutzererfahrung",
-    
     "cookies_title": "Cookies",
     "cookies_text": "Fire Arena verwendet bewusst KEINE Cookies zu Werbe- oder Tracking-Zwecken.",
     "cookies_note": "Wenn Fire Arena Authentifizierungs- oder Session-Cookies verwendet, sind diese nur für:",
@@ -896,12 +906,10 @@
     "cookies_session": "Sitzungsverwaltung",
     "cookies_remember": "Speicherung Ihres Anmeldestatus",
     "cookies_note2": "Diese Cookies sind für die Funktion der Plattform erforderlich und werden nicht zu Profiling- oder Marketingzwecken verwendet.",
-    
     "retention_title": "Datenspeicherung",
     "retention_text": "Ihre persönlichen Daten werden wie folgt aufbewahrt:",
     "retention_active": "Solange Ihr Konto aktiv ist: Wir speichern Ihre Daten, um den Dienst bereitzustellen.",
     "retention_after": "Nach Kontolöschung oder Inaktivität: Einige Daten können für einen angemessenen Zeitraum aus rechtlichen, sicherheitstechnischen oder technischen Gründen aufbewahrt werden (wie z. B. Sicherungswiederherstellung).",
-    
     "security_title": "Sicherheit",
     "security_text": "Fire Arena nimmt Datensicherheit ernst:",
     "security_encryption": "Sensible Daten (Passwörter, Tokens) werden verschlüsselt",
@@ -909,22 +917,18 @@
     "security_rbac": "Der Zugriff auf Betriebsdaten ist durch Zugriffsrechte nach dem Least-Privilege-Prinzip eingeschränkt",
     "security_backups": "Regelmäßige Backups gewährleisten Datenausfallsicherheit",
     "security_note": "Kein System ist 100% sicher. Während wir hart daran arbeiten, Ihre Informationen zu schützen, können wir absolute Sicherheit nicht garantieren. Bitte verwenden Sie ein starkes, eindeutiges Passwort für Ihr Konto.",
-    
     "children_title": "Datenschutz von Kindern",
     "children_text": "Fire Arena kann von jüngeren Benutzern verwendet werden. Wir sammeln bewusst keine unnötigen persönlichen Daten von Kindern über das hinaus, was erforderlich ist, um ein Konto zu erstellen und zu spielen.",
     "children_contact": "Wenn Sie Elternteil oder Erziehungsberechtigter sind und glauben, dass Ihr Kind persönliche Daten unangemessen an Fire Arena bereitgestellt hat, kontaktieren Sie uns bitte sofort unter den unten angegebenen Kontaktinformationen.",
-    
     "rights_title": "Ihre Rechte",
     "rights_text": "Sie haben das Recht:",
     "rights_ask": "Fragen zu Ihren persönlichen Daten zu stellen",
     "rights_request": "Informationen darüber anzufordern, welche Daten wir speichern",
     "rights_contact": "Fire Arena bei datenschutzbezogenen Fragen zu kontaktieren",
     "rights_deletion": "Kontolöschung: Kontolöschung ist derzeit nicht über den Selbstbedienungsbereich der Plattform verfügbar. Bitte kontaktieren Sie uns, um die Löschung Ihres Kontos und der zugehörigen Daten anzufordern.",
-
     "changes_title": "Änderungen dieser Richtlinie",
     "changes_text": "Fire Arena kann diese Datenschutzrichtlinie von Zeit zu Zeit aktualisieren. Wenn wir erhebliche Änderungen vornehmen, werden wir Sie benachrichtigen, indem wir das Datum \"Zuletzt aktualisiert\" oben auf dieser Seite aktualisieren.",
     "changes_note": "Ihre weitere Nutzung von Fire Arena nach Änderungen bedeutet, dass Sie die aktualisierte Richtlinie akzeptieren.",
-    
     "contact_title": "Kontaktieren Sie uns",
     "contact_text": "Wenn Sie Fragen, Bedenken oder Anfragen zu dieser Datenschutzrichtlinie oder zu Ihren Daten haben, kontaktieren Sie uns bitte:",
     "contact_team": "Fire Arena Team",
@@ -938,20 +942,16 @@
     "back": "Zurück",
     "back_home": "← Zur Startseite",
     "copyright": "© {{year}} Fire Arena. Alle Rechte vorbehalten.",
-
     "intro_title": "Einleitung",
     "intro": "Fire Arena ist eine kostenlose Gaming-Plattform, auf der Nutzer in Pong und Tic-Tac-Toe mit Ranglistenspielen, Punktesystem, Leaderboards und Nutzerprofilen antreten. Mit der Nutzung von Fire Arena stimmen Sie diesen Nutzungsbedingungen zu.",
     "ownership": "Fire Arena wird im Libanon von einem Team aus 4 Entwicklern betrieben und mit einem React-Frontend sowie einem Django-Backend entwickelt.",
-
     "eligibility_title": "Teilnahmeberechtigung",
     "eligibility_age": "Mindestalter: 6 Jahre.",
-
     "accounts_title": "Konten",
     "accounts_accurate": "Bei der Registrierung müssen korrekte und wahrheitsgemäße Angaben gemacht werden.",
     "accounts_responsibility": "Sie sind für die Sicherheit Ihres Kontos und Ihrer Zugangsdaten verantwortlich.",
     "accounts_sharing": "Das Teilen von Login-Daten ist verboten.",
     "accounts_prohibited": "Mehrere Konten pro Person sind streng verboten.",
-
     "use_title": "Zulässige Nutzung",
     "use_intro": "Sie verpflichten sich, keine der folgenden verbotenen Handlungen vorzunehmen:",
     "use_cheating": "Cheaten ist verboten.",
@@ -961,24 +961,20 @@
     "use_unfair": "Jeder Versuch, sich einen unfairen Vorteil zu verschaffen, ist verboten.",
     "use_reverse": "Reverse Engineering, Decompiling oder Scraping der Plattform ist verboten.",
     "use_violation": "Verstöße gegen diese Regeln können zur sofortigen Sperrung oder zu einem dauerhaften Bann führen.",
-
     "enforcement_title": "Durchsetzung",
     "enforcement_suspend": "Fire Arena kann Konten bei Verstößen sperren oder dauerhaft bannen.",
     "enforcement_cheating": "Cheating führt zu einem permanenten Bann.",
     "enforcement_discretion": "Konten können nach unserem Ermessen ohne vorherige Ankündigung beendet werden.",
     "enforcement_appeal": "Gesperrte Nutzer können weder Einspruch einlegen noch die Wiederherstellung ihres Kontos verlangen.",
-
     "gameplay_title": "Gameplay und Wettbewerb",
     "gameplay_ranked": "Die Plattform enthält Ranglistenspiele, ein Punktesystem und Leaderboards.",
     "gameplay_bugs": "Spielergebnisse können durch Bugs oder technische Probleme beeinflusst werden.",
     "gameplay_disclaimer": "Fire Arena garantiert nicht die Genauigkeit von Rankings oder Ergebnissen.",
     "gameplay_loss": "Fire Arena haftet nicht für den Verlust von Fortschritt, Ranglistenplätzen oder Punkten aufgrund technischer Probleme.",
-
     "warranty_title": "Gewährleistungsausschluss",
     "warranty_as_is": "Der Dienst wird im aktuellen Zustand und nach Verfuegbarkeit bereitgestellt.",
     "warranty_no_guarantee": "Es gibt keine Garantie auf unterbrechungsfreien oder fehlerfreien Betrieb.",
     "warranty_fitness": "Wir schließen alle Gewährleistungen der Marktgängigkeit, Eignung für einen bestimmten Zweck und Nichtverletzung von Rechten aus.",
-
     "liability_title": "Haftungsbeschränkung",
     "liability_not_responsible": "Fire Arena haftet nicht für:",
     "liability_downtime": "Ausfallzeiten oder Nichtverfügbarkeit der Plattform.",
@@ -986,32 +982,26 @@
     "liability_bugs": "Bugs oder technische Probleme, die das Gameplay beeinflussen.",
     "liability_indirect": "Indirekte oder Folgeschäden.",
     "liability_limit": "Soweit gesetzlich zulässig, ist die Gesamthaftung von Fire Arena für Ansprüche oder Schäden Ihnen gegenüber auf 0 USD begrenzt.",
-
     "ip_title": "Geistiges Eigentum",
     "ip_owned": "Plattform, Branding und Inhalte von Fire Arena sind rechtlich geschützt.",
     "ip_license": "Sie erhalten eine beschränkte, persönliche und nicht-kommerzielle Lizenz zur Nutzung der Plattform ausschließlich zum Spielen.",
     "ip_no_copy": "Code oder Design der Plattform dürfen nicht kopiert, verteilt oder wiederverwendet werden.",
     "ip_no_reverse": "Reverse Engineering ist nicht erlaubt.",
-
     "availability_title": "Verfügbarkeit",
     "availability_modify": "Fire Arena kann den Dienst jederzeit ändern, aussetzen oder einstellen.",
     "availability_no_uptime": "Es gibt keine Uptime-Garantie.",
     "availability_maintenance": "Geplante Wartungen, Updates oder andere betriebliche Änderungen können zu vorübergehender Nichtverfügbarkeit führen.",
-
     "termination_title": "Beendigung",
     "termination_right": "Fire Arena kann Konten jederzeit beenden, insbesondere bei:",
     "termination_violation": "Verstößen gegen diese Nutzungsbedingungen.",
     "termination_suspicious": "Verdächtigen Aktivitäten, einschließlich insbesondere Betrug oder mehrerer Konten.",
     "termination_other": "Anderen Gründen nach unserem Ermessen.",
     "termination_no_refund": "Eine Beendigung kann sofort und dauerhaft erfolgen, ohne Möglichkeit auf Einspruch oder Wiederherstellung.",
-
     "governing_title": "Anwendbares Recht",
     "governing_law": "Diese Nutzungsbedingungen unterliegen den Gesetzen des Libanon.",
-
     "changes_title": "Änderungen der Bedingungen",
     "changes_notice": "Fire Arena kann diese Bedingungen aktualisieren. Nutzer werden mindestens 30 Tage im Voraus per E-Mail und Plattform-Benachrichtigung informiert.",
     "changes_binding": "Ihre weitere Nutzung von Fire Arena nach Inkrafttreten der Änderungen gilt als Zustimmung zu den aktualisierten Bedingungen.",
-
     "contact_title": "Kontakt",
     "contact_text": "Bei Fragen zu diesen Nutzungsbedingungen kontaktieren Sie uns unter:",
     "contact_email": "hakcathonthon@gmail.com"

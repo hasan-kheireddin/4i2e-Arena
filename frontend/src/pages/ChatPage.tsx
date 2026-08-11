@@ -371,10 +371,10 @@ export default function ChatPage() {
                 <IconChat size={26} />
               </div>
               <p className="text-[15px] font-bold" style={{ color: "var(--color-text-primary)" }}>
-                Your messages
+                {t("chat.your_messages")}
               </p>
               <p className="text-[12.5px] max-w-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
-                Pick a conversation on the left, or search for a player to start a new one.
+                {t("chat.pick_conversation")}
               </p>
             </div>
           )}

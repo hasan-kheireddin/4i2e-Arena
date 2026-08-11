@@ -21,6 +21,7 @@ import {
   IconUserPlus,
 } from "./ChatIcons";
 import type { EmoteDef } from "../../assets/emotes/emotes";
+import { useIsRtl } from "../../hooks/useDirection";
 import type { ChatMessage, TypingUser } from "./useChatSocket";
 
 interface ChatWindowProps {
@@ -72,13 +73,13 @@ function dayKey(iso: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toDateString();
 }
 
-function dayLabel(iso: string, t: TFunction): string {
+function dayLabel(iso: string, t: TFunction, locale: string): string {
   const d = new Date(iso);
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (d.getTime() >= startOfToday) return t("chat.today");
   if (d.getTime() >= startOfToday - 86_400_000) return t("chat.yesterday");
-  return d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function ChatWindow({
@@ -110,7 +111,8 @@ export default function ChatWindow({
   dmPartnerReadUntil,
   sendGameInviteResponse,
 }: ChatWindowProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = useIsRtl();
   const [input, setInput] = useState("");
   const [showEmotes, setShowEmotes] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -275,10 +277,10 @@ export default function ChatWindow({
             type="button"
             onClick={onBack}
             aria-label={t("chat.back_to_conversations")}
-            className="w-8 h-8 -ml-1 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors hover:bg-surface-hover"
+            className="w-8 h-8 -ms-1 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors hover:bg-surface-hover"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            <IconArrowLeft size={18} />
+            <IconArrowLeft size={18} className="icon-directional" />
           </button>
         )}
 
@@ -295,9 +297,9 @@ export default function ChatWindow({
           type="button"
           onClick={onTitleClick}
           disabled={!onTitleClick}
-          className="flex-1 min-w-0 text-left disabled:cursor-default"
+          className="flex-1 min-w-0 text-start disabled:cursor-default"
         >
-          <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--color-text-primary)" }}>
+          <p dir="auto" className="text-[13.5px] font-bold truncate" style={{ color: "var(--color-text-primary)" }}>
             {title}
           </p>
           <p
@@ -361,7 +363,7 @@ export default function ChatWindow({
                         className="flex-1 py-1.5 rounded-lg text-[11.5px] font-semibold transition-colors hover:bg-surface-hover"
                         style={{ border: "1px solid var(--color-border)", color: "var(--color-text-secondary)" }}
                       >
-                        Cancel
+                        {t("chat.cancel")}
                       </button>
                       <button
                         type="button"
@@ -396,7 +398,7 @@ export default function ChatWindow({
                             setShowMenu(false);
                             item.onClick();
                           }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface-hover"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-surface-hover"
                           style={{
                             color: item.danger
                               ? "var(--color-danger)"
@@ -466,7 +468,7 @@ export default function ChatWindow({
                     className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
                     style={{ backgroundColor: "var(--color-bg-input)", color: "var(--color-text-muted)" }}
                   >
-                    {dayLabel(msg.created_at, t)}
+                    {dayLabel(msg.created_at, t, i18n.language)}
                   </span>
                 </div>
               )}
@@ -496,8 +498,11 @@ export default function ChatWindow({
                 />
               ))}
             </span>
-            <span className="text-[11px] italic" style={{ color: "var(--color-text-muted)" }}>
-              {otherTyping.map((u) => u.username).join(", ")} {otherTyping.length === 1 ? "is" : "are"} typing
+            <span dir="auto" className="text-[11px] italic" style={{ color: "var(--color-text-muted)" }}>
+              {t("chat.typing_names", {
+                count: otherTyping.length,
+                names: otherTyping.map((u) => u.username).join(t("chat.name_separator")),
+              })}
             </span>
           </div>
         )}
@@ -508,7 +513,11 @@ export default function ChatWindow({
         <div
           className="fixed z-50 rounded-xl shadow-xl py-1 w-44"
           style={{
-            left: Math.min(contextMsg.x, window.innerWidth - 190),
+            // Anchored to the cursor, so it unfolds towards the reading
+            // direction: rightwards in LTR, leftwards in RTL. `w-44` is 176px.
+            left: isRtl
+              ? Math.max(8, contextMsg.x - 176)
+              : Math.min(contextMsg.x, window.innerWidth - 190),
             top: Math.min(contextMsg.y, window.innerHeight - 180),
             backgroundColor: "var(--color-bg-elevated)",
             border: "1px solid var(--color-border)",
@@ -517,7 +526,7 @@ export default function ChatWindow({
         >
           {onProfileClick && (
             <button
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-start text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-primary)" }}
               onClick={() => { onProfileClick?.(contextMsg.sender); setContextMsg(null); }}
             >
@@ -527,7 +536,7 @@ export default function ChatWindow({
           )}
           {onInviteGame && (
             <button
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-start text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-primary)" }}
               onClick={() => { onInviteGame?.(contextMsg.sender, contextMsg.username); setContextMsg(null); }}
             >
@@ -537,7 +546,7 @@ export default function ChatWindow({
           )}
           {onFriendAction && (
             <button
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-start text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-text-primary)" }}
               onClick={() => { onFriendAction(contextMsg.sender); setContextMsg(null); }}
             >
@@ -550,7 +559,7 @@ export default function ChatWindow({
           )}
           {onBlockUser && (
             <button
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-start text-[12.5px] font-medium transition-colors hover:bg-surface-hover"
               style={{ color: "var(--color-danger)" }}
               onClick={() => { onBlockUser(contextMsg.sender); setContextMsg(null); }}
             >
@@ -622,7 +631,7 @@ export default function ChatWindow({
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
                 style={{ backgroundImage: "var(--gradient-brand)" }}
               >
-                <IconSend size={17} style={{ pointerEvents: "none" }} />
+                <IconSend size={17} className="icon-directional" style={{ pointerEvents: "none" }} />
               </button>
             </div>
           </>

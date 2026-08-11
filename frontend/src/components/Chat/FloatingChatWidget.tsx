@@ -327,14 +327,14 @@ export default function FloatingChatWidget() {
   );
 
   const partner = activeChannelData?.dm_partner || null;
-  const activeTitle = partner ? partner.display_name || partner.username : "Chat";
+  const activeTitle = partner ? partner.display_name || partner.username : t("chat.conversation");
   const showConversation = view === "chat" && !!activeChannel;
 
   const closeButton = (
     <button
       type="button"
       onClick={() => setOpen(false)}
-      aria-label="Close chat"
+      aria-label={t("chat.close_chat")}
       className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-surface-hover"
       style={{ color: "var(--color-text-muted)" }}
     >
@@ -346,7 +346,7 @@ export default function FloatingChatWidget() {
     <>
       {open && <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />}
 
-      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2.5">
+      <div className="fixed bottom-4 end-4 z-[9999] flex flex-col items-end gap-2.5">
         {open && (
           <div
             className="chat-panel-height w-[min(calc(100vw-2rem),380px)] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative"
@@ -430,7 +430,7 @@ export default function FloatingChatWidget() {
               setView("list");
             }
           }}
-          aria-label={open ? "Close chat" : "Open chat"}
+          aria-label={open ? t("chat.close_chat") : t("chat.open_chat")}
           className="rounded-full flex items-center justify-center transition-transform active:scale-95 relative text-white"
           style={{
             width: 52,
@@ -442,7 +442,7 @@ export default function FloatingChatWidget() {
           {open ? <IconClose size={22} /> : <IconChatFilled size={24} />}
           {!open && totalUnread > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 min-w-[19px] h-[19px] flex items-center justify-center rounded-full text-[9.5px] font-bold text-white px-1"
+              className="absolute -top-0.5 -end-0.5 min-w-[19px] h-[19px] flex items-center justify-center rounded-full text-[9.5px] font-bold text-white px-1"
               style={{ backgroundColor: "var(--color-secondary)", border: "2px solid var(--color-bg)" }}
             >
               {totalUnread > 99 ? "99+" : totalUnread}

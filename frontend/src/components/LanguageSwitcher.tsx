@@ -1,5 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { LANGUAGE_OPTIONS, applyLanguageToDocument, normalizeLanguage } from "../i18n/language";
+import {
+  LANGUAGE_OPTIONS,
+  applyLanguageToDocument,
+  normalizeLanguage,
+  rememberLanguageChoice,
+} from "../i18n/language";
 
 interface LanguageSwitcherProps {
   className?: string;
@@ -13,6 +18,9 @@ export function LanguageSwitcher({ className = "" }: LanguageSwitcherProps) {
     const nextLanguage = event.target.value;
     void i18n.changeLanguage(nextLanguage);
     applyLanguageToDocument(nextLanguage);
+    // This switcher only appears before sign-in, so there is no account to save
+    // to yet — flag the pick so AuthContext carries it through the login.
+    rememberLanguageChoice();
   };
 
   return (

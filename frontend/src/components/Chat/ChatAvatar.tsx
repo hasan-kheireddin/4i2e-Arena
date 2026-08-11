@@ -85,7 +85,7 @@ export default function ChatAvatar({
           style={{
             width: dot,
             height: dot,
-            right: 0,
+            insetInlineEnd: 0,
             bottom: 0,
             backgroundColor: online ? "var(--color-success)" : "var(--color-text-muted)",
             border: `2px solid ${ringColor}`,

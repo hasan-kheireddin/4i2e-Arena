@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useIsRtl } from "../../hooks/useDirection";
 
 export interface SwipeAction {
   key: string;
@@ -35,6 +36,10 @@ export default function SwipeableRow({
   className = "",
 }: SwipeableRowProps) {
   const { t } = useTranslation();
+  const isRtl = useIsRtl();
+  // The rail lives on the trailing edge, so the row slides towards the leading
+  // one: left in LTR (negative offset), right in RTL (positive).
+  const openSign = isRtl ? 1 : -1;
   const total = actions.length * actionWidth;
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -43,8 +48,8 @@ export default function SwipeableRow({
   const rail = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!dragging) setOffset(open ? -total : 0);
-  }, [open, total, dragging]);
+    if (!dragging) setOffset(open ? openSign * total : 0);
+  }, [open, total, dragging, openSign]);
 
   // `inert` is what the ARIA spec points to for a hidden-but-present rail: it
   // hides the actions from assistive tech AND makes them unfocusable, unlike
@@ -95,7 +100,8 @@ export default function SwipeableRow({
       e.currentTarget.setPointerCapture(e.pointerId);
     }
 
-    setOffset(Math.max(-total, Math.min(0, state.from + dx)));
+    const next = state.from + dx;
+    setOffset(isRtl ? Math.min(total, Math.max(0, next)) : Math.max(-total, Math.min(0, next)));
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -103,7 +109,7 @@ export default function SwipeableRow({
     const settled = offset;
     endDrag(e.currentTarget);
     if (!wasDragging) return;
-    onOpenChange(settled < -total / 2);
+    onOpenChange(settled * openSign > total / 2);
   };
 
   return (
@@ -119,7 +125,7 @@ export default function SwipeableRow({
         }
       }}
     >
-      <div ref={rail} className="absolute inset-y-0 right-0 flex" style={{ width: total }}>
+      <div ref={rail} className="absolute inset-y-0 end-0 flex" style={{ width: total }}>
         {actions.map((action) => (
           <button
             key={action.key}
@@ -170,10 +176,10 @@ export default function SwipeableRow({
             }}
             title={t("chat.more_actions")}
             aria-label={t("chat.more_actions")}
-            className="absolute inset-y-0 right-0 w-12 hidden md:flex items-center justify-end pr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute inset-y-0 end-0 w-12 hidden md:flex items-center justify-end pe-2 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
               color: "var(--color-text-muted)",
-              background: "linear-gradient(to right, transparent, var(--color-bg-hover) 45%)",
+              background: `linear-gradient(to ${isRtl ? "left" : "right"}, transparent, var(--color-bg-hover) 45%)`,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable="false">

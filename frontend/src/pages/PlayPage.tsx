@@ -210,7 +210,7 @@ export default function PlayPage() {
                         color: dimension === d ? '#fff' : 'var(--color-text-muted)',
                       }}
                     >
-                      {d === '2d' ? '2D Mode' : '3D Mode'}
+                      {d === '2d' ? t('play.mode_2d') : t('play.mode_3d')}
                     </button>
                   ))}
                 </div>

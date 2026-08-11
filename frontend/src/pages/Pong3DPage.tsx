@@ -964,12 +964,12 @@ export default function Pong3DPage() {
                 <button onClick={() => setLocalPaused((p) => !p)}
                   className="px-4 py-1.5 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-                  {localPaused ? 'Resume' : 'Pause'}
+                  {localPaused ? t('pong.resume') : t('pong.pause')}
                 </button>
                 <button onClick={() => navigate('/games/playpage')}
                   className="px-4 py-1.5 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-                  Exit
+                  {t('pong.exit')}
                 </button>
               </>
             )}
@@ -983,12 +983,12 @@ export default function Pong3DPage() {
                     color: copied ? 'var(--color-success)' : 'var(--color-text-secondary)',
                     border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'}`,
                   }}
-                  title="Share spectate link"
+                  title={t('pong.share_spectate')}
                 >
                   <span className="flex items-center gap-1.5">
                     {copied
-                      ? <><Check className="w-4 h-4" /> Copied!</>
-                      : <><Link2 className="w-4 h-4" /> Share</>}
+                      ? <><Check className="w-4 h-4" /> {t('pong.copied')}</>
+                      : <><Link2 className="w-4 h-4" /> {t('pong.share')}</>}
                   </span>
                 </button>
                 <button

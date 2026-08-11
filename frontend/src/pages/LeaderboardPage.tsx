@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Crown, Loader2, Medal } from 'lucide-react';
+import { Crown, Loader2, Medal, Trophy } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { getLeaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../services/games';
@@ -53,7 +53,10 @@ export default function LeaderboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('lb.title')}</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+          <Trophy className="w-6 h-6" style={{ color: PODIUM_COLORS[1] }} aria-hidden="true" />
+          {t('lb.title')}
+        </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>{t('lb.subtitle')}</p>
       </div>
 
