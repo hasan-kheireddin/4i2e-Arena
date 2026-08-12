@@ -372,7 +372,7 @@ erDiagram
 The project is divided into several modules, each responsible for a specific aspect of the application and all developers contributed with each other to some modules, but each developer had a main module that they were responsible for:
 
 - Major: Use a framework for both the frontend and backend.
-<br>
+
 We choose to use React for the frontend and Django for the backend, leveraging their respective strengths in building modern web applications.
 
 ## hkheired part
@@ -380,17 +380,19 @@ We choose to use React for the frontend and Django for the backend, leveraging t
     - Real-time updates across clients.
     - Handle connection/disconnection gracefully.
     - Efficient message broadcasting.
+A lot of this platform depends on things happening live. Game moves, matchmaking, notifications, spectating, and none of that works well with a normal request/response API where the browser has to keep asking "did anything change yet?". WebSockets let the server push updates to users the moment something happens, which is what makes the platform feel real-time instead of laggy or manual.
 
 - Major: Remote players — Enable two players on separate computers to play the same game in real-time.
     - Handle network latency and disconnections gracefully.
     - Provide a smooth user experience for remote gameplay.
     - Implement reconnection logic.
+A gaming platform where you can only play against someone sitting at the same keyboard isn't really an online platform, so remote play is what makes the whole product make sense. It also builds directly on the WebSocket work.
 
 - Minor: Use an ORM for the database
+Using an ORM instead of writing raw SQL keeps the database code safer and easier to maintain. It automatically protects against SQL injection, makes the code more readable, and makes it much easier to change the database structure later without rewriting a lot of queries by hand.
 
 - Minor: Implement a complete 2FA system for the users.
-
-explain why you choose to done those:
+Passwords alone aren't enough to keep accounts safe, especially since this platform stores personal data and connects to other users. Adding 2FA gives users a way to protect their account even if their password is ever leaked or guessed, which is a standard expectation for any modern authentication system.
 
 ## mjamil part
 - Minor: Support for multiple languages (at least 3 languages).
@@ -483,14 +485,21 @@ explain why you choose to done those:
 
 # Individual Contributions
 ### hkheired Contributions
+I worked on the backend foundation and everything real-time: system architecture, authentication, WebSocket infrastructure, matchmaking, remote-player gameplay, and the deployment/DevOps setup, plus legal & privacy compliance, also contributed across the stack where needed.
 
+**Challenges I faced:**
+1. Redis-based matchmaking, built from zero prior experience with it. Building a queue-based matchmaking flow on Redis meant learning its pub/sub and data-structure model while making sure matched players both landed in the same game session reliably. It was solved iteratively: get a basic queue working first, then harden it by linking it correctly into the WebSocket game's session lifecycle so a match, once formed, couldn't desync between the two clients.
+
+2. A race condition duplicated games and XP under concurrent requests. Two near-simultaneous requests could each create their own game instance for the same match, so both got scored, doubling XP and match-result entries in the database. This surfaced only under real concurrent load, not in normal manual testing. The fix added a check-before-create guard so a second request that raced against the first would find the game already existed and attach to it instead of creating a duplicate.
+
+3. The 3D version of Pong was built after 2D, but it reused flawed physics logic, and it had the same bugs originally seen in 2D. In online play the client and server disagreed on how big the paddle and ball actually were, so what a player saw on their screen didn't line up with where the server thought the ball/paddle. Rather than re-debugging 3D from scratch, the already-fixed 2D physics and collision logic was ported over to the 3D engine, so both games shared the same corrected math.
 
 ### mjamil Contributions
 
 ### nabbas Contributions
 I owned the game layer and everything derived from match results, both server-authoritative engines, match history and statistics, and the entire gamification system.
 
-**challenges I faced**: 
+**challenges I faced:** 
 1. Ball–paddle collisions in the server-authoritative Pong engine. The first working version of the physics loop had the ball behaving wrongly at contact: because the engine advances the ball by its full velocity each tick and then tests for overlap, a ball that entered the paddle box could be re-detected on the next tick and bounce twice, effectively sticking to or passing through the paddle, and each bounce compounding the speed increment made the ball unplayably fast after a long rally. It was solved with three guards: an early rejection when the ball is already moving away from that paddle, so a single contact can only register once; snapping the ball's x to the paddle's outer edge plus its radius immediately after resolving the hit, so the next tick starts outside the box; and clamping the speed with min(speed + BALL_SPEED_INCREMENT, BALL_MAX_SPEED) while deriving the outgoing angle from the normalized hit position rather than a raw reflection. The same fix had to hold for the AI opponent, which reads the identical server state, so once the engine was deterministic the three difficulty tiers became a matter of tuning reaction delay rather than fighting the physics.
 2. Analytics endpoints were hard-wired to the requesting user. The XP, achievement-stats and unlocked-achievements views were all written as /me/ routes reading request.user directly, which was correct until profiles became publicly viewable hen opening another player's profile rendered your own XP, level and achievements under their name, and the Home "Global Ranking" card showed "-#" for anyone outside the top 5 because it searched the five-row leaderboard slice instead of asking for a rank. ProfilePage was switched to call the per-user endpoints when the id isn't your own, and HomePage now reads the rank straight from xp/me/, which computes it against the whole table.
 
