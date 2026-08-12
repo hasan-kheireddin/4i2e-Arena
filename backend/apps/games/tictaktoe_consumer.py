@@ -24,6 +24,8 @@ logger = logging.getLogger("games.tictactoe")
 
 MOVE_RATE_LIMIT: int = 2
 MOVE_RATE_WINDOW: float = 1.0
+EMOTE_RATE_LIMIT: int = 4
+EMOTE_RATE_WINDOW: float = 3.0
 RECONNECT_GRACE_SECONDS: float = 12.0
 
 
@@ -35,6 +37,7 @@ class TicTacToeConsumer(BaseConsumer):
         self._session: GameSession | None = None
         self._slot: int | None = None
         self._move_timestamps: collections.deque[float] = collections.deque()
+        self._emote_timestamps: collections.deque[float] = collections.deque()
 
     async def on_connect(self) -> None:
         """Connection accepted — wait for a join message."""
@@ -91,6 +94,8 @@ class TicTacToeConsumer(BaseConsumer):
             await self._handle_move(content)
         elif msg_type == "forfeit":
             await self._handle_forfeit()
+        elif msg_type == "emote":
+            await self._handle_emote(content)
         elif msg_type == "ping":
             await self._handle_ping(content)
         else:
@@ -304,6 +309,29 @@ class TicTacToeConsumer(BaseConsumer):
         await self._broadcast_game_over(session, reason="forfeit")
         await finalize_finished_session(session)
 
+    async def _handle_emote(self, content: dict[str, Any]) -> None:
+        session = self._session
+        if session is None or self._slot is None:
+            return
+        emote_id = content.get("emote_id", "")
+        if not emote_id or not isinstance(emote_id, str):
+            return
+        # Reactions are cosmetic, so a spammed one is a nuisance rather than a
+        # cheat: drop the excess silently instead of erroring at the sender.
+        if self._is_emote_rate_limited():
+            return
+        # Handler "emote" rather than "game.emote" so the spectator consumer,
+        # which already forwards player emotes under that name, picks it up too.
+        await self.broadcast(
+            session.group_name,
+            {
+                "emote_id": emote_id,
+                "slot": self._slot,
+                "sender_username": self.user.username,
+            },
+            handler="emote",
+        )
+
     async def _handle_ping(self, content: dict[str, Any]) -> None:
         client_ts_ms = content.get("client_ts_ms")
         await self.send_json({
@@ -331,6 +359,16 @@ class TicTacToeConsumer(BaseConsumer):
         if len(self._move_timestamps) >= MOVE_RATE_LIMIT:
             return True
         self._move_timestamps.append(now)
+        return False
+
+    def _is_emote_rate_limited(self) -> bool:
+        now = time.monotonic()
+        cutoff = now - EMOTE_RATE_WINDOW
+        while self._emote_timestamps and self._emote_timestamps[0] <= cutoff:
+            self._emote_timestamps.popleft()
+        if len(self._emote_timestamps) >= EMOTE_RATE_LIMIT:
+            return True
+        self._emote_timestamps.append(now)
         return False
 
     async def _broadcast_state(self, session: GameSession) -> None:
@@ -466,6 +504,12 @@ class TicTacToeConsumer(BaseConsumer):
 
     async def force_disconnect(self, event: dict[str, Any]) -> None:
         await self.close(code=4001)
+
+    async def emote(self, event: dict[str, Any]) -> None:
+        await self.send_json(event)
+
+    async def spectator_emote(self, event: dict[str, Any]) -> None:
+        await self.send_json(event)
 
     async def game_start(self, event: dict[str, Any]) -> None:
         await self.send_json({

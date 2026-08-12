@@ -2,7 +2,14 @@ let audioCtx: AudioContext | null = null;
 
 export function getAudioCtx(): AudioContext {
   if (!audioCtx) {
-    audioCtx = new AudioContext();
+    // Safari only dropped the webkit prefix in 14.1, and still hands back a
+    // context that starts suspended until a gesture resumes it.
+    const Ctor = window.AudioContext
+      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    audioCtx = new Ctor();
+  }
+  if (audioCtx.state === "suspended") {
+    void audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 }

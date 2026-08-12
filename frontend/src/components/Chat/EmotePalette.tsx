@@ -5,10 +5,21 @@ import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 interface EmotePaletteProps {
   onEmote: (emote: EmoteDef) => void;
   inline?: boolean;
+  /**
+   * Skip the click sound. For senders whose emote is echoed back by the server
+   * and played on arrival, the local one would only ever be a double.
+   */
+  silent?: boolean;
 }
 
-export default function EmotePalette({ onEmote, inline }: EmotePaletteProps) {
+export default function EmotePalette({ onEmote, inline, silent }: EmotePaletteProps) {
   const { t } = useTranslation();
+  const play = (emote: EmoteDef) => {
+    if (silent) return;
+    if (emote.mp3) playEmoteMp3(emote.mp3);
+    else playEmoteSound(emote.soundFreq, emote.soundDuration);
+  };
+
   if (inline) {
     return (
       <div className="flex flex-wrap gap-2 p-3 rounded-xl" style={{ backgroundColor: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>
@@ -18,7 +29,7 @@ export default function EmotePalette({ onEmote, inline }: EmotePaletteProps) {
             <button
               key={emote.id}
               onClick={() => {
-                if (emote.mp3) { playEmoteMp3(emote.mp3); } else { playEmoteSound(emote.soundFreq, emote.soundDuration); }
+                play(emote);
                 onEmote(emote);
               }}
               title={emote.label}
@@ -47,7 +58,7 @@ export default function EmotePalette({ onEmote, inline }: EmotePaletteProps) {
           <button
             key={emote.id}
             onClick={() => {
-              if (emote.mp3) { playEmoteMp3(emote.mp3); } else { playEmoteSound(emote.soundFreq, emote.soundDuration); }
+              play(emote);
               onEmote(emote);
             }}
             title={emote.label}

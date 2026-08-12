@@ -802,7 +802,15 @@
     "local_player1_name": "اسم اللاعب 1",
     "local_player2_name": "اسم اللاعب 2",
     "start_local_match": "ابدأ المباراة",
-    "local_player_wins": "{{name}} يفوز! 🎉"
+    "local_player_wins": "{{name}} يفوز! 🎉",
+    "turn_of": "دور {{name}}",
+    "react": "تفاعل",
+    "forfeit": "انسحاب",
+    "forfeit_confirm_title": "هل تريد الانسحاب من هذه المباراة؟",
+    "forfeit_confirm_body": "سيُمنح الفوز إلى المنافس. لا يمكن التراجع عن هذا الإجراء.",
+    "forfeit_confirm_yes": "انسحاب",
+    "won_by_forfeit": "انسحب المنافس",
+    "you_forfeited": "لقد انسحبت من المباراة"
   },
   "match_history": {
     "title": "سجل المباريات",
