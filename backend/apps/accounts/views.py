@@ -1,4 +1,6 @@
 
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
@@ -8,7 +10,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -42,6 +44,7 @@ from .serializers import (
 )
 from .throttles import AuthScopedRateThrottle
 from .twofa_views import _issue_temp_token
+logger = logging.getLogger(__name__)
 User = get_user_model()
 safe_track_registration = non_blocking(track_registration)
 safe_track_login = non_blocking(track_login)
@@ -211,30 +214,41 @@ class CustomTokenRefreshView(TokenRefreshView):
         data = request.data.copy()
         if refresh_cookie and "refresh" not in data:
             data["refresh"] = refresh_cookie
+
+        # No credential at all — the caller sent neither a body token nor a
+        # refresh cookie. Reported separately from a *rejected* token so a
+        # cookie that never reached us (cleared, expired, or set on a
+        # different host) is not mistaken for a bad token.
+        if not data.get("refresh"):
+            logger.info(
+                "Token refresh with no credential (origin=%s, cookies=%s)",
+                request.headers.get("Origin", "-"),
+                ",".join(sorted(request.COOKIES)) or "none",
+            )
+            return Response(
+                {"detail": "No session cookie was sent.", "code": "no_refresh_token"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         try:
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            response = Response(serializer.validated_data, status=status.HTTP_200_OK)
-            if isinstance(response.data, dict) and "access" in response.data:
-                tokens = {
-                    "access": response.data["access"],
-                    "refresh": response.data.get("refresh", refresh_cookie or ""),
-                }
-                set_auth_cookies(response, tokens)
-            return response
-        except TokenError as e:
-            # Token is blacklisted, expired, or invalid.
-            return Response(
-                {"detail": str(e), "code": "token_not_valid"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        except Exception:
-            # Catch any unexpected error (e.g. DB IntegrityError on blacklist table)
-            # so we never leak a 500 from this endpoint
+        except (TokenError, InvalidToken, ValidationError) as e:
+            # Token is blacklisted, expired, or malformed.
+            logger.info("Token refresh rejected: %s", e)
             return Response(
                 {"detail": "Token is invalid or expired.", "code": "token_not_valid"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
+        response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+        if isinstance(response.data, dict) and "access" in response.data:
+            tokens = {
+                "access": response.data["access"],
+                "refresh": response.data.get("refresh", refresh_cookie or ""),
+            }
+            set_auth_cookies(response, tokens)
+        return response
 
 
 class ProfileView(generics.RetrieveAPIView):

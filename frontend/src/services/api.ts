@@ -121,6 +121,14 @@ async function doRefresh(): Promise<boolean> {
       // the token itself is invalid. Clearing tokens on 500 would log the
       // user out during a temporary backend hiccup.
       if (res.status === 401) {
+        // The session hint in localStorage can outlive the HttpOnly refresh
+        // cookie that actually authenticates us — the browser may clear
+        // cookies on exit, evict them for privacy, or we may be on a host the
+        // cookie was not set for. JS cannot read the cookie to check, so the
+        // 401 is the only signal that the two have drifted apart. Dropping the
+        // hint here stops every later page load from firing the same doomed
+        // refresh, which is what puts a red 401 in the console while the app
+        // still believes it is logged in.
         clearTokens();
       }
       return false;
