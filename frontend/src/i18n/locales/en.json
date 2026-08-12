@@ -797,7 +797,15 @@
     "local_player1_name": "Player 1 name",
     "local_player2_name": "Player 2 name",
     "start_local_match": "Start Match",
-    "local_player_wins": "{{name}} Wins! 🎉"
+    "local_player_wins": "{{name}} Wins! 🎉",
+    "turn_of": "{{name}}'s turn",
+    "react": "React",
+    "forfeit": "Forfeit",
+    "forfeit_confirm_title": "Forfeit this match?",
+    "forfeit_confirm_body": "The win will be awarded to your opponent. This cannot be undone.",
+    "forfeit_confirm_yes": "Forfeit",
+    "won_by_forfeit": "Your opponent forfeited",
+    "you_forfeited": "You forfeited the match"
   },
   "match_history": {
     "title": "Match History",

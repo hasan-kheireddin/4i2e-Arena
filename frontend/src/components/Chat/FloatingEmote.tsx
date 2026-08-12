@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { EMOTES } from "../../assets/emotes/emotes";
 import { playEmoteMp3, playEmoteSound } from "../../assets/emotes/sound";
 
-interface FloatingEmoteData {
+export interface FloatingEmoteData {
   id: number;
   emoji: string;
   webp?: string;
@@ -68,9 +68,17 @@ export function useFloatingEmotes() {
 interface FloatingEmoteOverlayProps {
   emotes: FloatingEmoteData[];
   flipped?: boolean;
+  /** Name-tag colours per side, so a caller can match its own palette. */
+  leftColor?: string;
+  rightColor?: string;
 }
 
-export default function FloatingEmoteOverlay({ emotes, flipped }: FloatingEmoteOverlayProps) {
+export default function FloatingEmoteOverlay({
+  emotes,
+  flipped,
+  leftColor = "#3B82F6",
+  rightColor = "#EF4444",
+}: FloatingEmoteOverlayProps) {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
       {emotes.map((emote) => {
@@ -94,7 +102,7 @@ export default function FloatingEmoteOverlay({ emotes, flipped }: FloatingEmoteO
             {emote.username && (
               <span
                 className="text-[10px] font-medium mt-0.5 whitespace-nowrap opacity-70"
-                style={{ color: dispSide === "left" ? "#3B82F6" : "#EF4444" }}
+                style={{ color: dispSide === "left" ? leftColor : rightColor }}
               >
                 {emote.username}
               </span>

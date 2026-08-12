@@ -84,6 +84,9 @@ export default function TicTacToePage() {
         isMyTurn={isMyTurn}
         showRealtimeRecoveryOverlay={showRealtimeRecoveryOverlay}
         opponentLeftMsg={onlineGame.opponentLeftMsg}
+        gameOverReason={onlineGame.gameOverReason}
+        floatingEmotes={onlineGame.floatingEmotes}
+        showEmotePalette={onlineGame.showEmotePalette}
         onDismissOpponentLeft={onlineGame.dismissOpponentLeft}
         onLocalPlayerNamesChange={localGame.setLocalPlayerNames}
         onStartLocalGame={localGame.startLocalGame}
@@ -93,6 +96,9 @@ export default function TicTacToePage() {
         onResetGame={localGame.resetGame}
         onPlayAgainOnline={onlineGame.findMatch}
         onBackToGames={() => navigate('/games/playpage')}
+        onForfeit={onlineGame.forfeit}
+        onToggleEmotePalette={onlineGame.toggleEmotePalette}
+        onSendEmote={onlineGame.sendEmote}
       />
       <FloatingChatWidget />
     </>

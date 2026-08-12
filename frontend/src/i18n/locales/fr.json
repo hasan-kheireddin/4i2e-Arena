@@ -797,7 +797,15 @@
     "local_player1_name": "Nom du joueur 1",
     "local_player2_name": "Nom du joueur 2",
     "start_local_match": "Commencer la partie",
-    "local_player_wins": "{{name}} gagne ! 🎉"
+    "local_player_wins": "{{name}} gagne ! 🎉",
+    "turn_of": "Au tour de {{name}}",
+    "react": "Réagir",
+    "forfeit": "Abandonner",
+    "forfeit_confirm_title": "Abandonner cette partie ?",
+    "forfeit_confirm_body": "La victoire sera attribuée à votre adversaire. Cette action est irréversible.",
+    "forfeit_confirm_yes": "Abandonner",
+    "won_by_forfeit": "Votre adversaire a abandonné",
+    "you_forfeited": "Vous avez abandonné la partie"
   },
   "match_history": {
     "title": "Historique des parties",

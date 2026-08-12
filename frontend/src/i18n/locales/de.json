@@ -798,7 +798,15 @@
     "local_player1_name": "Name Spieler 1",
     "local_player2_name": "Name Spieler 2",
     "start_local_match": "Spiel starten",
-    "local_player_wins": "{{name}} gewinnt! 🎉"
+    "local_player_wins": "{{name}} gewinnt! 🎉",
+    "turn_of": "{{name}} ist dran",
+    "react": "Reagieren",
+    "forfeit": "Aufgeben",
+    "forfeit_confirm_title": "Diese Partie aufgeben?",
+    "forfeit_confirm_body": "Der Sieg wird deinem Gegner zugesprochen. Das lässt sich nicht rückgängig machen.",
+    "forfeit_confirm_yes": "Aufgeben",
+    "won_by_forfeit": "Dein Gegner hat aufgegeben",
+    "you_forfeited": "Du hast die Partie aufgegeben"
   },
   "match_history": {
     "title": "Spielverlauf",
