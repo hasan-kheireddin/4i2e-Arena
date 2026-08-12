@@ -3,8 +3,9 @@
 
 # ft_transcendence – Fire Arena
 
-
-<h2 style="border-bottom: none;">  Table of Contents</h2>
+<h2 style="border-bottom: none;">
+Table of Contents
+</h2>
 
 - [Description](#description)
 - [Team Information](#team-information)
@@ -19,7 +20,9 @@
 - [Resources](#resources)
 
 # Description
+
 ## Project Overview & Main Goal
+
 **Fire Arena** is a web-based multiplayer gaming platform inspired by the classic Pong and TicTacToe games.
 The objective of the platform is to provide users with a complete online gaming experience where they can create accounts, interact with other players, play real time matches and track their performance.
 
@@ -37,23 +40,22 @@ Our main goal as gaming platform is to create an engaging multiplayer experience
 - Track their match history and statistics.
 - Watch and support their friend's game.
 
-<br>
+---
 
 # Team Information
+
 The project was developed by a team 4 students.
 
-
-| Developer | Role                        | Responsibilities
-| --------- | --------------------------- |  --------------------------------------------------|
-| **hkheired** | Backend Developer    | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA)   |
-| **mjamil** | Frontend Developer | React UI architecture, design system, i18n/RTL, cross browser support  |
-| **nabbas** | Product Owner and Manager          | Pong game logic, analytics and gamification |
-|**rchalak** | Full Stack Developer | 3D graphics, spectator mode, friends and chat system 
-
-<br>
+| Developer | Role | Responsibilities
+| --------- | --------------------------- | -------------------------------------------------- |
+| **hkheired** | Backend Developer | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA) |
+| **mjamil** | Frontend Developer | React UI architecture, design system, i18n/RTL, cross browser support |
+| **nabbas** | Product Owner and Manager | Pong game logic, analytics and gamification |
+| **rchalak** | Full Stack Developer | 3D graphics, spectator mode, friends and chat system |
 
 # Project Management
-###  Task Organization
+
+## Task Organization
 
 The group opted for an iterative project management approach, which was divided into weekly planning cycles:
 
@@ -70,68 +72,76 @@ These tasks were assigned to team members according to their qualifications and 
 The team held weekly meetings to review progress, discuss completed tasks and plan upcoming work.
 
 # Technical Stack
-### Architecture Overview
+
+## Architecture Overview
+
 The project follows a **full-stack modular architecture** with real-time capabilities, secure authentication, and scalable infrastructure.
 
 ### Frontend Technologies
-* **Framework:** React 18 (with Vite)
-* **Language:** TypeScript
-* **Routing:** React Router
-* **Styling:** Tailwind CSS
-* **3D Graphics:** Babylon.js
-* **UI & Icons:** Lucide React
-* **Internationalization:** i18next
 
-  * Supported languages: **EN, FR, DE, AR**
-  * Includes **RTL (Right-to-Left) support**
+- **Framework:** React 18 (with Vite)
+- **Language:** TypeScript
+- **Routing:** React Router
+- **Styling:** Tailwind CSS
+- **3D Graphics:** Babylon.js
+- **UI & Icons:** Lucide React
+- **Internationalization:** i18next
+    - Supported languages: **EN, FR, DE, AR**
+    - Includes **RTL (Right-to-Left) support**
 
 React was chosen for its component model and mature ecosystem, Typescript for compile time safety across a codebase shared by several developers, and Vite for its near-instant hot-module reload, which kept iteration fast during UI development.
 
 ### Backend Technologies
-* **Runtime:** Python 3.12
-* **Framework:** Django 5.1
-* **API:** Django REST Framework
-* **Authentication:** SimpleJWT
-* **Async Support:** Django Channels
-* **ASGI Server:** Daphne
 
-Django was selected for its ORM, migrations,and authentication layer removed a large amount of boilerplate, while Channels let us add real-time gameplay and notifications without introducing a second backend runtime alongside the REST API. 
+- **Runtime:** Python 3.12
+- **Framework:** Django 5.1
+- **API:** Django REST Framework
+- **Authentication:** SimpleJWT
+- **Async Support:** Django Channels
+- **ASGI Server:** Daphne
+
+Django was selected for its ORM, migrations,and authentication layer removed a large amount of boilerplate, while Channels let us add real-time gameplay and notifications without introducing a second backend runtime alongside the REST API.
 
 ### Database
 
-* **PostgreSQL 16**
-* Relational schema with structured game, user, and analytics data.
-
-Postgres offers
+- **PostgreSQL 16**
+- Relational schema with structured game, user, and analytics data.
 
 ### Real-Time System, Cache, Sessions & Queues
 
-* **Protocol:** WebSockets (via Django Channels)
-* **Channel Layer:** Redis
+- **Protocol:** WebSockets (via Django Channels)
+- **Channel Layer:** Redis
 
 ### DevOps
 
-* **Docker & Docker Compose**
-* **Nginx**
-* **SSL**
-* **Makefile**
-
+- **Docker & Docker Compose**
+- **Nginx**
+- **SSL**
+- **Makefile**
 
 # Architecture
+
 The project follows a **full-stack modular architecture** with real-time capabilities, secure authentication, and scalable infrastructure.
 
-### Deployment Architecture
+## Deployment Architecture
+
 Five containers on one bridge network, with exactly one published port. Nginx terminates TLS and is the only thing the browser ever talks to — it splits traffic by path prefix, so the app is same-origin end to end and the JWT can live in a Secure HttpOnly cookie instead of localStorage.
 ![containers](./assists/containers.png)
 
 ### The match loop
-Gameplay is server-authoritative: the client sends intent (up, down, stop), never position. The consumer owns the physics, steps it on a fixed timestep, and broadcasts snapshots at half the tick rate. This is the one genuinely sequential part of the system, so it's numbered. 
+
+Gameplay is server-authoritative: the client sends intent (up, down, stop), never position. The consumer owns the physics, steps it on a fixed timestep, and broadcasts snapshots at half the tick rate. This is the one genuinely sequential part of the system, so it's numbered.
 ![loop](./assists/loop.png)
+
 ### Backend Architecture
+
 The backend is a Django monolith with a REST API, WebSocket consumers, and a PostgreSQL database. The Django ORM is used for all database interactions, and migrations are used to manage schema changes. The backend is responsible for user authentication, game logic, match history, and analytics.
 ![alt text](./assists/backend.png)
+
 # Database Schema
+
 The database schema is designed around four domains.
+
 ## Identity & Authentication
 
 ```mermaid
@@ -180,6 +190,7 @@ TOTP_DEVICES {
     USERS ||--o{ EMAIL_VERIFICATION_TOKENS : has
     USERS ||--o| TOTP_DEVICES : has
 ```
+
 ## Gameplay & Match History
 
 ```mermaid
@@ -267,7 +278,6 @@ ACHIEVEMENTS {
     ACHIEVEMENTS ||--o{ ACHIEVEMENT_UNLOCKS : awarded_as
 ```
 
-
 ### Social & Chat
 
 ```mermaid
@@ -349,8 +359,8 @@ erDiagram
 
 # Features
 
-|NB | Feature | Developer(s) | Description |
-|---|---------|--------------|-------------|
+| NB | Feature | Developer(s) | Description |
+| -- | --------- | -------------- | ------------- |
 | 1 | User Authentication | hkheired(backend), mjamil(UI) | Signup create a pending registration row with a verification code, email verification, login with JWT, resend verification, expired verification, forgot password, reset password, terms and conditions, privacy policy, Two-Factor Authentication |
 | 2 | Abuse Prevention | hkheired | Rate limiting and Password/username validation |
 | 3 | Server-authoritative Pong Engine | nabbas | Server-side game logic for Pong, including ball physics, paddle movement, scoring, and game state management. |
@@ -367,8 +377,8 @@ erDiagram
 | 14 | Cross-Browser Support | mjamil | Ensuring the application works correctly across different web browsers. |
 | 15 | Deployment & DevOps | hkheired | Setting up deployment pipelines, configuring servers, and managing infrastructure for the application. |
 
-
 # Modules
+
 The project is divided into several modules, each responsible for a specific aspect of the application and all developers contributed with each other to some modules, but each developer had a main module that they were responsible for:
 
 - Major: Use a framework for both the frontend and backend.
@@ -376,6 +386,7 @@ The project is divided into several modules, each responsible for a specific asp
 We choose to use React for the frontend and Django for the backend, leveraging their respective strengths in building modern web applications.
 
 ## hkheired part
+
 - Major: Implement real-time features using WebSockets or similar technology.
     - Real-time updates across clients.
     - Handle connection/disconnection gracefully.
@@ -395,6 +406,7 @@ Using an ORM instead of writing raw SQL keeps the database code safer and easier
 Passwords alone aren't enough to keep accounts safe, especially since this platform stores personal data and connects to other users. Adding 2FA gives users a way to protect their account even if their password is ever leaked or guessed, which is a standard expectation for any modern authentication system.
 
 ## mjamil part
+
 - Minor: Support for multiple languages (at least 3 languages).
     - Implement i18n (internationalization) system.
     - At least 3 complete language translations.
@@ -440,6 +452,7 @@ Why We Chose These Minors
     We picked this because the project has many pages and features, and we wanted the whole application to have a consistent look and feel. A reusable design system allows us to share the same colors, typography, icons, and components across the project, while also making the frontend easier to maintain and update.
 
 ## nabbas part
+
 - Major: Implement a complete web-based game where users can play against each other.
     - The game can be real-time multiplayer (Pong)
     - Players must be able to play live matches.
@@ -472,9 +485,8 @@ This module goes hand in hand with the two games above. Without saving match his
 
 We picked this because just winning or losing a game isn't very motivating on its own. Adding achievements, levels, and a leaderboard gives players a reason to keep coming back and keep playing. It also connects directly to the two games below instead of being a separate, disconnected feature.We implemented 22 achievements across the two games also XP/Level system was implemented as a quadratic XP curve so each level takes progressively more effort, with XP awarded for playing, winning, streaks, and game-specific bonuses and a global ranking by XP for leaderboard. All progress, achievements, unlocks, and player activity are saved permanently, and unlocks/XP gains/level-ups are pushed to the client live over WebSockets so the player sees visual feedback immediately instead of on next page load.
 
-
-
 ## rchalak part
+
 - Major: Allow users to interact with other users. The minimum requirements are:
     - A basic chat system (send/receive messages between users)
     - A profile system (view user information).
@@ -500,22 +512,27 @@ We picked this because just winning or losing a game isn't very motivating on it
 explain why you choose to done those:
 
 ### point Calculation
+
 - Major: 14 points
 - Minor: 11 points
 - Total: 25 points
 
 # Individual Contributions
-### hkheired Contributions
+
+## hkheired Contributions
+
 I worked on the backend foundation and everything real-time: system architecture, authentication, WebSocket infrastructure, matchmaking, remote-player gameplay, and the deployment/DevOps setup, plus legal & privacy compliance, also contributed across the stack where needed.
 
 **Challenges I faced:**
+
 1. Redis-based matchmaking, built from zero prior experience with it. Building a queue-based matchmaking flow on Redis meant learning its pub/sub and data-structure model while making sure matched players both landed in the same game session reliably. It was solved iteratively: get a basic queue working first, then harden it by linking it correctly into the WebSocket game's session lifecycle so a match, once formed, couldn't desync between the two clients.
 
 2. A race condition duplicated games and XP under concurrent requests. Two near-simultaneous requests could each create their own game instance for the same match, so both got scored, doubling XP and match-result entries in the database. This surfaced only under real concurrent load, not in normal manual testing. The fix added a check-before-create guard so a second request that raced against the first would find the game already existed and attach to it instead of creating a duplicate.
 
 3. The 3D version of Pong was built after 2D, but it reused flawed physics logic, and it had the same bugs originally seen in 2D. In online play the client and server disagreed on how big the paddle and ball actually were, so what a player saw on their screen didn't line up with where the server thought the ball/paddle. Rather than re-debugging 3D from scratch, the already-fixed 2D physics and collision logic was ported over to the 3D engine, so both games shared the same corrected math.
 
-### mjamil Contributions
+## mjamil Contributions
+
 I worked mainly on the frontend using React, TypeScript, and Vite, focusing on the five assigned Minors:
 
 Multi-language support: Implemented i18n using i18next with 4 languages: English, French, German, and Arabic. Added the language switcher and made the user-facing text translatable.
@@ -533,19 +550,21 @@ Keeping the design and components consistent across many different pages.
 Testing the application on different browsers and fixing compatibility issues.
 Making search, filters, sorting, and pagination work together correctly.
 
-### nabbas Contributions
+## nabbas Contributions
+
 I owned the game layer and everything derived from match results, both server-authoritative engines, match history and statistics, and the entire gamification system.
 
-**challenges I faced:** 
+**challenges I faced:**
+
 1. Ball–paddle collisions in the server-authoritative Pong engine. The first working version of the physics loop had the ball behaving wrongly at contact: because the engine advances the ball by its full velocity each tick and then tests for overlap, a ball that entered the paddle box could be re-detected on the next tick and bounce twice, effectively sticking to or passing through the paddle, and each bounce compounding the speed increment made the ball unplayably fast after a long rally. It was solved with three guards: an early rejection when the ball is already moving away from that paddle, so a single contact can only register once; snapping the ball's x to the paddle's outer edge plus its radius immediately after resolving the hit, so the next tick starts outside the box; and clamping the speed with min(speed + BALL_SPEED_INCREMENT, BALL_MAX_SPEED) while deriving the outgoing angle from the normalized hit position rather than a raw reflection.
 2. Analytics endpoints were hard-wired to the requesting user. The XP, achievement-stats and unlocked-achievements views were all written as /me/ routes reading request.user directly, which was correct until profiles became publicly viewable hen opening another player's profile rendered your own XP, level and achievements under their name, and the Home "Global Ranking" card showed "-#" for anyone outside the top 5 because it searched the five-row leaderboard slice instead of asking for a rank. ProfilePage was switched to call the per-user endpoints when the id isn't your own, and HomePage now reads the rank straight from xp/me/, which computes it against the whole table.
 
 ### rchalak Contributions
 
-
-
 # Installation & Instructions
-### Prerequisites
+
+## Prerequisites
+
 - Docker & Docker Compose installed on your machine.
 - A modern web browser (Chrome, Firefox, Brave, edge).
 - Node.js and npm installed (for frontend development).
@@ -554,32 +573,44 @@ I owned the game layer and everything derived from match results, both server-au
 - MakeFile installed (for building and running the project).
 - ports 8443, 5433, 6380, 3000 are available and not blocked by firewall or other applications.
 
-### Instructions
-1. Clone the repository:
+## Instructions
+
+1.Clone the repository:
+
 ```bash
 git clone https://github.com/4i2e-Arena/4i2e-Arena.git
 ```
-2. Navigate to the project directory:
+
+2.Navigate to the project directory:
+
 ```bash
 cd 4i2e-Arena
 ```
-3. Export you enviroment
+
+3.Export you enviroment
+
 ```bash
 cp .env.exaple .env
 ```
-3. Build and start the Docker containers:
+
+3.Build and start the Docker containers:
+
 ```bash
 make
 ```
-4. Access the application in your web browser at:
-```
+
+4.Access the application in your web browser at:
+
+```web
 https://localhost:8443
 or
 https://MACHINE_IP:8443
 ```
-5. Create an account, verify your email, and start playing games with friends!
+
+5.Create an account, verify your email, and start playing games with friends!
 
 # Resources
+
 - [Django Documentation](https://docs.djangoproject.com/en/5.1/)
 - [Django REST Framework Documentation](https://www.django-rest-framework.org/)
 - [Django Channels Documentation](https://channels.readthedocs.io/en/stable/)
