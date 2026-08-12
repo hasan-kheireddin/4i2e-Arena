@@ -522,9 +522,8 @@ Multi-language support: Implemented i18n using i18next with 4 languages: English
 RTL support: Added full Arabic RTL support, including layout mirroring and RTL-specific adjustments. Users can switch between Arabic and LTR languages without refreshing the page.
 Browser support: Tested and fixed the frontend across Chrome, Firefox, and Brave to keep the UI and features consistent.
 Advanced search: Implemented search with filters, sorting, and pagination.
-Custom design system: Created a reusable design system with a dark gaming theme, purple/pink color palette, typography, icons, and more than 10 reusable components. Also implemented dark/light mode with the preference saved in localStorage.
-
-I also built and integrated the main frontend pages, including authentication, dashboard, games, tournaments, leaderboard, match history, analytics, settings, and achievements.
+Custom design system: Created a reusable design system with a dark gaming theme, purple/pink color palette, typography, icons, and more than 10 reusable components.
+I also built and integrated the main frontend pages, including authentication, dashboard, games, leaderboard, match history, analytics, settings, and achievements.
 
 Challenges I faced:
 
@@ -538,7 +537,7 @@ Making search, filters, sorting, and pagination work together correctly.
 I owned the game layer and everything derived from match results, both server-authoritative engines, match history and statistics, and the entire gamification system.
 
 **challenges I faced:** 
-1. Ball–paddle collisions in the server-authoritative Pong engine. The first working version of the physics loop had the ball behaving wrongly at contact: because the engine advances the ball by its full velocity each tick and then tests for overlap, a ball that entered the paddle box could be re-detected on the next tick and bounce twice, effectively sticking to or passing through the paddle, and each bounce compounding the speed increment made the ball unplayably fast after a long rally. It was solved with three guards: an early rejection when the ball is already moving away from that paddle, so a single contact can only register once; snapping the ball's x to the paddle's outer edge plus its radius immediately after resolving the hit, so the next tick starts outside the box; and clamping the speed with min(speed + BALL_SPEED_INCREMENT, BALL_MAX_SPEED) while deriving the outgoing angle from the normalized hit position rather than a raw reflection. The same fix had to hold for the AI opponent, which reads the identical server state, so once the engine was deterministic the three difficulty tiers became a matter of tuning reaction delay rather than fighting the physics.
+1. Ball–paddle collisions in the server-authoritative Pong engine. The first working version of the physics loop had the ball behaving wrongly at contact: because the engine advances the ball by its full velocity each tick and then tests for overlap, a ball that entered the paddle box could be re-detected on the next tick and bounce twice, effectively sticking to or passing through the paddle, and each bounce compounding the speed increment made the ball unplayably fast after a long rally. It was solved with three guards: an early rejection when the ball is already moving away from that paddle, so a single contact can only register once; snapping the ball's x to the paddle's outer edge plus its radius immediately after resolving the hit, so the next tick starts outside the box; and clamping the speed with min(speed + BALL_SPEED_INCREMENT, BALL_MAX_SPEED) while deriving the outgoing angle from the normalized hit position rather than a raw reflection.
 2. Analytics endpoints were hard-wired to the requesting user. The XP, achievement-stats and unlocked-achievements views were all written as /me/ routes reading request.user directly, which was correct until profiles became publicly viewable hen opening another player's profile rendered your own XP, level and achievements under their name, and the Home "Global Ranking" card showed "-#" for anyone outside the top 5 because it searched the five-row leaderboard slice instead of asking for a rank. ProfilePage was switched to call the per-user endpoints when the id isn't your own, and HomePage now reads the rank straight from xp/me/, which computes it against the whole table.
 
 ### rchalak Contributions
@@ -585,73 +584,3 @@ https://MACHINE_IP:8443
 - [Pong game Article](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://towardsdatascience.com/coding-the-pong-game-from-scratch-in-python/&ved=2ahUKEwjl_c_mrZiWAxUa0gIHHURVEdoQFnoECCEQAQ&usg=AOvVaw3xxoYT0a_IkUVpkpCS5jlG)
 
 We Used Artificial Intelligence in generating ERD diagrams by providing the database schema for README.md file, also we use it in testing the implemented backend features by asking him to generate a temporary UI design.
-
-
-
-
-### mjamil part
-
-My part in this project is the entire frontend, built with React + TypeScript + Vite.
-
-_Style & Theme
-The whole UI uses a dark gaming aesthetic with a purple/pink neon color scheme.
-All colors are defined as CSS variables so every component automatically supports dark/light mode:
-
-Dark mode is on by default and toggled via a button that saves the preference to localStorage.
-
-What I Built
-Auth Pages
-
-Login, Register, Forgot Password, Reset Password
-Two-Factor Authentication (setup + verify)
-OAuth callback (Google)
-
-Each auth page has a split layout — form on one side, a custom image on the other. The image switches automatically between a dark version and a light version based on the current theme.
-Dashboard & Layout
-
-Navbar — search bar, notifications, user menu, dark mode toggle
-Sidebar — collapsible navigation with links to all pages
-Dashboard — welcome banner with XP bar, stats, quick play, recent matches, leaderboard preview
-
-Game Pages
-
-Pong — canvas-based game, mouse-controlled paddle, AI opponent, 2D/3D toggle
-Tic-Tac-Toe — win detection, move history, score tracking
-
-Other Pages
-
-Play (game mode + difficulty selector)
-Tournaments (brackets, registration, live status)
-Leaderboard (top 3 podium + rankings table)
-Match History (filters by game and result)
-Analytics (weekly chart, performance metrics)
-Settings (profile, security, notifications, appearance, audio)
-
-
-Login & Register Images
-The login and register pages use a custom split-screen layout.
-The right side shows a themed image that changes based on dark/light mode:
-tsx// Switches image based on current theme
-src={isDark ? loginImgDark : loginImg}
-Images are stored in frontend/src/images/:
-
-loginimg.png — light mode version
-loginimgDark.png — dark mode version
-
-Languages
-The UI supports 4 languages switchable from the Settings page:
-en : English
-fr : Français
-de : Deutsch
-ar : Arabic
-
-Arabic automatically flips the page to right-to-left layout.
-
-Tech Used
-
-React 18 + TypeScript
-Vite
-React Router v6
-Tailwind CSS + CSS Variables
-i18next (translations)
-Canvas API (Pong game)
