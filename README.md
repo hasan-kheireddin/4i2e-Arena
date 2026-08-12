@@ -419,23 +419,23 @@ Passwords alone aren't enough to keep accounts safe, especially since this platf
 
 Why We Chose These Minors
 
-    *1. Multi-language support**
+**1. Multi-language support**
 
     We picked this because we wanted the application to be accessible to users from different backgrounds and not be limited to a single language. It also makes the project feel more like a real-world application. We implemented 4 languages with a language switcher and made all user-facing text translatable.
 
-    *2. RTL language support**
+**2. RTL language support**
 
     We picked this because Arabic is an important language for our users and supporting it properly makes the application more accessible. We wanted more than just changing the text direction, so the entire layout adapts to RTL, including navigation, alignment, spacing, and other UI elements.
 
-    *3. Additional browser support**
+**3. Additional browser support**
 
     We picked this because users should be able to use the application regardless of which modern browser they prefer. Testing Firefox and Brave in addition to Chrome helped us find compatibility issues and make sure the UI and features work consistently across browsers.
 
-    *4. Advanced search**
+**4. Advanced search**
 
     We picked this because the application contains a lot of information, such as players, matches, and game-related data. As the amount of data increases, finding specific information becomes harder. Search with filters, sorting, and pagination makes the application easier and faster to navigate.
 
-    *5. Custom-made design system**
+**5. Custom-made design system**
 
     We picked this because the project has many pages and features, and we wanted the whole application to have a consistent look and feel. A reusable design system allows us to share the same colors, typography, icons, and components across the project, while also making the frontend easier to maintain and update.
 
@@ -562,6 +562,10 @@ git clone https://github.com/4i2e-Arena/4i2e-Arena.git
 2. Navigate to the project directory:
 ```bash
 cd 4i2e-Arena
+```
+3. Export you enviroment
+```bash
+cp .env.exaple .env
 ```
 3. Build and start the Docker containers:
 ```bash
