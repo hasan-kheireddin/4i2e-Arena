@@ -45,7 +45,7 @@ function gameLabel(gameType: string, t: TFunction): string {
 export function useChatEventEffects(props: ChatEventEffectsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addNotification } = useNotificationCenter();
+  const { addNotification, markRead } = useNotificationCenter();
   const [friendNotif, setFriendNotif] = useState<FriendRequestEvent | null>(null);
 
   // Socket callbacks fire outside React's render cycle, so anything they read
@@ -93,19 +93,25 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
     const muteCh = liveRef.current.channels?.find((c) => c.id === invite.channel_id);
     if (muteCh?.notifications_muted) return;
     const label = gameLabel(invite.game_type, t);
-    props.showToast({
-      title: t("notifications.toast_invited", { name: invite.from_username, game: label }),
-      description: t("notifications.toast_answer_before_expires"),
-      variant: "invite",
-      onClick: props.navigateToChat && invite.channel_id ? () => props.navigateToChat!(invite.channel_id) : undefined,
-    });
-    addNotification({
+    // The entry is raised first so the toast can point back at it: acting on the
+    // toast is the same acknowledgement as opening the row in the bell, and the
+    // entry behind it should not be left sitting there unread.
+    const entryId = addNotification({
       kind: "invite",
       actor: invite.from_username,
       title: t("notifications.entry_invited_to_play", { game: label }),
       channelId: invite.channel_id || undefined,
       link: invite.channel_id ? `/chat?channel=${invite.channel_id}` : "/chat",
       dedupeKey: `invite-${invite.game_id}`,
+    });
+    props.showToast({
+      title: t("notifications.toast_invited", { name: invite.from_username, game: label }),
+      description: t("notifications.toast_answer_before_expires"),
+      variant: "invite",
+      onClick: () => {
+        markRead(entryId);
+        if (props.navigateToChat && invite.channel_id) props.navigateToChat(invite.channel_id);
+      },
     });
   }, [props.gameInvite?.game_id, props.showToast]);
 
@@ -118,18 +124,21 @@ export function useChatEventEffects(props: ChatEventEffectsProps) {
     );
     const name = accepted.by_username;
     if (name) {
-      props.showToast({
-        title: t("notifications.toast_accepted", { name }),
-        description: t("notifications.toast_now_friends"),
-        variant: "friend_accepted",
-        onClick: accepted.by_user_id ? () => navigate(`/profile/${accepted.by_user_id}`) : undefined,
-      });
-      addNotification({
+      const entryId = addNotification({
         kind: "friend_accepted",
         actor: name,
         title: t("notifications.entry_accepted_friend_request"),
         link: accepted.by_user_id ? `/profile/${accepted.by_user_id}` : undefined,
         dedupeKey: `friend-accepted-${accepted.friendship_id}`,
+      });
+      props.showToast({
+        title: t("notifications.toast_accepted", { name }),
+        description: t("notifications.toast_now_friends"),
+        variant: "friend_accepted",
+        onClick: () => {
+          markRead(entryId);
+          if (accepted.by_user_id) navigate(`/profile/${accepted.by_user_id}`);
+        },
       });
     }
     props.clearFriendAccepted();
