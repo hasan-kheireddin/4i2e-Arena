@@ -21,7 +21,7 @@ export default function GamificationNotifications() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const { addNotification } = useNotificationCenter();
+  const { addNotification, markRead } = useNotificationCenter();
   const { showToast } = useToast();
 
   useGameSocket(isAuthenticated ? "/ws/notifications/" : null, {
@@ -32,19 +32,21 @@ export default function GamificationNotifications() {
         const achievement = (data.achievement as AchievementPayload | undefined) ?? {};
         const name = achievement.name || t("notifications.achievement_fallback_name");
         const xpReward = Number(achievement.xp_reward ?? 0);
-        showToast({
-          title: t("notifications.toast_achievement", { name }),
-          description: xpReward > 0 ? t("notifications.toast_xp_earned", { xp: xpReward }) : undefined,
-          variant: "achievement",
-          duration: 5000,
-          onClick: () => navigate("/achievements"),
-        });
-        addNotification({
+        // Raised before the toast so clicking the toast can mark the entry it
+        // belongs to as read, rather than leaving it new in the bell.
+        const entryId = addNotification({
           kind: "achievement",
           title: t("notifications.entry_unlocked", { name }),
           body: xpReward > 0 ? t("notifications.entry_xp_reward", { xp: xpReward }) : undefined,
           link: "/achievements",
           dedupeKey: `achievement-${achievement.id ?? name}`,
+        });
+        showToast({
+          title: t("notifications.toast_achievement", { name }),
+          description: xpReward > 0 ? t("notifications.toast_xp_earned", { xp: xpReward }) : undefined,
+          variant: "achievement",
+          duration: 5000,
+          onClick: () => { markRead(entryId); navigate("/achievements"); },
         });
         return;
       }
@@ -65,22 +67,22 @@ export default function GamificationNotifications() {
       if (type === "level_up") {
         const newLevel = Number(data.new_level ?? 0);
         if (newLevel > 0) {
-          showToast({
-            title: t("notifications.level_up", { level: newLevel }),
-            description: t("notifications.toast_keep_playing"),
-            variant: "level",
-            duration: 4500,
-            onClick: () => navigate("/leaderboard"),
-          });
-          addNotification({
+          const entryId = addNotification({
             kind: "level",
             title: t("notifications.entry_reached_level", { level: newLevel }),
             link: "/leaderboard",
             dedupeKey: `level-${newLevel}`,
           });
+          showToast({
+            title: t("notifications.level_up", { level: newLevel }),
+            description: t("notifications.toast_keep_playing"),
+            variant: "level",
+            duration: 4500,
+            onClick: () => { markRead(entryId); navigate("/leaderboard"); },
+          });
         }
       }
-    }, [t, addNotification, navigate, showToast]),
+    }, [t, addNotification, markRead, navigate, showToast]),
   });
 
   return null;

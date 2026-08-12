@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import registerImgDark from "../images/registerimgDark.jpg";
+import registerImgDark from "../images/registerimgDark.png";
 import { EyeIcon, EyeOffIcon } from "../components/icons/Eyeicons";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -192,12 +192,16 @@ export default function RegisterPage() {
           id and gave the browser two autofill targets per field. Only the image
           column is breakpoint-dependent. */}
 
-      {/* Image side — desktop only */}
-      <div className="hidden lg:block w-[45%] flex-shrink-0 h-full animate-slideInLeft">
+      {/* Image side — desktop only. `object-contain` rather than `object-cover`:
+          this artwork is a centered graphic on a transparent square, and cover
+          was scaling it up to fill the panel's height and cropping the sides,
+          which blew the graphic up past its frame instead of fitting it. */}
+      <div className="hidden lg:flex w-[45%] flex-shrink-0 h-full animate-slideInLeft items-center justify-center"
+        style={{ backgroundColor: 'var(--color-bg)' }}>
         <img
           src={registerImgDark}
           alt={t("register.hero_image_alt", "Sports arena illustration")}
-          className="w-full h-full object-cover object-top"
+          className="w-full h-full object-contain p-10"
         />
       </div>
 

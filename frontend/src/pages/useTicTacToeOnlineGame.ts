@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { getOrCreateDM } from '../services/chat';
 import { useGameSocket } from '../hooks/useGameSocket';
+import { useFloatingEmotes } from '../components/Chat/FloatingEmote';
 import {
   canJoinOnlineGame,
   createEmptyBoard,
@@ -37,6 +38,9 @@ interface OnlineGameMessageContext {
   setGamePaused: Dispatch<SetStateAction<boolean>>;
   setOnlineWinner: Dispatch<SetStateAction<GameResult>>;
   setOpponentLeftMsg: Dispatch<SetStateAction<string | null>>;
+  setGameOverReason: Dispatch<SetStateAction<string | null>>;
+  addEmote: (emoteId: string, slot: number, username?: string) => void;
+  addSpectatorEmote: (emoteId: string) => void;
 }
 
 interface OnlineGameOptions {
@@ -183,8 +187,21 @@ function handleOnlineGameMessage(
       return;
     case 'game_over':
       ctx.setOnlineWinner(resolveOnlineGameResult(data));
+      // "forfeit" and "disconnect_forfeit" turn a bare win/loss into something
+      // the result screen can explain, so a walkover never reads as a real win.
+      ctx.setGameOverReason(typeof data.reason === 'string' ? data.reason : null);
       ctx.setGamePaused(false);
       ctx.setOnlinePhase('game_over');
+      return;
+    case 'emote':
+      ctx.addEmote(
+        data.emote_id as string,
+        (data.slot as number) ?? 0,
+        data.sender_username as string | undefined,
+      );
+      return;
+    case 'spectator_emote':
+      ctx.addSpectatorEmote(data.emote_id as string);
       return;
     default:
       return;
@@ -209,6 +226,9 @@ export function useTicTacToeOnlineGame({
   const [opponentReady, setOpponentReady] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
   const [opponentLeftMsg, setOpponentLeftMsg] = useState<string | null>(null);
+  const [gameOverReason, setGameOverReason] = useState<string | null>(null);
+  const [showEmotePalette, setShowEmotePalette] = useState(false);
+  const { emotes: floatingEmotes, addEmote, addSpectatorEmote } = useFloatingEmotes();
   const [mmPath, setMmPath] = useState<string | null>(null);
   const [gamePath, setGamePath] = useState<string | null>(
     initialGameId ? `/ws/game/tictactoe/${initialGameId}/` : null,
@@ -235,6 +255,7 @@ export function useTicTacToeOnlineGame({
     setOpponentReady(false);
     setGamePaused(false);
     setOpponentLeftMsg(null);
+    setGameOverReason(null);
     setMmPath('/ws/matchmaking/');
   }, [defaultOpponentName]);
 
@@ -279,8 +300,11 @@ export function useTicTacToeOnlineGame({
         setGamePaused,
         setOnlineWinner,
         setOpponentLeftMsg,
+        setGameOverReason,
+        addEmote,
+        addSpectatorEmote,
       });
-    }, [defaultOpponentName]),
+    }, [defaultOpponentName, addEmote, addSpectatorEmote]),
   });
 
   useEffect(() => {
@@ -315,6 +339,18 @@ export function useTicTacToeOnlineGame({
     gameSend({ type: 'move', cell: index });
   };
 
+  // The server awards the win to the opponent and closes the session out, so we
+  // only send: the resulting `game_over` drives the UI like any other ending.
+  const forfeit = () => {
+    if (onlinePhase !== 'playing') return;
+    gameSend({ type: 'forfeit' });
+  };
+
+  const sendEmote = (emoteId: string) => {
+    gameSend({ type: 'emote', emote_id: emoteId });
+    setShowEmotePalette(false);
+  };
+
   return {
     onlinePhase,
     mySymbol,
@@ -325,12 +361,19 @@ export function useTicTacToeOnlineGame({
     opponentReady,
     gamePaused,
     opponentLeftMsg,
+    gameOverReason,
     gameLatency,
     gameSocketStatus,
+    floatingEmotes,
+    showEmotePalette,
     findMatch,
     ready,
     cancelOnline,
     playMove,
+    forfeit,
+    sendEmote,
+    toggleEmotePalette: () => setShowEmotePalette((prev) => !prev),
+    closeEmotePalette: () => setShowEmotePalette(false),
     dismissOpponentLeft: () => setOpponentLeftMsg(null),
   };
 }

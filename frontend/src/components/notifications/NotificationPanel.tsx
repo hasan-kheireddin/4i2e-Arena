@@ -267,8 +267,10 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
   const title = isRequest ? t("notifications.entry_sent_friend_request") : item.entry.title;
   const body = isRequest ? undefined : item.entry.body;
 
-  const clickable = isRequest || !!item.entry.link;
-
+  // Every row answers to a click, whether or not it has somewhere to send you:
+  // an entry with no destination still has an unread dot to clear. Gating the
+  // handler on `link` was why rows for achievements, levels and chat-only
+  // notifications stayed marked new however often they were clicked.
   const activate = () => {
     if (isRequest) onNavigate(`/profile/${item.request.other_user_id}`);
     else onOpenEntry(item.entry);
@@ -276,12 +278,12 @@ function Row({ item, busyId, onRespond, onOpenEntry, onRemove, onNavigate }: Row
 
   return (
     <div
-      className={cn("group relative px-2", clickable && "cursor-pointer")}
-      onClick={clickable ? activate : undefined}
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
+      className="group relative px-2 cursor-pointer"
+      onClick={activate}
+      role="button"
+      tabIndex={0}
       onKeyDown={(e) => {
-        if (clickable && (e.key === "Enter" || e.key === " ")) {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           activate();
         }
