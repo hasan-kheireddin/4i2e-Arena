@@ -19,7 +19,6 @@ cryptography>=43.0,<44.0
 python-decouple>=3.8,<4.0
 
 Pillow>=10.4,<11.0
-requests>=2.32,<3.0
 
 flake8>=7.1,<8.0
 black>=24.8,<25.0

@@ -1,6 +1,4 @@
 from __future__ import annotations
-import logging
-import math
 from typing import Any
 
 from asgiref.sync import sync_to_async
@@ -9,8 +7,6 @@ from django.contrib.auth import get_user_model
 from django.db.models import F
 
 from apps.games.session import FinishReason, GameSession, GameType
-
-logger = logging.getLogger("analytics.xp")
 
 # Base XP for completing a game (everyone gets this)
 XP_GAME_PLAYED: int = 10
@@ -26,13 +22,6 @@ XP_FORFEIT_WIN: int = 15
 
 # Draw (TTT) — both players get a small bonus
 XP_DRAW_BONUS: int = 10
-
-# Streak bonuses — extra XP on top of the win bonus
-STREAK_BONUSES: dict[int, int] = {
-    3: 10,   # 3-game streak bonus
-    5: 25,   # 5-game streak bonus
-    10: 50,  # 10-game streak bonus
-}
 
 # Achievement XP is defined per-achievement in achievement_definitions.py
 # and passed via award_xp_for_achievement()
@@ -377,11 +366,9 @@ async def _apply_xp(user_id: int, xp_amount: int) -> dict[str, Any] | None:
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
-            logger.warning("Cannot award XP — user %s not found", user_id)
             return None
 
         old_level = user.level
-        old_xp = user.xp
 
         # Atomic increment
         User.objects.filter(pk=user_id).update(xp=F("xp") + xp_amount)
@@ -394,10 +381,6 @@ async def _apply_xp(user_id: int, xp_amount: int) -> dict[str, Any] | None:
         if new_level != old_level:
             user.level = new_level
             user.save(update_fields=["level"])
-            logger.info(
-                "User %s leveled up: %d → %d (xp=%d)",
-                user_id, old_level, new_level, new_xp,
-            )
 
         return {
             "new_xp": new_xp,
@@ -407,32 +390,6 @@ async def _apply_xp(user_id: int, xp_amount: int) -> dict[str, Any] | None:
         }
 
     return await _do()
-
-
-async def apply_streak_bonus(user_id: int, current_streak: int) -> None:
-    """
-    Check if the user's current win streak qualifies for an XP bonus
-    and award it.  Called after the streak counter is updated.
-
-    Only awards the bonus once per streak milestone (e.g. reaching 5
-    awards the 5-streak bonus but not the 3-streak bonus again).
-    """
-    bonus = STREAK_BONUSES.get(current_streak, 0)
-    if bonus <= 0:
-        return
-
-    breakdown = {f"streak_{current_streak}_bonus": bonus}
-    result = await _apply_xp(user_id, bonus)
-    if result:
-        await _send_xp_notification(
-            user_id=user_id,
-            xp_gained=bonus,
-            breakdown=breakdown,
-            new_xp=result["new_xp"],
-            new_level=result["new_level"],
-            old_level=result["old_level"],
-            leveled_up=result["leveled_up"],
-        )
 
 
 async def _send_xp_notification(
@@ -479,8 +436,4 @@ async def _send_xp_notification(
                 "new_xp": new_xp,
                 "level_info": level_info,
             },
-        )
-        logger.info(
-            "Sent level-up notification: user=%s level=%d→%d",
-            user_id, old_level, new_level,
         )

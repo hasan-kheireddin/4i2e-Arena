@@ -11,11 +11,7 @@ import Renderer3D from '../components/Renderer3D/Renderer';
 import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay, { useFloatingEmotes } from '../components/Chat/FloatingEmote';
 import FloatingChatWidget from '../components/Chat/FloatingChatWidget';
-
-const DEBUG = false;
-function debugLog(...args: unknown[]) {
-  if (DEBUG) console.debug('[PONG3D]', ...args);
-}
+import ForfeitConfirm from '../components/ForfeitConfirm';
 
 interface PaddleState { y: number }
 interface BallState { x: number; y: number; vx: number; vy: number }
@@ -167,6 +163,7 @@ export default function Pong3DPage() {
   const prevDirectionRef = useRef<'up' | 'down' | 'stop'>('stop');
 
   const [showEmotePalette, setShowEmotePalette] = useState(false);
+  const [confirmForfeit, setConfirmForfeit] = useState(false);
   const { emotes: floatingEmotes, addEmote, addSpectatorEmote } = useFloatingEmotes();
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -178,6 +175,12 @@ export default function Pong3DPage() {
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
   }, [gameId, mySlot]);
+
+  // A match that ends while the prompt is open (the opponent forfeited or
+  // disconnected first) leaves nothing to forfeit, so it should not linger.
+  useEffect(() => {
+    if (onlinePhase !== 'playing') setConfirmForfeit(false);
+  }, [onlinePhase]);
 
   const simulateLocalStep = useCallback((
     gs: { p1: PaddleState; p2: PaddleState; ball: BallState },
@@ -359,10 +362,6 @@ export default function Pong3DPage() {
     p1: { score: number; paddle: { y: number } },
     p2: { score: number; paddle: { y: number } },
   ) => {
-    debugLog(
-      `SNAPSHOT ball=({x:${ball.x.toFixed(1)},y:${ball.y.toFixed(1)},vx:${ball.vx.toFixed(2)},vy:${ball.vy.toFixed(2)}})`,
-      `p1=${p1.paddle.y.toFixed(1)} p2=${p2.paddle.y.toFixed(1)} score=${p1.score}-${p2.score}`,
-    );
     const authoritative: OnlineGameState = {
       ball,
       paddles: { 1: { y: p1.paddle.y }, 2: { y: p2.paddle.y } },
@@ -386,7 +385,6 @@ export default function Pong3DPage() {
     onlineScoreRef.current = { p1: p1.score, p2: p2.score };
     setOnlineScore((prev) => {
       if (prev.p1 !== p1.score || prev.p2 !== p2.score) {
-        debugLog(`SCORE_CHANGE ${prev.p1}-${prev.p2} -> ${p1.score}-${p2.score}`);
       }
       return prev.p1 === p1.score && prev.p2 === p2.score
         ? prev
@@ -452,7 +450,6 @@ export default function Pong3DPage() {
           }
         }
       } else if (type === 'game_start') {
-        debugLog('GAME_START');
         snapshotBufferRef.current = [];
         renderedOnlineStateRef.current = null;
         onlineLastRenderTsRef.current = null;
@@ -464,8 +461,6 @@ export default function Pong3DPage() {
         const p1 = data.player1 as { score: number; paddle: { y: number } } | undefined;
         const p2 = data.player2 as { score: number; paddle: { y: number } } | undefined;
         if (p1 && p2) {
-          const serverTsMs = Number(data.server_ts_ms);
-          debugLog(`RECV game_state ts=${serverTsMs} ball=({x:${ball.x},y:${ball.y},vx:${ball.vx},vy:${ball.vy}})`);
           lastProcessedInputSequenceRef.current = Math.max(
             lastProcessedInputSequenceRef.current,
             readInputSequence(data.last_processed_input_sequence),
@@ -477,7 +472,6 @@ export default function Pong3DPage() {
         const ball = data.ball as { x: number; y: number; vx: number; vy: number };
         const p1 = data.player1 as { score: number; paddle: { y: number } } | undefined;
         const p2 = data.player2 as { score: number; paddle: { y: number } } | undefined;
-        debugLog(`RECV game_resumed ball=({x:${ball?.x},y:${ball?.y},vx:${ball?.vx},vy:${ball?.vy}})`);
         if (ball && p1 && p2) {
           lastProcessedInputSequenceRef.current = Math.max(
             lastProcessedInputSequenceRef.current,
@@ -555,7 +549,6 @@ export default function Pong3DPage() {
   useEffect(() => { gameSendRef2.current = gameSend; gameSendRef.current = gameSend; }, [gameSend]);
   useEffect(() => {
     if (gameLatency.rttMs !== null) {
-      debugLog(`LATENCY rtt=${gameLatency.rttMs.toFixed(1)}ms offset=${(gameLatency.clockOffsetMs ?? 0).toFixed(1)}ms`);
     }
   }, [gameLatency.rttMs, gameLatency.clockOffsetMs]);
 
@@ -687,7 +680,10 @@ export default function Pong3DPage() {
     navigate('/games/playpage');
   };
 
-  const handleForfeit = () => gameSend({ type: 'forfeit' });
+  const handleForfeit = () => {
+    setConfirmForfeit(false);
+    gameSend({ type: 'forfeit' });
+  };
 
   const playerWon = score.p1 >= WIN_SCORE;
   const iWon = onlineWinnerSlot !== null && onlineWinnerSlot === mySlot;
@@ -744,6 +740,12 @@ export default function Pong3DPage() {
 
   return (
     <>
+    <ForfeitConfirm
+      keyPrefix="pong"
+      open={confirmForfeit}
+      onCancel={() => setConfirmForfeit(false)}
+      onConfirm={handleForfeit}
+    />
     <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="max-w-[54rem] w-full space-y-4">
         <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
@@ -923,7 +925,7 @@ export default function Pong3DPage() {
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_disconnected')}</p>
               )}
               {onlineReason === 'forfeit' && (
-                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('pong.opponent_forfeited')}</p>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{iWon ? t('pong.opponent_forfeited') : t('pong.you_forfeited')}</p>
               )}
               <div className="flex gap-3 mt-2">
                 <button onClick={handleFindMatch} className="px-6 py-2 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>{t('pong.play_again')}</button>
@@ -1005,7 +1007,7 @@ export default function Pong3DPage() {
                 >
                   <Smile className="w-4 h-4" />
                 </button>
-                <button onClick={handleForfeit} className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200" style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
+                <button onClick={() => setConfirmForfeit(true)} className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200" style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-input)'}
                 >

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { TicTacToeIcon } from '../components/icons/GameIcons';
 import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay, { type FloatingEmoteData } from '../components/Chat/FloatingEmote';
+import ForfeitConfirm from '../components/ForfeitConfirm';
 import { cn } from '../lib/utils';
 import {
   playLocalPlaceSound,
@@ -327,52 +328,6 @@ function OpponentLeftOverlay({ props }: { props: TicTacToeGameViewProps }) {
           style={{ backgroundImage: 'var(--gradient-brand)' }}>
           {t('ttt.back_to_games')}
         </button>
-      </div>
-    </div>
-  );
-}
-
-function ForfeitConfirm({
-  open, onCancel, onConfirm,
-}: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
-  const { t } = useTranslation();
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-      onClick={onCancel}>
-      <div className="rounded-2xl p-6 max-w-sm w-full text-center space-y-3 ttt-result-in"
-        style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center"
-          style={{ backgroundColor: 'rgb(var(--color-danger-rgb) / 0.14)', color: 'var(--color-danger)' }}>
-          <IconFlag size={22} />
-        </div>
-        <p className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-          {t('ttt.forfeit_confirm_title')}
-        </p>
-        <p className="text-[13px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-          {t('ttt.forfeit_confirm_body')}
-        </p>
-        <div className="flex gap-2 pt-1">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors hover:bg-surface-hover"
-            style={{
-              backgroundColor: 'var(--color-bg-input)',
-              color: 'var(--color-text-primary)',
-              border: '1px solid var(--color-border)',
-            }}>
-            {t('ttt.cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--color-danger)' }}>
-            {t('ttt.forfeit_confirm_yes')}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -872,6 +827,7 @@ export default function TicTacToeGameView(props: TicTacToeGameViewProps) {
     <>
       <OpponentLeftOverlay props={props} />
       <ForfeitConfirm
+        keyPrefix="ttt"
         open={confirmForfeit}
         onCancel={() => setConfirmForfeit(false)}
         onConfirm={() => {

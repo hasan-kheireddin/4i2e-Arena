@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 import collections
-import logging
 import time
 from typing import Any
 
@@ -18,8 +17,6 @@ from apps.games.session import (
     persist_session,
     remove_session_async,
 )
-
-logger = logging.getLogger("games.pong")
 
 TICK_RATE: int = 60
 TICK_INTERVAL: float = 1.0 / TICK_RATE
@@ -452,7 +449,6 @@ class PongConsumer(BaseConsumer):
         except asyncio.CancelledError:
             pass
         except Exception:
-            logger.exception("Tick loop crashed for game_id=%s", session.game_id)
             session.mark_finished(reason=FinishReason.SERVER_ERROR)
             await persist_session(session)
             await self._cancel_disconnect_tasks(session)

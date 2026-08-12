@@ -1,5 +1,4 @@
 from __future__ import annotations
-import logging
 from datetime import timedelta
 from typing import Any, Optional
 from uuid import UUID
@@ -23,22 +22,18 @@ from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from apps.games.models import (
     GameMode,
-    Match,
     MatchPlayer,
 )
-from apps.games.stats_cache import (
+from apps.games.stats_cache import (  # noqa: F401
     LEADERBOARD_CACHE_TTL,
     STATS_CACHE_TTL,
-    h2h_key,
-    invalidate_head_to_head_stats,
+    # Re-exported: signals.py, match_recording_service.py and views.py all
+    # import invalidate_match_stats from here, not from stats_cache.
     invalidate_match_stats,
-    invalidate_user_stats,
     leaderboard_key,
     user_stats_key,
 )
 from apps.games.stats_game_specific import compute_game_specific_stats
-
-logger = logging.getLogger("games.stats")
 
 
 def get_user_stats(
@@ -274,130 +269,6 @@ def _compute_user_stats(
         "performance_trend": performance_trend,
         "game_specific": game_specific,
         "recent_form": recent_form,
-    }
-
-
-def get_head_to_head(
-    user_id: UUID | int,
-    opponent_id: UUID | int,
-) -> dict[str, Any]:
-    """
-    Compute head-to-head statistics between two players.
-
-    Cached for ``STATS_CACHE_TTL`` seconds.
-    """
-    cache_key = h2h_key(user_id, opponent_id)
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    result = _compute_head_to_head(user_id, opponent_id)
-    cache.set(cache_key, result, STATS_CACHE_TTL)
-    return result
-
-
-def _compute_head_to_head(
-    user_id: UUID | int,
-    opponent_id: UUID | int,
-) -> dict[str, Any]:
-    """Aggregate stats for matches where both players participated."""
-
-    # Find matches where both users played
-    shared_match_ids = list(
-        MatchPlayer.objects.filter(user_id=user_id)
-        .values_list("match_id", flat=True)
-        .intersection(
-            MatchPlayer.objects.filter(user_id=opponent_id)
-            .values_list("match_id", flat=True)
-        )
-    )
-
-    if not shared_match_ids:
-        return {
-            "user_id": str(user_id),
-            "opponent_id": str(opponent_id),
-            "total_matches": 0,
-            "user_wins": 0,
-            "opponent_wins": 0,
-            "draws": 0,
-            "matches": [],
-        }
-
-    user_parts = MatchPlayer.objects.filter(
-        user_id=user_id,
-        match_id__in=shared_match_ids,
-    ).select_related("match")
-
-    user_wins = user_parts.filter(outcome="win").count()
-    opponent_wins = user_parts.filter(outcome="loss").count()
-    h2h_draws = user_parts.filter(outcome="draw").count()
-    total = user_parts.count()
-
-    # By game type
-    by_game_type = {}
-    for gt in ["pong", "tictactoe"]:
-        gt_qs = user_parts.filter(match__game_type=gt)
-        gt_total = gt_qs.count()
-        if gt_total > 0:
-            by_game_type[gt] = {
-                "total": gt_total,
-                "user_wins": gt_qs.filter(outcome="win").count(),
-                "opponent_wins": gt_qs.filter(outcome="loss").count(),
-                "draws": gt_qs.filter(outcome="draw").count(),
-            }
-
-    # Score aggregation
-    agg = user_parts.aggregate(
-        user_total_score=Coalesce(Sum("score"), 0),
-        user_avg_score=Coalesce(Avg("score"), 0.0, output_field=FloatField()),
-    )
-    opp_agg = MatchPlayer.objects.filter(
-        user_id=opponent_id,
-        match_id__in=shared_match_ids,
-    ).aggregate(
-        opp_total_score=Coalesce(Sum("score"), 0),
-        opp_avg_score=Coalesce(Avg("score"), 0.0, output_field=FloatField()),
-    )
-
-    # Recent matches (last 10)
-    recent = (
-        user_parts.order_by("-match__finished_at")
-        .values(
-            match_uuid=F("match__id"),
-            game_type=F("match__game_type"),
-            finished_at=F("match__finished_at"),
-            user_outcome=F("outcome"),
-            user_score=F("score"),
-        )[:10]
-    )
-
-    return {
-        "user_id": str(user_id),
-        "opponent_id": str(opponent_id),
-        "total_matches": total,
-        "user_wins": user_wins,
-        "opponent_wins": opponent_wins,
-        "draws": h2h_draws,
-        "user_win_rate": round(user_wins / total, 4) if total > 0 else 0.0,
-        "by_game_type": by_game_type,
-        "scores": {
-            "user_total": agg["user_total_score"],
-            "user_avg": round(agg["user_avg_score"], 2),
-            "opponent_total": opp_agg["opp_total_score"],
-            "opponent_avg": round(opp_agg["opp_avg_score"], 2),
-        },
-        "recent_matches": [
-            {
-                "match_id": str(r["match_uuid"]),
-                "game_type": r["game_type"],
-                "finished_at": (
-                    r["finished_at"].isoformat() if r["finished_at"] else None
-                ),
-                "outcome": r["user_outcome"],
-                "score": r["user_score"],
-            }
-            for r in recent
-        ],
     }
 
 

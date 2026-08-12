@@ -5,14 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatNumber(value: number): string {
-  return new Intl.NumberFormat().format(value);
-}
-
-export function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
-
 export function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return 'just now';

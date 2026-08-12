@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ChannelViewSet, MessageViewSet, MembershipViewSet, BlockViewSet, FriendshipViewSet
+from .views import ChannelViewSet, MembershipViewSet, BlockViewSet, FriendshipViewSet
 
 router = DefaultRouter()
 router.register(r"channels", ChannelViewSet, basename="channel")
@@ -41,10 +41,5 @@ urlpatterns = [
         "channels/<uuid:channel_pk>/members/toggle_notification_mute/",
         MembershipViewSet.as_view({"post": "toggle_notification_mute"}),
         name="channel-member-toggle-notification-mute",
-    ),
-    path(
-        "channels/<uuid:channel_pk>/messages/",
-        MessageViewSet.as_view({"get": "list"}),
-        name="channel-messages",
     ),
 ]

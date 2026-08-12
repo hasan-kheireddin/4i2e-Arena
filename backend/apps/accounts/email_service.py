@@ -4,12 +4,9 @@ and rest password link with token
 """
 from __future__ import annotations
 
-import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
-
-logger = logging.getLogger(__name__)
 
 
 def send_otp_email(user, otp: str) -> None:
@@ -31,9 +28,7 @@ def send_otp_email(user, otp: str) -> None:
             recipient_list=[user.email],
             fail_silently=False,
         )
-        logger.info("OTP email sent to %s", user.email)
     except Exception:
-        logger.exception("Failed to send OTP email to %s", user.email)
         raise
 
 
@@ -67,7 +62,5 @@ def send_password_reset_email(
             recipient_list=[user.email],
             fail_silently=False,
         )
-        logger.info("Password reset email sent to %s", user.email)
     except Exception:
-        logger.exception("Failed to send password reset email to %s", user.email)
         raise

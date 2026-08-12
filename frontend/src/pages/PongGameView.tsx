@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { ComponentProps, RefObject } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +7,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import EmotePalette from '../components/Chat/EmotePalette';
 import FloatingEmoteOverlay from '../components/Chat/FloatingEmote';
+import ForfeitConfirm from '../components/ForfeitConfirm';
 
 export type PongMode = 'local' | 'online';
 export type PongOnlinePhase = 'idle' | 'matchmaking' | 'waiting' | 'playing' | 'over';
@@ -328,7 +330,7 @@ function GameOverOverlay({ props }: { props: PongGameViewProps }) {
         detail={disconnected
           ? t('pong.opponent_disconnected')
           : props.onlineReason === 'forfeit'
-            ? t('pong.opponent_forfeited')
+            ? (iWon ? t('pong.opponent_forfeited') : t('pong.you_forfeited'))
             : null}
         onPlayAgain={props.onFindMatch}
         onBack={props.onBackToGames}
@@ -455,7 +457,9 @@ function PongArena({ props }: { props: PongGameViewProps }) {
   );
 }
 
-function PongControls({ props }: { props: PongGameViewProps }) {
+function PongControls({
+  props, onRequestForfeit,
+}: { props: PongGameViewProps; onRequestForfeit: () => void }) {
   const { t } = useTranslation();
   const showLocalActions = props.mode !== 'online'
     && !props.gameOver
@@ -527,7 +531,7 @@ function PongControls({ props }: { props: PongGameViewProps }) {
               title={t('pong.emotes', 'Emotes')}>
               <Smile className="w-4 h-4" />
             </button>
-            <button onClick={props.onForfeit}
+            <button onClick={onRequestForfeit}
               className="px-4 py-1.5 rounded-lg text-sm font-medium"
               style={{ backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.3)' }}>
               {t('pong.forfeit')}
@@ -540,13 +544,30 @@ function PongControls({ props }: { props: PongGameViewProps }) {
 }
 
 export default function PongGameView(props: PongGameViewProps) {
+  const [confirmForfeit, setConfirmForfeit] = useState(false);
+
+  // A match that ends while the prompt is open (the opponent forfeited or
+  // disconnected first) leaves nothing to forfeit, so it should not linger.
+  useEffect(() => {
+    if (props.onlinePhase !== 'playing') setConfirmForfeit(false);
+  }, [props.onlinePhase]);
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6"
       style={{ backgroundColor: 'var(--color-bg)' }}>
+      <ForfeitConfirm
+        keyPrefix="pong"
+        open={confirmForfeit}
+        onCancel={() => setConfirmForfeit(false)}
+        onConfirm={() => {
+          setConfirmForfeit(false);
+          props.onForfeit();
+        }}
+      />
       <div className="max-w-[54rem] w-full space-y-4">
         <PongHud props={props} />
         <PongArena props={props} />
-        <PongControls props={props} />
+        <PongControls props={props} onRequestForfeit={() => setConfirmForfeit(true)} />
       </div>
     </div>
   );

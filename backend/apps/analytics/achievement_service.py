@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from asgiref.sync import sync_to_async
@@ -13,8 +12,6 @@ from apps.analytics.tracking_service import track_achievement_unlocked
 from apps.analytics.xp_service import award_xp_for_achievement
 from apps.games.models import GameMode, MatchPlayer
 from apps.games.session import FinishReason, GameSession, GameType
-
-logger = logging.getLogger("analytics.achievements")
 
 
 def _slot_lookup(raw: Any, slot: int, default: Any = 0) -> Any:
@@ -442,20 +439,6 @@ async def _compute_game_win_streak(user_id: int, game_type: GameType) -> int:
     return await _do()
 
 
-async def _increment_and_check(
-    user_id: int,
-    achievement_key: str,
-    *,
-    game_session_id: str = "",
-) -> dict[str, Any] | None:
-    return await _increment_by_and_check(
-        user_id,
-        achievement_key,
-        1,
-        game_session_id=game_session_id,
-    )
-
-
 async def _increment_by_and_check(
     user_id: int,
     achievement_key: str,
@@ -546,11 +529,6 @@ def _create_unlock(
     except IntegrityError:
         return None
 
-    logger.info(
-        "Achievement unlocked: user=%s achievement=%s",
-        user_id,
-        achievement.key,
-    )
     track_achievement_unlocked(
         user_id,
         achievement_key=achievement.key,
@@ -586,11 +564,6 @@ async def _send_unlock_notifications(
                 "type": "achievement.unlocked",
                 "achievement": achievement_data,
             },
-        )
-        logger.info(
-            "Achievement notification queued: user=%s achievement=%s",
-            user_id,
-            achievement_data.get("key"),
         )
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 import collections
-import logging
 import time
 from typing import Any
 
@@ -19,8 +18,6 @@ from apps.games.session import (
 )
 from apps.games.tictactoe_engine import GameStatus as TTTStatus
 from apps.games.tictactoe_engine import MoveResult
-
-logger = logging.getLogger("games.tictactoe")
 
 MOVE_RATE_LIMIT: int = 2
 MOVE_RATE_WINDOW: float = 1.0

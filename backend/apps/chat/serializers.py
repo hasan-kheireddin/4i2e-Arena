@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Channel, ChannelMembership, Message, Block, Friendship
+from .models import Channel, ChannelMembership, Block, Friendship
 
 
 class ChannelSerializer(serializers.ModelSerializer):
@@ -113,25 +113,6 @@ class ChannelMembershipSerializer(serializers.ModelSerializer):
             "id", "user", "username", "display_name",
             "role", "muted_until", "joined_at",
         ]
-
-
-class MessageSerializer(serializers.ModelSerializer):
-    sender_username = serializers.CharField(source="sender.username", read_only=True)
-
-    class Meta:
-        model = Message
-        fields = [
-            "id", "channel", "sender", "sender_username",
-            "message_type", "content", "emote_id", "created_at",
-        ]
-        read_only_fields = ["id", "sender", "created_at"]
-
-
-class EmoteActionSerializer(serializers.Serializer):
-    emote_id = serializers.CharField(max_length=50)
-    channel_id = serializers.UUIDField(required=False)
-    target_user_id = serializers.UUIDField(required=False)
-    game_id = serializers.CharField(max_length=100, required=False)
 
 
 class FriendshipSerializer(serializers.ModelSerializer):

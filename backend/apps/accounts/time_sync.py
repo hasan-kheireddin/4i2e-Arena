@@ -22,7 +22,6 @@ which is exactly the behaviour this module replaced.
 from __future__ import annotations
 
 import email.utils
-import logging
 import socket
 import struct
 import threading
@@ -32,8 +31,6 @@ import urllib.request
 from django.conf import settings
 
 from .safety import safe_cache_get, safe_cache_set
-
-logger = logging.getLogger(__name__)
 
 # Seconds between the NTP epoch (1900-01-01) and the Unix epoch (1970-01-01).
 _NTP_EPOCH_DELTA = 2_208_988_800
@@ -171,26 +168,18 @@ def _measure_offset() -> float | None:
     for server in _servers():
         try:
             offset = _query_ntp(server, timeout)
-        except Exception as exc:
-            logger.debug("NTP time sync via %s failed: %s", server, exc)
+        except Exception:
             continue
         if abs(offset) > limit:
-            logger.warning(
-                "Ignoring implausible %.1fs offset from NTP server %s", offset, server
-            )
             continue
         return offset
 
     for url in _http_fallback_urls():
         try:
             offset = _query_http(url, timeout)
-        except Exception as exc:
-            logger.debug("HTTP time sync via %s failed: %s", url, exc)
+        except Exception:
             continue
         if abs(offset) > limit:
-            logger.warning(
-                "Ignoring implausible %.1fs offset from HTTP source %s", offset, url
-            )
             continue
         return offset
 
@@ -219,22 +208,12 @@ def _refresh(now: float) -> None:
     offset = _measure_offset()
     if offset is None:
         _state["failed_at"] = now
-        if _state["offset"] is None:
-            logger.warning(
-                "Unable to determine true time; falling back to the system clock. "
-                "TOTP will fail if this host's clock is off by more than 30s."
-            )
         return
 
-    previous = _state["offset"]
     _adopt(offset, now)
     # The cache TTL is what paces refreshes across workers: once it expires,
     # whichever worker notices first re-measures and republishes.
     safe_cache_set(_CACHE_KEY, offset, timeout=int(_refresh_interval()))
-
-    if previous is None or abs(offset - previous) >= 1.0:
-        log = logger.warning if abs(offset) >= 5.0 else logger.info
-        log("System clock is %.2fs from true time; compensating in software.", offset)
 
 
 def get_clock_offset() -> float:
@@ -254,7 +233,7 @@ def get_clock_offset() -> float:
             if checked_at is None or (now - checked_at) >= _refresh_interval():
                 _refresh(now)
     except Exception:
-        logger.exception("Time sync refresh failed unexpectedly")
+        pass
 
     return _state["offset"] or 0.0
 
@@ -262,10 +241,3 @@ def get_clock_offset() -> float:
 def trusted_time() -> float:
     """`time.time()` corrected by the measured offset."""
     return time.time() + get_clock_offset()
-
-
-def reset_for_tests() -> None:
-    """Drop the process-local offset so a test can re-measure from scratch."""
-    _state["offset"] = None
-    _state["checked_at"] = None
-    _state["failed_at"] = None

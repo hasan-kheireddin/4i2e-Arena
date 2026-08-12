@@ -1,11 +1,8 @@
 from __future__ import annotations
-import logging
 import time
 from typing import Any
 import redis.asyncio as aioredis
 from apps.games.session import GameType, generate_game_id
-
-logger = logging.getLogger("games.matchmaking")
 
 _KEY_PREFIX = "matchmaking"
 QUEUE_METADATA_TTL_SECONDS: int = 300
@@ -124,9 +121,6 @@ class MatchmakingService:
         pipe.sadd(_active_key(), uid_str)
 
         await pipe.execute()
-        logger.info(
-            "Player enqueued: user_id=%s game_type=%s", user_id, game_type,
-        )
         return {"resumed": False}
 
     async def mark_disconnected(self, user_id: int, grace_seconds: float) -> bool:
@@ -170,7 +164,7 @@ class MatchmakingService:
         """
         removed = await self._remove_from_all_queues(user_id)
         if removed:
-            logger.info("Player dequeued: user_id=%s", user_id)
+            pass
         return removed
 
     async def try_match(self, game_type: str) -> dict[str, Any] | None:
@@ -246,10 +240,6 @@ class MatchmakingService:
             "player1": p1_meta,
             "player2": p2_meta,
         }
-        logger.info(
-            "Match found: game_id=%s p1=%s p2=%s game_type=%s",
-            game_id, p1_id, p2_id, game_type,
-        )
         return match
 
     async def get_queue_info(
@@ -331,7 +321,7 @@ class MatchmakingService:
                 cleaned += len(stale)
 
         if cleaned:
-            logger.info("Cleaned up %d stale queue entries", cleaned)
+            pass
         return cleaned
 
     async def is_queued(self, user_id: int) -> bool:

@@ -93,7 +93,8 @@ export interface UserStats {
     avg_score: number;
   }>;
   game_specific: Record<string, unknown>;
-  recent_form: string[];
+  /** Newest match first, capped at 10 by the backend. */
+  recent_form: Array<"win" | "loss" | "draw">;
 }
 
 /** Entry returned by /api/games/stats/leaderboard/ */
@@ -135,11 +136,6 @@ export function getMyMatches(filters: MatchFilters = {}): Promise<PaginatedMatch
   );
 }
 
-/** GET /api/games/matches/<id>/ */
-export function getMatch(id: string): Promise<Match> {
-  return apiFetch<Match>(`${G}/matches/${id}/`);
-}
-
 /** GET /api/games/matches/user/<uuid>/ */
 export function getUserMatches(userId: string, filters: { game_type?: string; page?: number; page_size?: number } = {}): Promise<PaginatedMatches> {
   return apiFetch<PaginatedMatches>(`${G}/matches/user/${userId}/${buildQuery(filters as Record<string, string | number | undefined>)}`);
@@ -169,11 +165,6 @@ export function getUserStats(
   );
 }
 
-/** GET /api/games/stats/head-to-head/<uuid>/ */
-export function getHeadToHead(opponentId: string): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>(`${G}/stats/head-to-head/${opponentId}/`);
-}
-
 /** GET /api/games/stats/leaderboard/ */
 export function getLeaderboard(
   params: { game_type?: string; metric?: 'wins'; period?: LeaderboardPeriod; limit?: number } = {}
@@ -181,11 +172,6 @@ export function getLeaderboard(
   return apiFetch<LeaderboardEntry[]>(
     `${G}/stats/leaderboard/${buildQuery(params as Record<string, string | number | undefined>)}`
   );
-}
-
-/** GET /api/games/matches/summary/ */
-export function getMatchSummary(): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>(`${G}/matches/summary/`);
 }
 
 /** POST /api/games/matches/create/ - Create local match record */

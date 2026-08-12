@@ -1,14 +1,11 @@
 
 from __future__ import annotations
 import json
-import logging
 import time
 import uuid
 from typing import Any
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-
-logger = logging.getLogger("channels.consumer")
 
 MAX_MESSAGE_SIZE: int = 65_536
 
@@ -66,46 +63,22 @@ class BaseConsumer(AsyncWebsocketConsumer):
         if self.require_auth and (
             self.user is None or not getattr(self.user, "is_authenticated", False)
         ):
-            logger.info(
-                "Rejected unauthenticated WebSocket from %s",
-                self.scope.get("client", ("?", 0))[0],
-            )
             await self.close(code=4401)
             return
 
         await self.accept()
         self._accepted = True
         self._connected_at = time.monotonic()
-        logger.info(
-            "WebSocket connected: user=%s channel=%s",
-            getattr(self.user, "username", "anon"),
-            self.channel_name,
-        )
         await self.on_connect()
 
     async def disconnect(self, code: int) -> None:
         """Leave all groups and invoke the subclass hook."""
-        duration = (
-            round(time.monotonic() - self._connected_at, 1)
-            if self._connected_at is not None
-            else 0
-        )
-        logger.info(
-            "WebSocket disconnected: user=%s code=%s duration=%.1fs",
-            getattr(self.user, "username", "anon"),
-            code,
-            duration,
-        )
         # Clean up all groups — tolerate individual failures so that
         # on_disconnect is always reached.
         for group in list(self._groups):
             try:
                 await self.leave_group(group)
             except Exception:  # noqa: BLE001
-                logger.warning(
-                    "Failed to leave group %s during disconnect", group,
-                    exc_info=True,
-                )
                 self._groups.discard(group)
 
         await self.on_disconnect(code)
@@ -149,9 +122,6 @@ class BaseConsumer(AsyncWebsocketConsumer):
         try:
             await self.on_message(content)
         except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "Error processing message type=%s: %s", msg_type, exc,
-            )
             await self.on_error(exc, msg_type)
             await self.send_error(
                 "internal_error",
@@ -240,30 +210,12 @@ class BaseConsumer(AsyncWebsocketConsumer):
         self._require_channel_layer()
         await self.channel_layer.group_add(group, self.channel_name)
         self._groups.add(group)
-        logger.debug(
-            "Channel %s joined group %s", self.channel_name, group,
-        )
 
     async def leave_group(self, group: str) -> None:
         """Leave a channel-layer group and stop tracking it."""
         self._require_channel_layer()
         await self.channel_layer.group_discard(group, self.channel_name)
         self._groups.discard(group)
-        logger.debug(
-            "Channel %s left group %s", self.channel_name, group,
-        )
-
-    @property
-    def groups_joined(self) -> frozenset[str]:
-        """Read-only snapshot of group memberships."""
-        return frozenset(self._groups)
-
-    @property
-    def connection_duration(self) -> float:
-        """Seconds since the connection was accepted (0 if not yet)."""
-        if self._connected_at is None:
-            return 0.0
-        return time.monotonic() - self._connected_at
 
     def _require_channel_layer(self) -> None:
         """Raise a clear error if no channel layer is configured."""

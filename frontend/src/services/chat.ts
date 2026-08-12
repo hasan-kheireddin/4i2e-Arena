@@ -32,18 +32,6 @@ export interface Channel {
   } | null;
 }
 
-export interface Message {
-  id: string;
-  channel: string;
-  sender: string | null;
-  sender_username: string | null;
-  sender_avatar: string;
-  message_type: "text" | "emote" | "system";
-  content: string;
-  emote_id: string;
-  created_at: string;
-}
-
 export interface BlockRecord {
   id: string;
   blocker: string;
@@ -67,10 +55,6 @@ export async function searchUsers(query: string): Promise<SearchUser[]> {
 
 export async function fetchChannels(): Promise<Channel[]> {
   return apiFetch<Channel[]>("/api/chat/channels/");
-}
-
-export async function fetchMessages(channelId: string): Promise<Message[]> {
-  return apiFetch<Message[]>(`/api/chat/channels/${channelId}/messages/`);
 }
 
 export async function getOrCreateDM(targetUserId: string): Promise<Channel> {

@@ -4,10 +4,8 @@ from .views import (
     # Achievement endpoints
     AchievementDetailView,
     AchievementListView,
-    AchievementProgressListView,
     AchievementStatsView,
     AchievementUnlockedListView,
-    LeaderboardView,
     LevelTableView,
     UserXPDetailView,
     PublicStatsView,
@@ -33,11 +31,6 @@ urlpatterns = [
         name="achievement-unlocked-list-user",
     ),
     path(
-        "achievements/progress/",
-        AchievementProgressListView.as_view(),
-        name="achievement-progress-list",
-    ),
-    path(
         "achievements/stats/",
         AchievementStatsView.as_view(),
         name="achievement-stats",
@@ -61,11 +54,6 @@ urlpatterns = [
     ),
 
     # XP & Leaderboard endpoints
-    path(
-        "leaderboard/",
-        LeaderboardView.as_view(),
-        name="leaderboard",
-    ),
     path(
         "xp/me/",
         UserXPDetailView.as_view(),

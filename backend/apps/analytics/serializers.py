@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Achievement, AchievementProgress, AchievementUnlock
+from .models import Achievement, AchievementUnlock
 
 User = get_user_model()
 
@@ -23,25 +23,6 @@ class AchievementSerializer(serializers.ModelSerializer):
             "threshold",
             "is_hidden",
             "ordering_priority",
-        ]
-        read_only_fields = fields
-
-
-class AchievementProgressSerializer(serializers.ModelSerializer):
-    """Serializer for a user's progress toward an achievement."""
-    achievement = AchievementSerializer(read_only=True)
-    percentage = serializers.FloatField(read_only=True)
-    is_complete = serializers.BooleanField(read_only=True)
-
-    class Meta:
-        model = AchievementProgress
-        fields = [
-            "id",
-            "achievement",
-            "current",
-            "percentage",
-            "is_complete",
-            "updated_at",
         ]
         read_only_fields = fields
 
@@ -93,47 +74,3 @@ class AchievementWithUserStatusSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class AchievementStatsSerializer(serializers.Serializer):
-    """Summary statistics for a user's achievements."""
-    total_achievements = serializers.IntegerField()
-    unlocked_count = serializers.IntegerField()
-    locked_count = serializers.IntegerField()
-    completion_percentage = serializers.FloatField()
-    total_xp_from_achievements = serializers.IntegerField()
-    by_category = serializers.DictField(child=serializers.DictField())
-    by_rarity = serializers.DictField(child=serializers.DictField())
-    recent_unlocks = AchievementUnlockSerializer(many=True)
-
-class LeaderboardEntrySerializer(serializers.ModelSerializer):
-    """A single row in the leaderboard."""
-    rank = serializers.IntegerField(read_only=True)
-    xp_to_next_level = serializers.SerializerMethodField()
-
-    class Meta:
-        model = User
-        fields = [
-            "id",
-            "username",
-            "display_name",
-            "xp",
-            "level",
-            "rank",
-            "xp_to_next_level",
-        ]
-        read_only_fields = fields
-
-    def get_xp_to_next_level(self, obj) -> dict:
-        from apps.analytics.xp_service import get_xp_to_next_level
-        return get_xp_to_next_level(obj.xp)
-
-
-class UserXPDetailSerializer(serializers.Serializer):
-    """Detailed XP and level info for the requesting user."""
-    user_id = serializers.UUIDField()
-    username = serializers.CharField()
-    display_name = serializers.CharField()
-    xp = serializers.IntegerField()
-    level = serializers.IntegerField()
-    level_info = serializers.DictField()
-    rank = serializers.IntegerField()
-    total_players = serializers.IntegerField()

@@ -211,18 +211,6 @@ class TOTPDevice(models.Model):
         self.recovery_codes = hashed
         return codes
 
-    def verify_recovery_code(self, code: str) -> bool:
-        """
-        Check a recovery code. If valid, remove it (single-use) and
-        return True. Otherwise return False.
-        """
-        code_hash = hashlib.sha256(code.strip().upper().encode()).hexdigest()
-        if code_hash in self.recovery_codes:
-            self.recovery_codes.remove(code_hash)
-            self.save(update_fields=["recovery_codes"])
-            return True
-        return False
-
     @property
     def remaining_recovery_codes(self) -> int:
         return len(self.recovery_codes)
@@ -268,24 +256,6 @@ class EmailVerificationToken(models.Model):
     @property
     def is_expired(self) -> bool:
         return timezone.now() > self.expires_at
-
-    @classmethod
-    def create_otp(cls, user) -> "EmailVerificationToken":
-        """Create a 6-digit OTP for email verification (15-min TTL)."""
-        # Invalidate any existing unused tokens for this user/type
-        cls.objects.filter(
-            user=user,
-            token_type=cls.TYPE_EMAIL_VERIFY,
-            used=False,
-        ).update(used=True)
-
-        code = str(random.randint(100000, 999999))
-        return cls.objects.create(
-            user=user,
-            token_type=cls.TYPE_EMAIL_VERIFY,
-            code=code,
-            expires_at=timezone.now() + timezone.timedelta(minutes=15),
-        )
 
     @classmethod
     def create_reset_token(cls, user) -> "EmailVerificationToken":

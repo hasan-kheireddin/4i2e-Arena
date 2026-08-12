@@ -1,5 +1,4 @@
 from __future__ import annotations
-import logging
 from typing import Any
 from urllib.parse import parse_qs, urlencode
 from channels.db import database_sync_to_async
@@ -9,8 +8,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken
-
-logger = logging.getLogger("channels.jwt")
 
 User = get_user_model()
 
@@ -75,7 +72,6 @@ class JWTAuthMiddleware(BaseMiddleware):
         try:
             qs = parse_qs(raw_qs.decode("utf-8"))
         except (UnicodeDecodeError, ValueError):
-            logger.debug("Unparseable query string on WebSocket connection")
             return None
 
         tokens = qs.get("token")
@@ -98,27 +94,22 @@ class JWTAuthMiddleware(BaseMiddleware):
         """
         raw_token = cls._extract_cookie_token(scope) or cls._extract_token(scope)
         if raw_token is None:
-            logger.debug("WebSocket connection without JWT token")
             return AnonymousUser()
 
         try:
             validated = AccessToken(raw_token)
-        except (InvalidToken, TokenError) as exc:
-            logger.debug("JWT validation failed: %s", exc)
+        except (InvalidToken, TokenError):
             return AnonymousUser()
 
         user_id = validated.get("user_id")
         if user_id is None:
-            logger.debug("JWT payload missing user_id claim")
             return AnonymousUser()
 
         user = await cls._get_user(user_id)
         if user is None:
-            logger.debug("No user found for user_id=%s", user_id)
             return AnonymousUser()
 
         if not getattr(user, "is_active", True):
-            logger.debug("Inactive user attempted WebSocket auth user_id=%s", user_id)
             return AnonymousUser()
 
         return user

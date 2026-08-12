@@ -1,9 +1,7 @@
 import asyncio
 import collections
 import json
-import logging
 import os
-from datetime import datetime
 from typing import Any
 
 from django.utils import timezone
@@ -16,8 +14,6 @@ from apps.games.session import GameType, create_session_async, generate_game_id
 from apps.games.pong_engine import PongEngine
 from apps.games.tictactoe_engine import TicTacToeEngine
 from .models import Channel, ChannelMembership, Message, Block, get_or_create_dm_channel as _get_or_create_dm_channel_sync
-
-logger = logging.getLogger("chat.consumer")
 
 PRESENCE_GROUP = "presence"
 ONLINE_USERS_KEY = "chat_online_users"
@@ -425,7 +421,6 @@ class ChatConsumer(BaseConsumer):
             except ValueError:
                 pass
             except Exception:
-                logger.exception("Failed to create game session for invite")
                 await self.send_json({
                     "type": "game_invite_error",
                     "message": "Failed to create game session",

@@ -1,9 +1,6 @@
 from __future__ import annotations
-import logging
 from typing import Any
 from apps.games.consumers import BaseConsumer
-
-logger = logging.getLogger("analytics.notifications")
 
 
 class NotificationConsumer(BaseConsumer):
@@ -21,10 +18,6 @@ class NotificationConsumer(BaseConsumer):
         """Join the user's personal notification group."""
         self._notification_group = f"notifications_{self.user.pk}"
         await self.join_group(self._notification_group)
-        logger.info(
-            "User %s connected to notifications channel",
-            self.user.username,
-        )
         # Send a welcome message so the client knows the channel is live
         await self.send_json({
             "type": "connected",
@@ -75,11 +68,6 @@ class NotificationConsumer(BaseConsumer):
             "type": "achievement_unlocked",
             "achievement": achievement,
         })
-        logger.info(
-            "Achievement notification delivered: user=%s achievement=%s",
-            self.user.pk,
-            achievement.get("key"),
-        )
 
     async def xp_gained(self, event: dict[str, Any]) -> None:
         """

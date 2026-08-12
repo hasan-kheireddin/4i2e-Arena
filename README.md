@@ -597,7 +597,7 @@ cd 4i2e-Arena
 3.Export you enviroment
 
 ```bash
-cp .env.exaple .env
+cp .env.example .env
 ```
 
 3.Build and start the Docker containers:

@@ -33,13 +33,11 @@ from apps.games.models import FinishReason, GameMode, Match, MatchOutcome, Match
 from apps.games.serializers import (
     CreateLocalMatchSerializer,
     LeaderboardQuerySerializer,
-    MatchDetailSerializer,
     MatchListSerializer,
     MatchQuerySerializer,
     StatsQuerySerializer,
 )
 from apps.games.stats_service import (
-    get_head_to_head,
     get_leaderboard,
     get_user_stats,
     invalidate_match_stats,
@@ -261,21 +259,6 @@ class UserMatchListView(generics.ListAPIView):
         return qs.distinct()
 
 
-class MatchDetailView(generics.RetrieveAPIView):
-    """Retrieve full details of a single match."""
-
-    serializer_class = MatchDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    lookup_field = "pk"
-
-    def get_queryset(self):
-        return (
-            Match.objects
-            .select_related("winner")
-            .prefetch_related("players__user")
-        )
-
-
 class UserMatchHistoryView(generics.ListAPIView):
     """
     List another user's match history (public view).
@@ -303,138 +286,6 @@ class UserMatchHistoryView(generics.ListAPIView):
         qs = _annotate_sort_score(qs)
         qs = _apply_ordering(qs, params.get("ordering"))
         return qs.distinct()
-
-
-class MatchSummaryView(APIView):
-    """
-    Return aggregated match statistics for the authenticated user.
-
-    Response:
-      {
-        "total_matches": 42,
-        "wins": 25,
-        "losses": 12,
-        "draws": 5,
-        "win_rate": 0.595,
-        "by_game_type": {
-          "pong": { "total": 30, "wins": 20, "losses": 8, "draws": 2 },
-          "tictactoe": { "total": 12, "wins": 5, "losses": 4, "draws": 3 }
-        },
-        "by_game_mode": { ... },
-        "current_streak": { "type": "win", "count": 3 },
-        "longest_win_streak": 7,
-        "average_duration": 124.5,
-        "recent_form": ["win", "win", "loss", "win", "draw"]
-      }
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-
-        participations = MatchPlayer.objects.filter(
-            user=user,
-        ).select_related("match")
-
-        total = participations.count()
-        wins = participations.filter(outcome="win").count()
-        losses = participations.filter(outcome="loss").count()
-        draws = participations.filter(outcome="draw").count()
-        win_rate = round(wins / total, 3) if total > 0 else 0.0
-
-        # --- By game type ---
-        by_game_type = {}
-        for gt in ["pong", "tictactoe"]:
-            gt_qs = participations.filter(match__game_type=gt)
-            gt_total = gt_qs.count()
-            if gt_total > 0:
-                by_game_type[gt] = {
-                    "total": gt_total,
-                    "wins": gt_qs.filter(outcome="win").count(),
-                    "losses": gt_qs.filter(outcome="loss").count(),
-                    "draws": gt_qs.filter(outcome="draw").count(),
-                }
-
-        # --- By game mode ---
-        by_game_mode = {}
-        for gm, gm_filter in (("pvp", Q(match__game_mode="pvp")),):
-            gm_qs = participations.filter(gm_filter)
-            gm_total = gm_qs.count()
-            if gm_total > 0:
-                by_game_mode[gm] = {
-                    "total": gm_total,
-                    "wins": gm_qs.filter(outcome="win").count(),
-                    "losses": gm_qs.filter(outcome="loss").count(),
-                    "draws": gm_qs.filter(outcome="draw").count(),
-                }
-
-        # --- Current streak ---
-        recent = (
-            participations
-            .order_by("-match__finished_at")
-            .values_list("outcome", flat=True)[:50]
-        )
-        recent_list = list(recent)
-
-        current_streak = _compute_streak(recent_list)
-        longest_win = _longest_win_streak(recent_list)
-
-        # --- Average duration ---
-        durations = participations.values_list(
-            "match__duration_seconds", flat=True,
-        )
-        dur_list = [d for d in durations if d and d > 0]
-        avg_duration = round(sum(dur_list) / len(dur_list), 1) if dur_list else 0.0
-
-        # --- Recent form (last 5) ---
-        recent_form = recent_list[:5]
-
-        return Response({
-            "total_matches": total,
-            "wins": wins,
-            "losses": losses,
-            "draws": draws,
-            "win_rate": win_rate,
-            "by_game_type": by_game_type,
-            "by_game_mode": by_game_mode,
-            "current_streak": current_streak,
-            "longest_win_streak": longest_win,
-            "average_duration": avg_duration,
-            "recent_form": recent_form,
-        }, status=status.HTTP_200_OK)
-
-
-def _compute_streak(outcomes: list[str]) -> dict[str, str | int]:
-    """
-    Compute the current streak from a list of outcomes
-    (most recent first).
-    """
-    if not outcomes:
-        return {"type": "none", "count": 0}
-
-    streak_type = outcomes[0]
-    count = 0
-    for o in outcomes:
-        if o == streak_type:
-            count += 1
-        else:
-            break
-
-    return {"type": streak_type, "count": count}
-
-
-def _longest_win_streak(outcomes: list[str]) -> int:
-    """Find the longest consecutive win streak in the outcomes list."""
-    max_streak = 0
-    current = 0
-    for o in outcomes:
-        if o == "win":
-            current += 1
-            max_streak = max(max_streak, current)
-        else:
-            current = 0
-    return max_streak
 
 
 class UserStatsView(APIView):
@@ -481,19 +332,6 @@ class PublicUserStatsView(APIView):
         game_type = query.validated_data.get("game_type")
         stats = get_user_stats(user_id, game_type=game_type, mode="pvp")
 
-        return Response(stats, status=status.HTTP_200_OK)
-
-
-class HeadToHeadView(APIView):
-    """
-    Return head-to-head statistics between the authenticated user
-    and the specified opponent.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, opponent_id):
-        stats = get_head_to_head(request.user.pk, opponent_id)
         return Response(stats, status=status.HTTP_200_OK)
 
 

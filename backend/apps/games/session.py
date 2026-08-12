@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import secrets
 import time
@@ -41,8 +40,6 @@ __all__ = [
     "cleanup_stale_sessions",
 ]
 
-logger = logging.getLogger("games.session")
-
 _SESSION_KEY_PREFIX = "games:session"
 _SESSION_STORE_TTL_SECONDS = int(os.environ.get("GAME_SESSION_TTL_SECONDS", "1800"))
 _SESSION_STORE_ENABLED = os.environ.get("GAME_SESSION_STORE_ENABLED", "1") != "0"
@@ -78,10 +75,7 @@ async def persist_session(session: GameSession) -> None:
             ex=_SESSION_STORE_TTL_SECONDS,
         )
     except Exception:
-        logger.exception(
-            "Failed to persist session snapshot: game_id=%s",
-            session.game_id,
-        )
+        pass
 
 
 async def create_session_async(
@@ -112,7 +106,6 @@ async def get_session_async(game_id: str) -> Optional[GameSession]:
     try:
         raw = await redis_client.get(_session_key(game_id))
     except Exception:
-        logger.exception("Failed to load session snapshot: game_id=%s", game_id)
         return None
 
     if not raw:
@@ -125,10 +118,8 @@ async def get_session_async(game_id: str) -> Optional[GameSession]:
 
         recovered = _prepare_recovered_session(_deserialize_session(payload))
         _sessions[game_id] = recovered
-        logger.info("Recovered session snapshot: game_id=%s", game_id)
         return recovered
     except Exception:
-        logger.exception("Invalid session snapshot payload: game_id=%s", game_id)
         return None
 
 
@@ -141,7 +132,7 @@ async def remove_session_async(game_id: str) -> Optional[GameSession]:
     try:
         await redis_client.delete(_session_key(game_id))
     except Exception:
-        logger.exception("Failed to delete session snapshot: game_id=%s", game_id)
+        pass
     return session
 
 
@@ -170,7 +161,6 @@ def create_session(
         authorized_player_ids={str(value) for value in (authorized_player_ids or ())},
     )
     _sessions[gid] = session
-    logger.info("Session created: game_id=%s type=%s", gid, game_type.value)
     return session
 
 
@@ -181,7 +171,7 @@ def get_session(game_id: str) -> Optional[GameSession]:
 def remove_session(game_id: str) -> Optional[GameSession]:
     session = _sessions.pop(game_id, None)
     if session:
-        logger.info("Session removed: game_id=%s", game_id)
+        pass
     return session
 
 
@@ -277,5 +267,5 @@ def cleanup_stale_sessions(ttl_seconds: float = 300.0) -> list[str]:
             removed.append(game_id)
 
     if removed:
-        logger.info("Cleaned up %d stale session(s): %s", len(removed), removed)
+        pass
     return removed

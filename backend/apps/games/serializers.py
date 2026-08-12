@@ -214,35 +214,3 @@ class MatchListSerializer(serializers.ModelSerializer):
             "metadata",
             "players",
         ]
-
-
-class MatchDetailSerializer(serializers.ModelSerializer):
-    """Full match detail serializer."""
-
-    players = MatchPlayerSerializer(many=True, read_only=True)
-    winner_id = serializers.UUIDField(
-        source="winner.id", read_only=True, allow_null=True,
-    )
-    winner_username = serializers.CharField(
-        source="winner.username", read_only=True, allow_null=True,
-    )
-
-    class Meta:
-        model = Match
-        fields = [
-            "id",
-            "game_session_id",
-            "game_type",
-            "game_mode",
-            "finish_reason",
-            "winner_id",
-            "winner_username",
-            "player1_score",
-            "player2_score",
-            "started_at",
-            "finished_at",
-            "duration_seconds",
-            "metadata",
-            "players",
-            "created_at",
-        ]

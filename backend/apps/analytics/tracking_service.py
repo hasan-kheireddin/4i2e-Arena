@@ -1,11 +1,8 @@
 from __future__ import annotations
-import logging
 from typing import Any, Optional
 from uuid import UUID
 from asgiref.sync import sync_to_async
 from apps.analytics.models import ActivityEvent, EventCategory
-
-logger = logging.getLogger("analytics.tracking")
 
 
 def track_event(
@@ -47,10 +44,6 @@ def track_event(
         metadata=metadata or {},
         ip_address=ip_address,
         user_agent=user_agent,
-    )
-    logger.debug(
-        "Tracked %s:%s for user %s",
-        category, event_type, user_id,
     )
     return event
 
@@ -166,20 +159,6 @@ def track_match_completed(
             "duration_seconds": round(duration_seconds, 2),
             "score": score,
         },
-    )
-
-
-def track_matchmaking_joined(
-    user_id: UUID | int,
-    *,
-    game_type: str = "",
-) -> ActivityEvent:
-    """Record that a user joined the matchmaking queue."""
-    return track_event(
-        user_id=user_id,
-        category=EventCategory.GAME,
-        event_type="matchmaking_joined",
-        metadata={"game_type": game_type},
     )
 
 

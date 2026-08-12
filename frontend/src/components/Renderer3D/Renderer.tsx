@@ -86,9 +86,7 @@ export default function Renderer3D(props: Renderer3DProps) {
         m.scaling = new Vector3(7, 7, 7);
         m.position = new Vector3(0, -0.8, 0);
       });
-    }).catch((err) => {
-      console.error('GLB load failed:', err);
-    });
+    }).catch(() => {});
 
     SceneLoader.ImportMeshAsync(null, '/models/', 'arenaboundaries.glb', scene3D).then((result) => {
       const all = [...result.meshes, ...result.transformNodes];
@@ -96,9 +94,7 @@ export default function Renderer3D(props: Renderer3DProps) {
         m.scaling = new Vector3(3.75, 3.75, 3);
        
       });
-    }).catch((err) => {
-      console.error('arenaboundaries GLB load failed:', err);
-    });
+    }).catch(() => {});
 
     const arenaBounds = createArena('arena', fieldWidth, fieldHeight, scene3D);
     Object.values(arenaBounds).forEach((m) => m.setEnabled(false));

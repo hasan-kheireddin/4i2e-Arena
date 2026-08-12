@@ -319,17 +319,6 @@ class TicTacToeEngine:
         self.finished_at = None
         self.player_block_counts = {1: 0, 2: 0}
 
-    def get_board_display(self) -> str:
-        """Return a human-readable board string (for debugging)."""
-        rows = []
-        for r in range(BOARD_SIZE):
-            cells = []
-            for c in range(BOARD_SIZE):
-                val = self.board[r * BOARD_SIZE + c]
-                cells.append(val.value if val else ".")
-            rows.append(" | ".join(cells))
-        return "\n---------\n".join(rows)
-
     @property
     def duration(self) -> Optional[float]:
         """Duration of the game in seconds, or None if not started."""

@@ -1,11 +1,8 @@
 from __future__ import annotations
-import logging
 from typing import Any
 
 from apps.games.consumers import BaseConsumer, _channel_safe
 from apps.games.session import SpectatorSlot, get_session_async
-
-logger = logging.getLogger("games.spectator")
 
 
 class SpectatorConsumer(BaseConsumer):

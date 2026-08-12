@@ -144,7 +144,6 @@ export function usePongOnlineGame({
         2: { y: player2.paddle.y },
       },
     };
-    console.log("received", performance.now(), authoritative.ball);
     const snapshot: OnlineSnapshot = {
       receivedAt: performance.now(),
       state: authoritative,
@@ -427,7 +426,6 @@ function renderOnlineFrame({
   lastProcessedInputSequence: number;
   setRenderedState: (state: OnlineGameState, renderTs: number) => void;
 }) {
-  console.log("buffer", snapshots.length);
   const frameState = resolveOnlineFrameState({
     snapshots,
     latestState,
@@ -453,7 +451,6 @@ function renderOnlineFrame({
     latestLocalInputSequence,
     lastProcessedInputSequence,
   });
-  console.log("rendered", performance.now(), smoothedFrame.state.ball);
   setRenderedState(smoothedFrame.state, smoothedFrame.lastRenderTs);
   drawPerspectiveOnlineFrame(context, canvas, smoothedFrame.state, mySlot);
 }

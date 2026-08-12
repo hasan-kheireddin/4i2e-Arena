@@ -12,7 +12,6 @@
 # =============================================================================
 
 import io
-import logging
 import base64
 import hashlib
 import secrets
@@ -49,8 +48,6 @@ from apps.analytics.tracking_service import (
     get_user_agent,
     track_2fa_verified,
 )
-
-logger = logging.getLogger(__name__)
 User = get_user_model()
 safe_track_2fa_verified = non_blocking(track_2fa_verified)
 
@@ -345,7 +342,6 @@ class TwoFactorVerifyView(APIView):
         try:
             claimed = cache.add(claim_key, "claimed", timeout=300)
         except Exception:
-            logger.exception("Unable to claim temporary 2FA token")
             return Response(
                 {"detail": "2FA verification is temporarily unavailable."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -405,7 +401,7 @@ class TwoFactorDisableView(APIView):
         user = request.user
         rate_key = _attempt_cache_key("disable", user.pk)
         try:
-            device = TOTPDevice.objects.get(user=user, confirmed=True)
+            TOTPDevice.objects.get(user=user, confirmed=True)
         except TOTPDevice.DoesNotExist:
             return Response(
                 {"detail": "2FA is not enabled."},

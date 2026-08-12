@@ -1,11 +1,9 @@
-import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -44,8 +42,6 @@ from .serializers import (
 )
 from .throttles import AuthScopedRateThrottle
 from .twofa_views import _issue_temp_token
-
-logger = logging.getLogger(__name__)
 User = get_user_model()
 safe_track_registration = non_blocking(track_registration)
 safe_track_login = non_blocking(track_login)
@@ -85,10 +81,7 @@ class RegisterView(APIView):
         try:
             send_otp_email(pending, pending.code)
         except Exception:
-            logger.exception(
-                "Failed to send OTP email to %s during registration",
-                pending.email,
-            )
+            pass
         return Response(
             {
                 "requires_verification": True,
@@ -125,10 +118,6 @@ class LoginView(APIView):
                 confirmed=True,
             ).exists()
             if not has_confirmed_device:
-                logger.warning(
-                    "User %s has is_2fa_enabled=True but no confirmed TOTP device",
-                    user.pk,
-                )
                 user.is_2fa_enabled = False
                 user.save(update_fields=["is_2fa_enabled"])
             else:
@@ -390,7 +379,7 @@ class ResendOTPView(APIView):
         try:
             send_otp_email(pending, pending.code)
         except Exception:
-            logger.exception("Failed to resend OTP email to %s", pending.email)
+            pass
 
         return Response(
             {"detail": "If that email exists, a new code has been sent."},
@@ -424,7 +413,7 @@ class PasswordResetRequestView(APIView):
         except User.DoesNotExist:
             pass  # Don't reveal whether the email exists
         except Exception:
-            logger.exception("Failed to send password reset email to %s", email)
+            pass
 
         return Response(
             {"detail": "If that email exists, a reset link has been sent."},

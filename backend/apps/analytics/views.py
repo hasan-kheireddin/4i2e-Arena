@@ -24,7 +24,6 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.db.models import (
     Case,
-    Count,
     Exists,
     F,
     FloatField,
@@ -34,11 +33,8 @@ from django.db.models import (
     Sum,
     Value,
     When,
-    Window,
 )
-from django.db.models.functions import DenseRank
 from rest_framework import generics, permissions, status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import (
@@ -49,12 +45,8 @@ from .models import (
     AchievementUnlock,
 )
 from .serializers import (
-    AchievementProgressSerializer,
-    AchievementStatsSerializer,
     AchievementUnlockSerializer,
     AchievementWithUserStatusSerializer,
-    LeaderboardEntrySerializer,
-    UserXPDetailSerializer,
 )
 from .achievement_definitions import ACHIEVEMENT_MAP
 from .xp_service import get_xp_for_level, get_xp_to_next_level, MAX_LEVEL
@@ -167,25 +159,6 @@ class AchievementUnlockedListView(generics.ListAPIView):
             .select_related("achievement")
             .order_by("-unlocked_at")
         )
-
-class AchievementProgressListView(generics.ListAPIView):
-    """List progress toward all achievements for the requesting user."""
-
-    serializer_class = AchievementProgressSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return (
-            AchievementProgress.objects
-            .filter(
-                user=self.request.user,
-                achievement__is_hidden=False,
-                achievement__key__in=CATALOG_KEYS,
-            )
-            .select_related("achievement")
-            .order_by("achievement__category", "achievement__ordering_priority")
-        )
-
 
 class AchievementStatsView(APIView):
     """Compute and return achievement summary statistics for the user
@@ -315,47 +288,6 @@ class AchievementDetailView(generics.RetrieveAPIView):
             )
             .distinct()
         )
-    
-class LeaderboardPagination(PageNumberPagination):
-    page_size = 25
-    page_size_query_param = "page_size"
-    max_page_size = 100
-
-
-class LeaderboardView(generics.ListAPIView):
-    """
-    Global leaderboard ranked by XP (descending).
-
-    Supports query parameters:
-      - ``page`` / ``page_size`` for pagination
-      - ``order_by`` = ``xp`` (default) | ``level`` | ``username``
-    """
-
-    serializer_class = LeaderboardEntrySerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class = LeaderboardPagination
-
-    def get_queryset(self):
-        order_by = self.request.query_params.get("order_by", "xp")
-        order_map = {
-            "xp": "-xp",
-            "level": "-level",
-            "username": "username",
-        }
-        ordering = order_map.get(order_by, "-xp")
-
-        qs = (
-            User.objects
-            .filter(is_active=True)
-            .annotate(
-                rank=Window(
-                    expression=DenseRank(),
-                    order_by=F("xp").desc(),
-                ),
-            )
-            .order_by(ordering)
-        )
-        return qs
 
 
 class UserXPDetailView(APIView):

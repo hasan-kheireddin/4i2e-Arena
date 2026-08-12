@@ -4,11 +4,6 @@ It is used to validate the format of the input token
 from rest_framework import serializers
 
 
-class TwoFactorSetupSerializer(serializers.Serializer):
-    """Empty, the setup endpoint only needs the authenticated user."""
-    pass
-
-
 class TwoFactorConfirmSerializer(serializers.Serializer):
     """
     Validates the 6-digit TOTP code the user enters to confirm

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import logging
 from typing import Optional
 from uuid import UUID
 
 from django.core.cache import cache
-
-logger = logging.getLogger("games.stats")
 
 STATS_CACHE_TTL = 300
 LEADERBOARD_CACHE_TTL = 600
@@ -65,8 +62,6 @@ def invalidate_user_stats(user_id: UUID | int, *, include_leaderboard: bool = Tr
     if include_leaderboard:
         bump_leaderboard_version()
 
-    logger.debug("Invalidated stats cache for user %s", user_id)
-
 
 def invalidate_head_to_head_stats(user_ids: list[UUID | int]) -> None:
     unique_ids = list(dict.fromkeys(user_ids))
@@ -80,7 +75,6 @@ def invalidate_head_to_head_stats(user_ids: list[UUID | int]) -> None:
         if user_id != opponent_id
     ]
     cache.delete_many(keys)
-    logger.debug("Invalidated H2H stats cache for users %s", unique_ids)
 
 
 def invalidate_match_stats(user_ids: list[UUID | int]) -> None:

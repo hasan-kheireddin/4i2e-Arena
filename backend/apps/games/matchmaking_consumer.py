@@ -1,6 +1,5 @@
 from __future__ import annotations
 import asyncio
-import logging
 import time
 from typing import Any
 
@@ -9,8 +8,6 @@ from apps.games.matchmaking import MatchmakingService, get_redis_client
 from apps.games.pong_engine import PongEngine
 from apps.games.session import GameType, create_session_async, get_session_async
 from apps.games.tictactoe_engine import TicTacToeEngine
-
-logger = logging.getLogger("gamesmatchmaking")
 
 # How often the consumer polls for a match and sends position updates.
 MATCH_POLL_INTERVAL: float = 2.0  # seconds
@@ -75,17 +72,11 @@ class MatchmakingConsumer(BaseConsumer):
             grace_seconds=QUEUE_RESUME_GRACE_SECONDS,
         )
         if preserved:
-            logger.info(
-                "Player temporarily disconnected from queue: user_id=%s grace=%.1fs",
-                user_id,
-                QUEUE_RESUME_GRACE_SECONDS,
-            )
+            pass
         else:
             was_queued = await self._service.dequeue(user_id)
             if was_queued:
-                logger.info(
-                    "Player dequeued on disconnect: user_id=%s", user_id,
-                )
+                pass
 
         # Close Redis connection
         await self._redis.aclose()
@@ -124,12 +115,6 @@ class MatchmakingConsumer(BaseConsumer):
 
         user_id: int = self.user.pk
         username: str = getattr(self.user, "username", "anon")
-
-        logger.info(
-            "User searching for match: user_id=%s game_type=%s",
-            user_id,
-            game_type,
-        )
 
         # Join a per-user channel-layer group so match_found can reach
         # us even if the pairing happens from a different consumer's
@@ -235,7 +220,7 @@ class MatchmakingConsumer(BaseConsumer):
         except asyncio.CancelledError:
             pass
         except Exception:
-            logger.exception("Queue update loop crashed for user=%s", self.user.pk)
+            pass
 
     async def _notify_match(self, match: dict[str, Any]) -> None:
         """Send ``match_found`` to both matched players via channel layer."""
@@ -304,19 +289,12 @@ class MatchmakingConsumer(BaseConsumer):
                     authorized_player_ids=authorized_player_ids,
                 )
             else:
-                logger.error(
-                    "Unsupported game_type for session pre-create: %s",
-                    game_type,
-                )
+                pass
         except ValueError:
             # Another worker/consumer created it concurrently.
             return
         except Exception:
-            logger.exception(
-                "Failed to pre-create game session: game_id=%s game_type=%s",
-                game_id,
-                game_type,
-            )
+            pass
 
     async def _try_match_with_lock(self, game_type: str) -> dict[str, Any] | None:
         """Try matchmaking while holding a short per-queue leader lock."""

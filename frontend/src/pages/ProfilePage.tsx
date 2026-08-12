@@ -43,6 +43,13 @@ const TIER_COLORS: Record<string, string> = {
   legendary: "#f59e0b",
 };
 
+// Keyed by the outcome values the stats API returns.
+const FORM_COLORS: Record<string, string> = {
+  win: "#22c55e",
+  loss: "#ef4444",
+  draw: "#f59e0b",
+};
+
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { userId: profileUserId } = useParams<{ userId: string }>();
@@ -150,7 +157,9 @@ useEffect(() => {
   const xpProgress = xpNeeded > 0 ? Math.min((xpInLevel / xpNeeded) * 100, 100) : 100;
   const nextLevel = xpNeeded > 0 ? level + 1 : level;
 
-  const recentForm = stats?.recent_form ?? [];
+  // The API sends the most recent match first; the badges read left-to-right in
+  // chronological order, so take the 10 newest and flip them.
+  const recentForm = (stats?.recent_form ?? []).slice(0, 10).reverse();
 
  const isBlockedByTarget = !isOwn && profileUser?.blocked_by_target;
  const friendCount = isOwn
@@ -180,12 +189,11 @@ useEffect(() => {
         await sendFriendRequest(targetUserId);
       }
       await refreshFriendships();
-    } catch (e) {
+    } catch {
       // The record can already be gone server-side — a request rejected while
       // this tab was offline, or answered in another tab. Re-syncing turns the
       // dead "Cancel Request" button back into "Add Friend" instead of letting
       // it 404 forever.
-      console.error("Friend action error:", e);
       refreshFriendships();
     }
   };
@@ -194,8 +202,8 @@ useEffect(() => {
     if (!friendRel) return;
     try {
       await rejectFriendRequest(friendRel.id);
-    } catch (e) {
-      console.error("Friend action error:", e);
+    } catch {
+      // Already answered elsewhere — the resync below reconciles either way.
     }
     // Runs either way: a request already answered elsewhere still needs the
     // stale buttons cleared off this page.
@@ -504,13 +512,13 @@ useEffect(() => {
               <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--color-border)" }}>
                 <p className="text-xs font-medium mb-2" style={{ color: "var(--color-text-muted)" }}>{t("profile.recent_form")}</p>
                 <div className="flex gap-1.5">
-                  {recentForm.slice(-10).map((r, i) => {
-                    // The API speaks W/L/D; the badge shows the letter of the
-                    // active language, with the full result as its tooltip.
-                    const outcome = r === "W" ? "win" : r === "L" ? "loss" : "draw";
+                  {recentForm.map((outcome, i) => {
+                    // The API speaks win/loss/draw; the badge shows the letter of
+                    // the active language, with the full result as its tooltip.
+                    const color = FORM_COLORS[outcome] ?? FORM_COLORS.draw;
                     return (
                       <div key={i} className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: r === "W" ? "#22c55e" : r === "L" ? "#ef4444" : "#f59e0b" }}
+                        style={{ backgroundColor: color }}
                         title={t(`profile.result_${outcome}`)}>
                         {t(`profile.form_${outcome}`)}
                       </div>

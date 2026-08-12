@@ -12,7 +12,6 @@ from .models import Channel, ChannelMembership, Message, Block, Friendship, get_
 from .serializers import (
     ChannelSerializer,
     ChannelMembershipSerializer,
-    MessageSerializer,
     BlockSerializer,
     FriendshipSerializer,
 )
@@ -261,20 +260,6 @@ class MembershipViewSet(mixins.ListModelMixin,
         target.role = new_role
         target.save(update_fields=["role"])
         return Response(ChannelMembershipSerializer(target).data)
-
-
-class MessageViewSet(mixins.ListModelMixin,
-                     viewsets.GenericViewSet):
-    serializer_class = MessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        channel_id = self.kwargs.get("channel_pk")
-        if not ChannelMembership.objects.filter(
-            channel_id=channel_id, user=self.request.user,
-        ).exists():
-            return Message.objects.none()
-        return Message.objects.filter(channel_id=channel_id).select_related("sender").order_by("-created_at")[:100]
 
 
 class BlockViewSet(mixins.ListModelMixin,

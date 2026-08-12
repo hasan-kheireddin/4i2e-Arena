@@ -1,5 +1,4 @@
 from __future__ import annotations
-import logging
 from datetime import datetime, timezone as tz
 from typing import Any, Mapping, Optional
 from asgiref.sync import sync_to_async
@@ -21,19 +20,12 @@ from apps.games.session import (
 from apps.games.stats_service import invalidate_match_stats
 from apps.analytics.tracking_service import track_match_completed
 
-logger = logging.getLogger("games.match_recording")
-
 User = get_user_model()
 FORFEIT_REASONS = (FinishReason.FORFEIT, FinishReason.DISCONNECT_FORFEIT)
 
 
 def _should_skip_recording(session: GameSession) -> bool:
     if session.finish_reason in (FinishReason.CANCELED, FinishReason.SERVER_ERROR):
-        logger.debug(
-            "Skipping match recording for %s (reason=%s)",
-            session.game_id,
-            session.finish_reason,
-        )
         return True
     return not session.players
 
@@ -61,30 +53,6 @@ async def complete_claimed_match_record(
     await _complete_claimed_match_record(match_id, session, xp_awards=xp_awards)
 
 
-async def record_match(
-    session: GameSession,
-    xp_awards: Mapping[Any, int] | None = None,
-) -> Optional[str]:
-    """
-    Persist a finished game session to the database.
-
-    Creates one ``Match`` row and one ``MatchPlayer`` row per human
-    participant.  Skips canceled / server-error games.
-
-    Returns the Match UUID (as string) on success, or ``None`` if the
-    match was not recorded (e.g. canceled, already recorded).
-    """
-    if _should_skip_recording(session):
-        return None
-
-    match_id = await _create_match_record(
-        session,
-        xp_awards=xp_awards,
-        emit_side_effects=True,
-    )
-    return match_id
-
-
 def _winner_user(winner_user_id: int | None):
     if winner_user_id is None:
         return None
@@ -92,7 +60,6 @@ def _winner_user(winner_user_id: int | None):
     try:
         return User.objects.get(pk=winner_user_id)
     except User.DoesNotExist:
-        logger.warning("Winner user %s not found", winner_user_id)
         return None
 
 
@@ -252,30 +219,10 @@ def _create_match_record(
                 defaults=_match_defaults(context, session),
             )
             if not created:
-                logger.warning(
-                    "Match already recorded for session %s — skipping",
-                    session.game_id,
-                )
                 return None
             _upsert_match_players(match, context["player_results"])
-    except IntegrityError as exc:
-        logger.exception(
-            "Match persistence failed for session %s: %s",
-            session.game_id,
-            exc,
-        )
+    except IntegrityError:
         return None
-
-    logger.info(
-        "Match recorded: match_id=%s session=%s type=%s mode=%s "
-        "duration=%.1fs winner=%s",
-        match.id,
-        session.game_id,
-        context["game_type"],
-        context["game_mode"],
-        context["duration"],
-        context["winner_user_id"],
-    )
 
     if emit_side_effects:
         _emit_match_recorded_side_effects(str(match.id), context)
@@ -298,11 +245,6 @@ def _complete_claimed_match_record(
             )
             _upsert_match_players(match, context["player_results"])
     except Match.DoesNotExist:
-        logger.warning(
-            "Claimed match %s for session %s no longer exists",
-            match_id,
-            session.game_id,
-        )
         return
 
     _emit_match_recorded_side_effects(match_id, context)

@@ -29,15 +29,6 @@ export interface AchievementUnlock {
   game_session_id: string;
 }
 
-export interface AchievementProgress {
-  id: string;
-  achievement: Achievement;
-  current: number;
-  percentage: number;
-  is_complete: boolean;
-  updated_at: string;
-}
-
 export interface AchievementStats {
   total_achievements: number;
   unlocked_count: number;
@@ -58,18 +49,6 @@ export interface LevelInfo {
   xp_needed: number;
 }
 
-/** Entry returned by /api/analytics/leaderboard/ */
-export interface AnalyticsLeaderboardEntry {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url: string | null;
-  xp: number;
-  level: number;
-  rank: number;
-  xp_to_next_level?: LevelInfo;
-}
-
 export interface UserXPDetail {
   user_id: string;
   username: string;
@@ -80,15 +59,6 @@ export interface UserXPDetail {
   rank: number;
   total_players: number;
 }
-
-export interface PaginatedLeaderboard {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: AnalyticsLeaderboardEntry[];
-}
-
-
 
 // ── Achievement API ───────────────────────────────────────────────────────────
 
@@ -111,11 +81,6 @@ export function getUserUnlockedAchievements(userId: string): Promise<Achievement
   return apiFetch<AchievementUnlock[]>(`${A}/achievements/unlocked/user/${userId}/`);
 }
 
-/** GET /api/analytics/achievements/progress/ */
-export function getAchievementProgress(): Promise<AchievementProgress[]> {
-  return apiFetch<AchievementProgress[]>(`${A}/achievements/progress/`);
-}
-
 /** GET /api/analytics/achievements/stats/ */
 export function getAchievementStats(): Promise<AchievementStats> {
   return apiFetch<AchievementStats>(`${A}/achievements/stats/`);
@@ -136,19 +101,6 @@ export function getMyXP(): Promise<UserXPDetail> {
 /** GET /api/analytics/xp/user/<uuid>/ */
 export function getUserXP(userId: string): Promise<UserXPDetail> {
   return apiFetch<UserXPDetail>(`${A}/xp/user/${userId}/`);
-}
-
-/** GET /api/analytics/leaderboard/ */
-export function getAnalyticsLeaderboard(params: {
-  page?: number;
-  page_size?: number;
-  order_by?: 'xp' | 'level' | 'username';
-} = {}): Promise<PaginatedLeaderboard> {
-  const q = Object.entries(params)
-    .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => `${k}=${v}`)
-    .join('&');
-  return apiFetch<PaginatedLeaderboard>(`${A}/leaderboard/${q ? `?${q}` : ''}`);
 }
 
 /** POST /api/analytics/activity/track/ — track a page view */
