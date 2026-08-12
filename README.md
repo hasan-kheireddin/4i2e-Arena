@@ -509,7 +509,7 @@ We picked this because just winning or losing a game isn't very motivating on it
     - Real-time updates for spectators.
     - Optional: spectator chat.
 
-explain why you choose to done those:
+These modules were chosen because we wanted to make the platform feel more alive, social, and engaging. The 3D experience adds creativity and visual depth, while the chat and friends features encourage players to interact, invite each other, and keep coming back. Spectator mode also adds another way for players to stay involved even when they aren't playing.
 
 ### point Calculation
 
@@ -560,6 +560,13 @@ I owned the game layer and everything derived from match results, both server-au
 2. Analytics endpoints were hard-wired to the requesting user. The XP, achievement-stats and unlocked-achievements views were all written as /me/ routes reading request.user directly, which was correct until profiles became publicly viewable hen opening another player's profile rendered your own XP, level and achievements under their name, and the Home "Global Ranking" card showed "-#" for anyone outside the top 5 because it searched the five-row leaderboard slice instead of asking for a rank. ProfilePage was switched to call the per-user endpoints when the id isn't your own, and HomePage now reads the rank straight from xp/me/, which computes it against the whole table.
 
 ### rchalak Contributions
+I owned the real-time interaction layer: the entire chat and friends system, game invites, the notification/toast stack, and the 3D gaming and spectator experience. Beyond basic chat, this included everything in the “User Interaction” and “Advanced Chat Features” modules: blocking, game invites from chat, profile access from chat, persistent chat history, typing indicators, read receipts, Babylon.js 3D rendering, spectator mode, and overall UI/UX polishing.
+
+**challenges I faced**:
+1. The same friendship state was being fetched independently by the chat widget, the full chat page and the profile page, so accepting a request in one place left the others stale until a manual refresh — and it looked like the app was "not updating". We extracted a shared FriendshipContext so all three surfaces read from and write to one source of truth, and drove every friend event (request received / accepted / removed) through WebSocket updates that mutate that shared state in real time. The same pattern was then applied to BlockContext so blocking a user immediately deletes the friendship, hides their profile ("This profile is unavailable"), disables messaging/invites and removes their online dot. The block is enforced on both sides: you can't see a profile if you blocked them or they blocked you, and messaging/invites gate on blockedUserIds combined in both directions.
+
+2. Two users adding each other at the same time produced two accepted friendship rows (the old uniqueness only covered A→B, not B→A), and a race in DM channel creation could create two separate channels for the same pair. We added a symmetric check on the backend that rejects a request if one already exists in either direction (from_user/to_user swapped), and made DM channel creation atomic via get_or_create() on a unique dm_key. The frontend also got a dedup guard on every optimistic list update — when adding a friendship, it checks both the id and other_user_id before inserting, so duplicates can't land locally even if the backend somehow let one through.
+
 
 # Installation & Instructions
 
