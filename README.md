@@ -417,7 +417,28 @@ Passwords alone aren't enough to keep accounts safe, especially since this platf
 
 - Minor: Custom-made design system with reusable components, including a proper color palette, typography, and icons (minimum: 10 reusable components).
 
-explain why you choose to done those:
+Why We Chose These Minors
+
+    *1. Multi-language support**
+
+    We picked this because we wanted the application to be accessible to users from different backgrounds and not be limited to a single language. It also makes the project feel more like a real-world application. We implemented 4 languages with a language switcher and made all user-facing text translatable.
+
+    *2. RTL language support**
+
+    We picked this because Arabic is an important language for our users and supporting it properly makes the application more accessible. We wanted more than just changing the text direction, so the entire layout adapts to RTL, including navigation, alignment, spacing, and other UI elements.
+
+    *3. Additional browser support**
+
+    We picked this because users should be able to use the application regardless of which modern browser they prefer. Testing Firefox and Brave in addition to Chrome helped us find compatibility issues and make sure the UI and features work consistently across browsers.
+
+    *4. Advanced search**
+
+    We picked this because the application contains a lot of information, such as players, matches, and game-related data. As the amount of data increases, finding specific information becomes harder. Search with filters, sorting, and pagination makes the application easier and faster to navigate.
+
+    *5. Custom-made design system**
+
+    We picked this because the project has many pages and features, and we wanted the whole application to have a consistent look and feel. A reusable design system allows us to share the same colors, typography, icons, and components across the project, while also making the frontend easier to maintain and update.
+
 ## nabbas part
 - Major: Implement a complete web-based game where users can play against each other.
     - The game can be real-time multiplayer (Pong)
@@ -495,6 +516,23 @@ I worked on the backend foundation and everything real-time: system architecture
 3. The 3D version of Pong was built after 2D, but it reused flawed physics logic, and it had the same bugs originally seen in 2D. In online play the client and server disagreed on how big the paddle and ball actually were, so what a player saw on their screen didn't line up with where the server thought the ball/paddle. Rather than re-debugging 3D from scratch, the already-fixed 2D physics and collision logic was ported over to the 3D engine, so both games shared the same corrected math.
 
 ### mjamil Contributions
+I worked mainly on the frontend using React, TypeScript, and Vite, focusing on the five assigned Minors:
+
+Multi-language support: Implemented i18n using i18next with 4 languages: English, French, German, and Arabic. Added the language switcher and made the user-facing text translatable.
+RTL support: Added full Arabic RTL support, including layout mirroring and RTL-specific adjustments. Users can switch between Arabic and LTR languages without refreshing the page.
+Browser support: Tested and fixed the frontend across Chrome, Firefox, and Brave to keep the UI and features consistent.
+Advanced search: Implemented search with filters, sorting, and pagination.
+Custom design system: Created a reusable design system with a dark gaming theme, purple/pink color palette, typography, icons, and more than 10 reusable components. Also implemented dark/light mode with the preference saved in localStorage.
+
+I also built and integrated the main frontend pages, including authentication, dashboard, games, tournaments, leaderboard, match history, analytics, settings, and achievements.
+
+Challenges I faced:
+
+Making all frontend text translatable while keeping dynamic content working correctly.
+Implementing Arabic RTL properly across the whole layout, not just changing the text direction.
+Keeping the design and components consistent across many different pages.
+Testing the application on different browsers and fixing compatibility issues.
+Making search, filters, sorting, and pagination work together correctly.
 
 ### nabbas Contributions
 I owned the game layer and everything derived from match results, both server-authoritative engines, match history and statistics, and the entire gamification system.
