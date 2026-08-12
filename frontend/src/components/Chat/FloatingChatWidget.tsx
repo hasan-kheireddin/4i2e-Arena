@@ -117,6 +117,14 @@ export default function FloatingChatWidget() {
   // than routing to the full messages page.
   useEffect(() => registerChatOpener(openConversation), [openConversation]);
 
+  // A message toast is suppressed for the conversation the user is already
+  // looking at — but only while they are actually looking at it. `activeChannel`
+  // outlives the view: closing the bubble with its X or the backdrop, or going
+  // back to the list, all leave it pointing at a conversation that is no longer
+  // on screen. Passing it raw meant a conversation opened once stayed silent for
+  // the rest of the session, which reads exactly like a mute that will not lift.
+  const visibleChannel = open && view === "chat" ? activeChannel : null;
+
   useChatEventEffects({
     gameInvite, gameInviteAccepted, clearGameInviteAccepted,
     friendAccepted, clearFriendAccepted,
@@ -131,7 +139,7 @@ export default function FloatingChatWidget() {
     navigateToProfile: (uid) => navigate(`/profile/${uid}`),
     currentUserId: user?.id,
     channels,
-    activeChannel,
+    activeChannel: visibleChannel,
   });
 
   const handleOpenDM = useCallback(async (userIdToDM: string) => {
@@ -190,14 +198,17 @@ export default function FloatingChatWidget() {
     refreshFriendships();
   }, [reconnectCount]);
 
-  // If the active channel is no longer reachable, drop back to the list.
+  // If the active channel is no longer reachable, drop back to the list — and
+  // only to the list. Substituting the first still-connected conversation put
+  // the user in front of a thread they never opened (with the composer aimed at
+  // it) and left `activeChannel` naming a conversation nobody is reading, which
+  // silenced its message toasts.
   useEffect(() => {
     if (activeChannel && !connectedChannels.includes(activeChannel)) {
-      const firstConnected = channels.find((c) => connectedChannels.includes(c.id));
-      setActiveChannel(firstConnected?.id || null);
-      if (!firstConnected) setView("list");
+      setActiveChannel(null);
+      setView("list");
     }
-  }, [connectedChannels, activeChannel, channels]);
+  }, [connectedChannels, activeChannel]);
 
   // Mark read on widget open
   useEffect(() => {

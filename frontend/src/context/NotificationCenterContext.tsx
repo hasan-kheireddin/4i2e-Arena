@@ -28,6 +28,11 @@ export interface NotificationEntry {
   /** Conversation to open in the chat bubble; takes precedence over `link`. */
   channelId?: string;
   createdAt: number;
+  /**
+   * Repeat events sharing a key inside the dedupe window are dropped. Stored on
+   * the entry so the dedupe index can be rebuilt from a reloaded feed.
+   */
+  dedupeKey?: string;
   /** Cleared when the panel is opened — drives the badge. */
   seen: boolean;
   /** Cleared when the row is clicked or "mark all as read" runs — drives New/Earlier. */
@@ -35,8 +40,6 @@ export interface NotificationEntry {
 }
 
 type NewNotification = Omit<NotificationEntry, "id" | "createdAt" | "seen" | "read"> & {
-  /** Repeat events sharing a key inside the dedupe window are dropped. */
-  dedupeKey?: string;
   createdAt?: number;
 };
 
@@ -44,7 +47,8 @@ interface NotificationCenterValue {
   notifications: NotificationEntry[];
   unseenCount: number;
   unreadCount: number;
-  addNotification: (entry: NewNotification) => void;
+  /** Returns the id of the entry this event is represented by, new or deduped. */
+  addNotification: (entry: NewNotification) => string;
   markAllSeen: () => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -89,10 +93,24 @@ export function NotificationCenterProvider({ children }: { children: ReactNode }
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
   const hydrated = useRef<string | undefined>(undefined);
 
+  /**
+   * Repeats are recognised here rather than inside the state updater: an updater
+   * runs whenever React gets round to it, and the entry's id has to be settled
+   * *now* so the caller can hand it to the toast it is about to raise.
+   */
+  const dedupeIndex = useRef<Map<string, { id: string; at: number }>>(new Map());
+
   // Swap the feed whenever the signed-in account changes.
   useEffect(() => {
     hydrated.current = userId;
-    setNotifications(load(userId));
+    const loaded = load(userId);
+    // Newest first, so the first sighting of a key is the one worth indexing.
+    const index = new Map<string, { id: string; at: number }>();
+    for (const n of loaded) {
+      if (n.dedupeKey && !index.has(n.dedupeKey)) index.set(n.dedupeKey, { id: n.id, at: n.createdAt });
+    }
+    dedupeIndex.current = index;
+    setNotifications(loaded);
   }, [userId]);
 
   useEffect(() => {
@@ -100,19 +118,30 @@ export function NotificationCenterProvider({ children }: { children: ReactNode }
     save(userId, notifications);
   }, [notifications, userId]);
 
-  const addNotification = useCallback((entry: NewNotification) => {
+  const addNotification = useCallback((entry: NewNotification): string => {
     const { dedupeKey, createdAt, ...rest } = entry;
     const now = createdAt ?? Date.now();
-    setNotifications((prev) => {
-      if (dedupeKey) {
-        const duplicate = prev.some(
-          (n) => n.id.startsWith(`${dedupeKey}::`) && now - n.createdAt < DEDUPE_WINDOW_MS,
-        );
-        if (duplicate) return prev;
+
+    if (dedupeKey) {
+      const previous = dedupeIndex.current.get(dedupeKey);
+      // The repeat itself is dropped, but the caller still gets back the entry it
+      // stands for, so clicking its toast marks the row already in the feed.
+      if (previous && now - previous.at < DEDUPE_WINDOW_MS) return previous.id;
+    }
+
+    const id = `${dedupeKey ?? rest.kind}::${now}-${Math.random().toString(36).slice(2, 8)}`;
+    if (dedupeKey) {
+      dedupeIndex.current.set(dedupeKey, { id, at: now });
+      // Keys past the window can no longer dedupe anything; drop them so a long
+      // session cannot grow the index without bound.
+      for (const [key, seen] of dedupeIndex.current) {
+        if (now - seen.at >= DEDUPE_WINDOW_MS) dedupeIndex.current.delete(key);
       }
-      const id = `${dedupeKey ?? rest.kind}::${now}-${Math.random().toString(36).slice(2, 8)}`;
-      return [{ ...rest, id, createdAt: now, seen: false, read: false }, ...prev].slice(0, MAX_NOTIFICATIONS);
-    });
+    }
+    setNotifications((prev) =>
+      [{ ...rest, dedupeKey, id, createdAt: now, seen: false, read: false }, ...prev].slice(0, MAX_NOTIFICATIONS),
+    );
+    return id;
   }, []);
 
   const markAllSeen = useCallback(() => {
@@ -129,11 +158,19 @@ export function NotificationCenterProvider({ children }: { children: ReactNode }
     );
   }, []);
 
+  // Dismissing an entry has to release its dedupe key too, or the same event
+  // repeating moments later would be swallowed with nothing left to show for it.
   const remove = useCallback((id: string) => {
+    for (const [key, seen] of dedupeIndex.current) {
+      if (seen.id === id) dedupeIndex.current.delete(key);
+    }
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  const clear = useCallback(() => setNotifications([]), []);
+  const clear = useCallback(() => {
+    dedupeIndex.current.clear();
+    setNotifications([]);
+  }, []);
 
   const value = useMemo<NotificationCenterValue>(() => ({
     notifications,
