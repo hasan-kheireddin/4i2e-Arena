@@ -27,7 +27,7 @@ class SessionStatus(str, enum.Enum):
     FINISHED = "finished"
     ABANDONED = "abandoned"
 
-
+#to store data about one player in a game session.
 @dataclass
 class PlayerSlot:
     """Tracks a player connected to a session."""

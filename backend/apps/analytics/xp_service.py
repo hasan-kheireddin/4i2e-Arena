@@ -25,27 +25,19 @@ XP_DRAW_BONUS: int = 10
 
 # Achievement XP is defined per-achievement in achievement_definitions.py
 # and passed via award_xp_for_achievement()
-
 # Shutout bonus (Pong 11-0)
 XP_SHUTOUT_BONUS: int = 20
-
 # Quick win bonus (TTT in minimum moves)
 XP_QUICK_WIN_BONUS: int = 15
-
-# Uses a quadratic curve: XP_needed(level) = BASE * level^EXPONENT
-# Level 1 = 0 XP, Level 2 = 100 XP, Level 3 = 250 XP, etc.
-# The curve accelerates so higher levels take progressively more effort.
-
 LEVEL_BASE_XP: int = 100        # XP to reach level 2
 LEVEL_EXPONENT: float = 1.5     # growth rate
-MAX_LEVEL: int = 100            # hard cap
+MAX_LEVEL: int = 100            
 
 
 def get_xp_for_level(level: int) -> int:
     """
-    Return the **cumulative** XP required to reach *level*.
-
-    Level 1 requires 0 XP (everyone starts there).
+    Get how much XP is needed for this level
+    Level 1 needs 0 XP. (everyone starts there).
     """
     if level <= 1:
         return 0
@@ -54,22 +46,19 @@ def get_xp_for_level(level: int) -> int:
 
 def get_level_for_xp(xp: int) -> int:
     """
-    Return the level a user should be at given *xp* total.
-
-    Inverse of ``get_xp_for_level`` — finds the highest level whose
-    threshold is <= xp.
+    Find the level based on the user's XP.
+    Returns the highest level reached.
     """
     if xp <= 0:
         return 1
-    # Solve:  LEVEL_BASE_XP * (level - 1)^EXPONENT <= xp
-    #   →  (level - 1) <= (xp / LEVEL_BASE_XP)^(1/EXPONENT)
+        
     level = int((xp / LEVEL_BASE_XP) ** (1 / LEVEL_EXPONENT)) + 1
-    # Clamp and verify (floating-point edge cases)
+
     level = max(1, min(level, MAX_LEVEL))
-    # Walk back if we overshot
+    # The XP required for this calculated level is more than the player's actual XP.
     while level > 1 and get_xp_for_level(level) > xp:
         level -= 1
-    # Walk forward if we can
+    # Does the player have enough XP to reach the next level?
     while level < MAX_LEVEL and get_xp_for_level(level + 1) <= xp:
         level += 1
     return level
@@ -77,10 +66,8 @@ def get_level_for_xp(xp: int) -> int:
 
 def get_xp_to_next_level(xp: int) -> dict[str, int]:
     """
-    Return a dict with current level info.
-
-    Keys: ``level``, ``current_xp``, ``xp_for_current_level``,
-    ``xp_for_next_level``, ``xp_in_level``, ``xp_needed``.
+    Show the user's current level and XP information.
+    Includes current XP, next level, and XP needed.
     """
     level = get_level_for_xp(xp)
     xp_current_level = get_xp_for_level(level)
