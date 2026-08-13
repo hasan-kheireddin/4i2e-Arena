@@ -486,9 +486,36 @@ export default function SettingsPage() {
 
           {/* Privacy Tab */}
           {tab === 'privacy' && (
-            <SurfaceCard className="p-6">
-              <BlockedAccounts />
-            </SurfaceCard>
+            <>
+              <SurfaceCard className="p-6">
+                <BlockedAccounts />
+              </SurfaceCard>
+
+              <SurfaceCard className="p-6">
+                <h2 className="mb-2 text-base font-semibold text-primary">
+                  {t('settings.privacy.legal_title')}
+                </h2>
+                <p className="mb-4 text-sm text-secondary">
+                  {t('settings.privacy.legal_desc')}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate('/privacy-policy')}
+                  >
+                    {t('settings.privacy.privacy_policy_link')}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate('/terms-of-service')}
+                  >
+                    {t('settings.privacy.terms_link')}
+                  </Button>
+                </div>
+              </SurfaceCard>
+            </>
           )}
 
           {/* Appearance Tab */}

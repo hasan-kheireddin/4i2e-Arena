@@ -187,7 +187,11 @@
       "empty_body": "كل من تحظره من ملف شخصي أو محادثة سيظهر هنا.",
       "blocked_on": "تم الحظر في {{date}}",
       "unblock": "إلغاء الحظر",
-      "unblocked": "تم إلغاء حظر {{name}}"
+      "unblocked": "تم إلغاء حظر {{name}}",
+      "legal_title": "الشؤون القانونية",
+      "legal_desc": "اطّلع على كيفية تعاملنا مع بياناتك وقواعد استخدام المنصة.",
+      "privacy_policy_link": "سياسة الخصوصية",
+      "terms_link": "شروط الخدمة"
     },
     "appearance": {
       "language": "اللغة"
@@ -854,7 +858,7 @@
     "contact_text": "إذا كان لديك أسئلة أو مخاوف أو طلبات تتعلق بسياسة الخصوصية هذه أو بياناتك، يرجى الاتصال بنا:",
     "contact_team": "فريق Fire Arena",
     "contact_email_label": "البريد الإلكتروني:",
-    "contact_email": "hakcathonthon@gmail.com"
+    "contact_email": "hasankheireddine1@gmail.com"
   },
   "terms_of_service": {
     "title": "شروط الاستخدام",
@@ -925,7 +929,7 @@
     "changes_binding": "استمرارك في استخدام Fire Arena بعد سريان التغييرات يعني قبولك للشروط المحدّثة.",
     "contact_title": "التواصل",
     "contact_text": "إذا كانت لديك أسئلة حول شروط الاستخدام، تواصل معنا عبر:",
-    "contact_email": "hakcathonthon@gmail.com"
+    "contact_email": "hasankheireddine1@gmail.com"
   },
   "achievement_catalog": {
     "pong_first_rally": {

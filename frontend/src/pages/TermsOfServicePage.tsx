@@ -187,7 +187,7 @@ export default function TermsOfServicePage() {
           >
             <p style={{ color: "var(--color-text-secondary)" }}>
               <a
-                href="mailto:hakcathonthon@gmail.com"
+                href="mailto:hasankheireddine1@gmail.com"
                 style={{ color: "var(--color-primary)" }}
                 className="hover:opacity-80"
               >

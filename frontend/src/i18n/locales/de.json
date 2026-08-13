@@ -187,7 +187,11 @@
       "empty_body": "Wen du über ein Profil oder eine Unterhaltung blockierst, erscheint hier.",
       "blocked_on": "Blockiert am {{date}}",
       "unblock": "Blockierung aufheben",
-      "unblocked": "Blockierung von {{name}} aufgehoben"
+      "unblocked": "Blockierung von {{name}} aufgehoben",
+      "legal_title": "Rechtliches",
+      "legal_desc": "Erfahre, wie wir mit deinen Daten umgehen und welche Regeln für die Nutzung der Plattform gelten.",
+      "privacy_policy_link": "Datenschutzrichtlinie",
+      "terms_link": "Nutzungsbedingungen"
     },
     "appearance": {
       "language": "Sprache"
@@ -850,7 +854,7 @@
     "contact_text": "Wenn Sie Fragen, Bedenken oder Anfragen zu dieser Datenschutzrichtlinie oder zu Ihren Daten haben, kontaktieren Sie uns bitte:",
     "contact_team": "Fire Arena Team",
     "contact_email_label": "E-Mail:",
-    "contact_email": "hakcathonthon@gmail.com"
+    "contact_email": "hasankheireddine1@gmail.com"
   },
   "terms_of_service": {
     "title": "Nutzungsbedingungen",
@@ -921,7 +925,7 @@
     "changes_binding": "Ihre weitere Nutzung von Fire Arena nach Inkrafttreten der Änderungen gilt als Zustimmung zu den aktualisierten Bedingungen.",
     "contact_title": "Kontakt",
     "contact_text": "Bei Fragen zu diesen Nutzungsbedingungen kontaktieren Sie uns unter:",
-    "contact_email": "hakcathonthon@gmail.com"
+    "contact_email": "hasankheireddine1@gmail.com"
   },
   "achievement_catalog": {
     "pong_first_rally": {

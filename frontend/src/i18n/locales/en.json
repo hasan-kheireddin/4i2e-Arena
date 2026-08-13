@@ -187,7 +187,11 @@
       "empty_body": "Anyone you block from a profile or a conversation shows up here.",
       "blocked_on": "Blocked on {{date}}",
       "unblock": "Unblock",
-      "unblocked": "{{name}} is unblocked"
+      "unblocked": "{{name}} is unblocked",
+      "legal_title": "Legal",
+      "legal_desc": "Review how we handle your data and the rules for using the platform.",
+      "privacy_policy_link": "Privacy Policy",
+      "terms_link": "Terms of Service"
     },
     "appearance": {
       "language": "Language"
@@ -850,7 +854,7 @@
     "contact_text": "If you have questions, concerns, or requests related to this Privacy Policy or your data, please contact:",
     "contact_team": "Fire Arena Team",
     "contact_email_label": "Email:",
-    "contact_email": "hakcathonthon@gmail.com"
+    "contact_email": "hasankheireddine1@gmail.com"
   },
   "terms_of_service": {
     "title": "Terms of Service",
@@ -921,7 +925,7 @@
     "changes_binding": "Your continued use of Fire Arena after changes become effective constitutes your acceptance of the updated terms.",
     "contact_title": "Contact Us",
     "contact_text": "If you have questions about these Terms of Service, please contact us at:",
-    "contact_email": "hakcathonthon@gmail.com"
+    "contact_email": "hasankheireddine1@gmail.com"
   },
   "achievement_catalog": {
     "pong_first_rally": {

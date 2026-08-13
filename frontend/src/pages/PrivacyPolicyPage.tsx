@@ -244,11 +244,11 @@ export default function PrivacyPolicyPage() {
             <p style={{ color: 'var(--color-text-secondary)' }}>
               {t('privacy_policy.contact_email_label')}{' '}
               <a
-                href="mailto:hakcathonthon@gmail.com"
+                href="mailto:hasankheireddine1@gmail.com"
                 style={{ color: 'var(--color-primary)' }}
                 className="hover:opacity-80"
               >
-                hakcathonthon@gmail.com
+                hasankheireddine1@gmail.com
               </a>
             </p>
           </div>
