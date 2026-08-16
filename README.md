@@ -289,18 +289,7 @@ erDiagram
         UUID id PK
     }
 
-    ACTIVITY_EVENTS {
-        UUID id PK
-        UUID user_id FK "nullable"
-        VARCHAR category
-        VARCHAR event_type
-        JSONB metadata
-        INET ip_address
-        VARCHAR user_agent
-        TIMESTAMPTZ created_at
-    }
-
-    CHAT_CHANNELS {
+    Channels {
         UUID id PK
         VARCHAR_50 name
         VARCHAR channel_type
@@ -311,7 +300,7 @@ erDiagram
         TIMESTAMPTZ updated_at
     }
 
-    CHAT_MEMBERSHIPS {
+    ChannelMembership {
         UUID channel_id FK
         UUID user_id FK
         VARCHAR role
@@ -321,7 +310,7 @@ erDiagram
         TIMESTAMPTZ joined_at
     }
 
-    CHAT_MESSAGES {
+    Message {
         UUID id PK
         UUID channel_id FK
         UUID sender_id FK "nullable"
@@ -333,7 +322,7 @@ erDiagram
         TIMESTAMPTZ created_at
     }
 
-    CHAT_FRIENDSHIPS {
+    FRIENDSHIPS {
         UUID from_user_id FK
         UUID to_user_id FK
         VARCHAR status
@@ -341,22 +330,22 @@ erDiagram
         TIMESTAMPTZ updated_at
     }
 
-    CHAT_BLOCKS {
+    BLOCKS {
         UUID blocker_id FK
         UUID blocked_id FK
         TIMESTAMPTZ created_at
     }
 
-    USERS ||--o{ CHAT_MESSAGES : "sends"
+    USERS ||--o{ Message : "sends"
     USERS ||--o{ ACTIVITY_EVENTS : "generates"
-    USERS ||--o{ CHAT_CHANNELS : "owns"
-    USERS ||--o{ CHAT_MEMBERSHIPS : "member of"
-    USERS ||--o{ CHAT_FRIENDSHIPS : "initiates"
-    USERS ||--o{ CHAT_FRIENDSHIPS : "receives"
-    USERS ||--o{ CHAT_BLOCKS : "blocks"
-    USERS ||--o{ CHAT_BLOCKS : "is blocked by"
-    CHAT_CHANNELS ||--|{ CHAT_MEMBERSHIPS : "has"
-    CHAT_CHANNELS ||--o{ CHAT_MESSAGES : "contains"
+    USERS ||--o{ Channels : "owns"
+    USERS ||--o{ ChannelMembership : "member of"
+    USERS ||--o{ FRIENDSHIPS : "initiates"
+    USERS ||--o{ FRIENDSHIPS : "receives"
+    USERS ||--o{ BLOCKS : "blocks"
+    USERS ||--o{ BLOCKS : "is blocked by"
+    CHANNELS ||--|{ ChannelMembership : "has"
+    CHANNELS ||--o{ Message : "contains"
 ```
 
 # Features
