@@ -48,7 +48,11 @@ The project was developed by a team 4 students.
 
 | Developer | Role | Responsibilities
 | --------- | --------------------------- | -------------------------------------------------- |
+<<<<<<< HEAD
 | **hkheired** | Tech Lead/Backend Developer | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA) |
+=======
+| **hkheired** | Tech Lead / Backend Developer | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA) |
+>>>>>>> 077b53a (Updated Readme)
 | **mjamil** | Frontend Developer | React UI architecture, design system, i18n/RTL, cross browser support |
 | **nabbas** | Product Owner and Manager | Pong game logic, analytics and gamification |
 | **rchalak** | Full Stack Developer | 3D graphics, spectator mode, friends and chat system |
@@ -371,6 +375,8 @@ erDiagram
 # Modules
 
 The project is divided into several modules, each responsible for a specific aspect of the application and all developers contributed with each other to some modules, but each developer had a main module that they were responsible for:
+
+## All team
 
 - Major: Use a framework for both the frontend and backend.
 
