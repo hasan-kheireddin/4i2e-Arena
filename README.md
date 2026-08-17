@@ -382,18 +382,22 @@ We choose to use React for the frontend and Django for the backend, leveraging t
     - Real-time updates across clients.
     - Handle connection/disconnection gracefully.
     - Efficient message broadcasting.
+
 A lot of this platform depends on things happening live. Game moves, matchmaking, notifications, spectating, and none of that works well with a normal request/response API where the browser has to keep asking "did anything change yet?". WebSockets let the server push updates to users the moment something happens, which is what makes the platform feel real-time instead of laggy or manual.
 
 - Major: Remote players — Enable two players on separate computers to play the same game in real-time.
     - Handle network latency and disconnections gracefully.
     - Provide a smooth user experience for remote gameplay.
     - Implement reconnection logic.
+
 A gaming platform where you can only play against someone sitting at the same keyboard isn't really an online platform, so remote play is what makes the whole product make sense. It also builds directly on the WebSocket work.
 
 - Minor: Use an ORM for the database
+
 Using an ORM instead of writing raw SQL keeps the database code safer and easier to maintain. It automatically protects against SQL injection, makes the code more readable, and makes it much easier to change the database structure later without rewriting a lot of queries by hand.
 
 - Minor: Implement a complete 2FA system for the users.
+
 Passwords alone aren't enough to keep accounts safe, especially since this platform stores personal data and connects to other users. Adding 2FA gives users a way to protect their account even if their password is ever leaked or guessed, which is a standard expectation for any modern authentication system.
 
 ## mjamil part
@@ -617,4 +621,4 @@ https://MACHINE_IP:8443
 - [TypeScript](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.typescriptlang.org/docs/&ved=2ahUKEwj0g8XKrZiWAxUf9QIHHXWkJRAQFnoECAwQAQ&usg=AOvVaw20TV6LfjkMklzed6tZ3GJe)
 - [Pong game Article](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://towardsdatascience.com/coding-the-pong-game-from-scratch-in-python/&ved=2ahUKEwjl_c_mrZiWAxUa0gIHHURVEdoQFnoECCEQAQ&usg=AOvVaw3xxoYT0a_IkUVpkpCS5jlG)
 
-We Used Artificial Intelligence in generating ERD diagrams by providing the database schema for README.md file, also we use it in testing the implemented backend features by asking him to generate a temporary UI design.
+We Used Artificial Intelligence in generating ERD diagrams by providing the database schema for README.md file.
