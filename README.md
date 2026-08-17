@@ -48,7 +48,7 @@ The project was developed by a team 4 students.
 
 | Developer | Role | Responsibilities
 | --------- | --------------------------- | -------------------------------------------------- |
-| **hkheired** | Backend Developer | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA) |
+| **hkheired** | Tech Lead/Backend Developer | System architecture, Django/DRF backend, WebSocket infrastructure, auth(JWT/2FA) |
 | **mjamil** | Frontend Developer | React UI architecture, design system, i18n/RTL, cross browser support |
 | **nabbas** | Product Owner and Manager | Pong game logic, analytics and gamification |
 | **rchalak** | Full Stack Developer | 3D graphics, spectator mode, friends and chat system |
@@ -344,8 +344,8 @@ erDiagram
     USERS ||--o{ FRIENDSHIPS : "receives"
     USERS ||--o{ BLOCKS : "blocks"
     USERS ||--o{ BLOCKS : "is blocked by"
-    CHANNELS ||--|{ ChannelMembership : "has"
-    CHANNELS ||--o{ Message : "contains"
+    Channels ||--|{ ChannelMembership : "has"
+    Channels ||--o{ Message : "contains"
 ```
 
 # Features
@@ -356,7 +356,7 @@ erDiagram
 | 2 | Abuse Prevention | hkheired | Rate limiting and Password/username validation |
 | 3 | Server-authoritative Pong Engine | nabbas | Server-side game logic for Pong, including ball physics, paddle movement, scoring, and game state management. |
 | 4 | Server-authoritative TicTacToe Engine | nabbas | Server-side game logic for TicTacToe, including win detection, move validation, and game state management. |
-| 5 | 3D Pong rendering | rchalak | 3D graphics rendering for Pong using Three.js, including paddle and ball models, lighting, and camera controls. |
+| 5 | 3D Pong rendering | rchalak | 3D graphics rendering for Pong using Babylon.js, including paddle and ball models, lighting, and camera controls. |
 | 6 | 3D Spectator Mode | rchalak | 3D spectator mode for Pong, allowing users to watch live matches from different camera angles and perspectives. |
 | 7 | Real-time Multiplayer Gameplay | hkheired | WebSocket-based communication for real-time gameplay, including player actions, game state updates, and match results. |
 | 8 | Match History & Analytics | nabbas | Tracking and displaying match history, player statistics, and performance metrics, including win/loss records, scores, and achievements. |
